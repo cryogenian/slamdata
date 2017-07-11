@@ -107,6 +107,9 @@
 
 
 .header-gripper
+  display: flex
+  justify-content: center
+  align-items: center
   position: absolute
   z-index: 999999
   top: 100%
@@ -116,14 +119,18 @@
   height: $grid-size
   margin: auto
   text-align: center
-  color: $gripper-dots-color
+  font-size: 2.2rem
+  color: $gripper-color
   transition-property: box-shadow, background-color, color
   transition-duration: 300ms, 300ms, 200ms
   transition-timing-function: ease-out
   cursor: pointer
 
+  .sd-icon > svg
+    vertical-align: text-top
+
   &:hover
-    color: $gripper-dots-hover-color
+    color: $gripper-hover-color
 
 
 .sd-header-gripper-opening,

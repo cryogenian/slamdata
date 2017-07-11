@@ -137,16 +137,16 @@
     position: relative
     width: $grid-size
     height: 100%
-    padding-left: 0.3rem
-    padding-right: 0.3rem
+    padding: 0
     border: none
     opacity: 0
-    color: $gripper-dots-color
+    color: $gripper-color
+    font-size: 2.4rem
     pointer-events: none
     transition: color 200ms ease-out
 
     &:hover
-      color: $gripper-dots-hover-color
+      color: $gripper-hover-color
 
 .sd-focused > .sd-deck > .sd-card-slider > .sd-card
   > .sd-card-gripper,
@@ -167,10 +167,10 @@
   margin: 0 auto
   border: none
   background: none
-  color: $gripper-dots-color
+  color: $gripper-color
 
   &:hover
-    color: $gripper-dots-hover-color
+    color: $gripper-hover-color
 
 
 .sd-flip-deck-btn, .sd-zoom-deck-btn

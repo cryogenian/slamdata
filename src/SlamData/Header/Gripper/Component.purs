@@ -19,7 +19,6 @@ module SlamData.Header.Gripper.Component where
 import SlamData.Prelude
 
 import Data.Int as Int
-
 import DOM.Event.Event as DEE
 import DOM.Event.EventTarget as Etr
 import DOM.Event.MouseEvent as DEM
@@ -30,7 +29,6 @@ import DOM.HTML.Types as Ht
 import DOM.HTML.Window as Win
 import DOM.Node.ParentNode as Pn
 import DOM.Node.Types as Dt
-
 import CSS.Geometry (marginTop)
 import CSS.Size (rem)
 import CSS.String (fromString)
@@ -38,7 +36,6 @@ import CSS.Stylesheet (CSS, (?), keyframesFromTo)
 import CSS.Animation (animation, iterationCount, normalAnimationDirection, forwards)
 import CSS.Time (sec)
 import CSS.Transition (easeOut)
-
 import Halogen as H
 import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML.CSS as CSS
@@ -47,11 +44,9 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Query.EventSource as ES
-
 import SlamData.Monad (Slam)
-import SlamData.Render.Common (gripperGlobalNavNub)
+import SlamData.Render.Icon as I
 import SlamData.Wiring as Wiring
-
 import Unsafe.Coerce (unsafeCoerce)
 
 data Query a
@@ -101,6 +96,7 @@ render sel state =
         [ HH.ClassName "header-gripper"
         , HH.ClassName $ className state
         ]
+    , HP.title $ label state
     , HE.onMouseDown \e →
         Just
           $ PreventDefault (DET.mouseEventToEvent e)
@@ -109,8 +105,7 @@ render sel state =
     , ARIA.label $ label state
     ]
     [ CSS.stylesheet $ renderStyles sel state
-    , gripperGlobalNavNub
-    --, gripperDotsPattern "header" 10 10
+    , I.menuSm
     ]
   where
   label ∷ State → String

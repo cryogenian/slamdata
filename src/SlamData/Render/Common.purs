@@ -23,8 +23,6 @@ module SlamData.Render.Common
   , clearFieldIcon
   , busyFieldIcon
   , svgElem
-  , gripperGlobalNavNub
-  , gripperDeckNavigation
   , gripperDeckMove
   ) where
 
@@ -110,12 +108,6 @@ gripperHelper s vb =
           [ ]
         ]
       ]
-
-gripperGlobalNavNub ∷ ∀ p i. H.HTML p i
-gripperGlobalNavNub = gripperHelper "global-nav-nub" $ ViewBox 0 0 10 10
-
-gripperDeckNavigation ∷ ∀ p i. H.HTML p i
-gripperDeckNavigation = gripperHelper "deck-navigation" $ ViewBox 0 0 10 100
 
 gripperDeckMove ∷ ∀ p i. H.HTML p i
 gripperDeckMove = gripperHelper "deck-move" $ ViewBox 0 0 80 10
