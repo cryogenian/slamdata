@@ -97,10 +97,9 @@ renderItem ci =
         , HCSS.style $ CSS.width (CSS.pct (unwrap (columnItemWeight ci) * 100.0))
         ]
         []
-    , HH.div_
-        [ HH.span_
-            [ columnItemIcon ci
-            , HH.text (columnItemLabel ci)
-            ]
+    , HH.div
+        [ HP.class_ (H.ClassName "sd-structure-editor-item-label") ]
+        [ columnItemIcon ci
+        , HH.text (columnItemLabel ci)
         ]
     ]
