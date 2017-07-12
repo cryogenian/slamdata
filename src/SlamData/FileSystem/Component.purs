@@ -54,6 +54,8 @@ import Quasar.Advanced.QuasarAF as QA
 import Quasar.Advanced.Types as QAT
 import Quasar.Data (QData(..))
 import Quasar.Mount as QM
+import SlamData.AdminUI.Component as AdminUI
+import SlamData.AdminUI.Types as AdminUI.Types
 import SlamData.Common.Sort (notSort)
 import SlamData.Config as Config
 import SlamData.Dialog.Render as RenderDialog
@@ -127,7 +129,7 @@ render state@{ version, sort, salt, path } =
     [ HP.classes [ FileSystemClassNames.filesystem ]
     , HE.onClick (HE.input_ DismissSignInSubmenu)
     ]
-    $ [ HH.slot' CS.cpHeader unit Header.component unit absurd
+    $ [ HH.slot' CS.cpHeader unit Header.component unit $ HE.input HandleHeader
       , content
           [ HH.slot' CS.cpSearch unit Search.component unit $ HE.input HandleSearch
           , HH.div_
@@ -140,6 +142,7 @@ render state@{ version, sort, salt, path } =
       , HH.slot' CS.cpDialog unit Dialog.component unit $ HE.input HandleDialog
       , HH.slot' CS.cpNotify unit (NC.component NC.Hidden) unit
           $ HE.input HandleNotifications
+      , HH.slot' CS.cpAdminUI unit AdminUI.component unit $ HE.input HandleAdminUI
       ]
     <> (guard state.presentIntroVideo $> renderIntroVideo)
 
@@ -385,6 +388,11 @@ eval = case _ of
     remove mount
     H.liftEff Browser.reload
     pure next
+  HandleHeader (Header.GlobalMenuMessage GlobalMenu.OpenAdminUI) next → do
+    _ ← H.query' CS.cpAdminUI unit (H.action AdminUI.Types.Open)
+    pure next
+  HandleHeader _ next →
+    pure next
   HandleNotifications NC.ExpandGlobalMenu next → do
     gripperState ← queryHeaderGripper $ H.request Gripper.GetState
     when (gripperState ≠ Just Gripper.Opened) do
@@ -424,6 +432,10 @@ eval = case _ of
   HandleSignInMessage message next → do
     when (message ≡ GlobalMenu.SignInSuccess) (H.liftEff Browser.reload)
     pure next
+  HandleAdminUI message next → case message of
+    AdminUI.Types.Closed → do
+      _ ← queryHeaderGripper $ H.action $ Gripper.Close
+      pure next
 
 handleItemMessage ∷ Item.Message → DSL Unit
 handleItemMessage = case _ of

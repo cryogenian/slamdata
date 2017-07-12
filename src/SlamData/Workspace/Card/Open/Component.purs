@@ -22,19 +22,15 @@ module SlamData.Workspace.Card.Open.Component
 import SlamData.Prelude
 
 import Control.Monad.State as CMS
-
 import Data.Array as A
 import Data.Lens (view)
 import Data.List as L
 import Data.Path.Pathy as Path
 import Data.String as S
-import Data.Unfoldable (unfoldr)
-
 import Halogen as H
 import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-
 import SlamData.FileSystem.Resource as R
 import SlamData.GlobalError as GE
 import SlamData.GlobalMenu.Bus as GMB
@@ -59,8 +55,7 @@ import SlamData.Workspace.MillerColumns.Column.BasicFilter as MCF
 import SlamData.Workspace.MillerColumns.Column.Component as MCC
 import SlamData.Workspace.MillerColumns.Column.Component.Request as MCR
 import SlamData.Workspace.MillerColumns.Component as MC
-
-import Utils.Path (AnyPath)
+import Utils.Path (toPathList)
 
 type ColumnsQuery = MC.Query AnyItem' AnyPath' Void
 type DSL = CC.InnerCardParentDSL State Query ColumnsQuery Unit
@@ -278,10 +273,3 @@ pathToColumnData = case _ of
 
 rootDirectory ∷ AnyItem'
 rootDirectory = Resource (R.Directory Path.rootDir)
-
-toPathList ∷ AnyPath → L.List AnyPath
-toPathList res =
-  (unfoldr \r → Tuple r <$> either go go r) res `L.snoc` Left Path.rootDir
-  where
-  go ∷ ∀ b. Path.Path Path.Abs b Path.Sandboxed → Maybe AnyPath
-  go = map (Left ∘ fst) ∘ Path.peel
