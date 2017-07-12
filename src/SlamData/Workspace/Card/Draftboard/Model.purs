@@ -24,27 +24,29 @@ module SlamData.Workspace.Card.Draftboard.Model
   ) where
 
 import SlamData.Prelude
-import Data.Argonaut as J
+
 import Data.Argonaut ((~>), (:=), (.?))
+import Data.Argonaut as J
+import Data.Codec.Argonaut.Compat as CA
 import Data.Function (on)
 import Data.Int (floor)
-import Data.List(List(..), (:))
 import Data.List as List
+import Data.List(List(..), (:))
 import Data.Map as Map
 import Data.Maybe as Maybe
 import Data.Ratio as Ratio
 import Data.Rational ((%))
 import Data.Rational as Rational
+import Math as Math
 import SlamData.Workspace.Card.Draftboard.Layout as Layout
 import SlamData.Workspace.Card.Draftboard.Orientation as Orn
 import SlamData.Workspace.Card.Draftboard.Pane as Pane
-import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Deck.DeckId as DID
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
-import Math as Math
 
 type Model =
-  { layout ∷ Pane.Pane (Maybe DeckId)
+  { layout ∷ Pane.Pane (Maybe DID.DeckId)
   }
 
 eqModel
@@ -65,36 +67,35 @@ encode
   ∷ Model
   → J.Json
 encode m =
-  "layout" := encodePane m.layout
+  "layout" := encodePane (CA.maybe DID.codec) m.layout
     ~> J.jsonEmptyObject
 
 decode
   ∷ J.Json
   → Either String Model
-decode =
-  J.decodeJson >=> \obj → decodeLayout obj <|> decodeDecks obj
+decode j =
+  J.decodeJson j >>= \obj → decodeLayout obj <|> decodeDecks j
 
   where
   decodeLayout obj = do
-    layout ← decodePane =<< obj .? "layout"
+    layout ← decodePane (CA.maybe DID.codec) =<< obj .? "layout"
     pure { layout }
 
-  decodeDecks obj = do
-    decks ∷ Map.Map DeckId DeckPosition ←
-      traverse decodeDeckPosition =<< obj .? "decks"
+  decodeDecks obj = lmap CA.printJsonDecodeError do
+    decks ← CA.decode (CA.map DID.codec codecDeckPosition) obj
     let
       layout = migrateLayout decks
     pure { layout }
 
 encodePane
   ∷ ∀ a
-  . J.EncodeJson a
-  ⇒ Pane.Pane a
+  . CA.JsonCodec a
+  → Pane.Pane a
   → J.Json
-encodePane = case _ of
+encodePane codecA = case _ of
   Pane.Cell a →
     "type" := "cell"
-    ~> "value" := J.encodeJson a
+    ~> "value" := CA.encode codecA a
     ~> J.jsonEmptyObject
   Pane.Split orn ps →
     "type" := "split"
@@ -105,20 +106,20 @@ encodePane = case _ of
   encodeSplit (r × p) =
     let r' = Rational.runRational r in
     "ratio" := J.encodeJson (Ratio.numerator r' × Ratio.denominator r')
-      ~> "pane" :=  encodePane p
+      ~> "pane" := encodePane codecA p
       ~> J.jsonEmptyObject
 
 decodePane
   ∷ ∀ a
-  . J.DecodeJson a
-  ⇒ J.Json
+  . CA.JsonCodec a
+  → J.Json
   → Either String (Pane.Pane a)
-decodePane =
+decodePane codecA =
   J.decodeJson >=> \obj → do
     ty ← obj .? "type"
     case ty of
       "cell" → do
-        value ← obj .? "value"
+        value ← lmap CA.printJsonDecodeError <<< CA.decode codecA =<< obj .? "value"
         pure (Pane.Cell value)
       "split" → do
         orn ← decodeOrientation =<< obj .? "orientation"
@@ -129,7 +130,7 @@ decodePane =
   where
   decodeSplits obj = do
     n × d ← obj .? "ratio"
-    pane ← decodePane =<< obj .? "pane"
+    pane ← decodePane codecA =<< obj .? "pane"
     pure (n%d × pane)
 
 genPane
@@ -174,20 +175,17 @@ type DeckPosition =
   , height ∷ Number
   }
 
-decodeDeckPosition
-  ∷ J.Json
-  → Either String DeckPosition
-decodeDeckPosition =
-  J.decodeJson >=> \obj → do
-    x ← obj .? "x"
-    y ← obj .? "y"
-    width ← obj .? "width"
-    height ← obj .? "height"
-    pure { x, y, width, height }
+codecDeckPosition ∷ CA.JsonCodec DeckPosition
+codecDeckPosition =
+  CA.object "Deck position" $ CA.record
+    # CA.recordProp (SProxy ∷ SProxy "x") CA.number
+    # CA.recordProp (SProxy ∷ SProxy "y") CA.number
+    # CA.recordProp (SProxy ∷ SProxy "width") CA.number
+    # CA.recordProp (SProxy ∷ SProxy "height") CA.number
 
 migrateLayout
-  ∷ Map.Map DeckId DeckPosition
-  → Pane.Pane (Maybe DeckId)
+  ∷ Map.Map DID.DeckId DeckPosition
+  → Pane.Pane (Maybe DID.DeckId)
 migrateLayout decks =
   splitTop total Nil deckList
 

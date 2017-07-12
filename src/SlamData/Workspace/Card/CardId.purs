@@ -20,16 +20,19 @@ module SlamData.Workspace.Card.CardId
   , fromString
   , fromString'
   , toString
-  , legacyFromInt
+  , codec
   ) where
 
 import SlamData.Prelude
 
 import Control.Monad.Eff.Class (class MonadEff)
 import Control.Monad.Eff.Random as Random
-import Data.UUID.Random as UUID
-import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson)
+import Data.Argonaut as J
+import Data.Codec ((<~<))
+import Data.Codec as C
+import Data.Codec.Argonaut as CA
 import Data.String as String
+import Data.UUID.Random as UUID
 import Test.StrongCheck.Arbitrary as SC
 import Utils (replicate)
 
@@ -49,32 +52,26 @@ fromString' s = case fromString s of
 toString ∷ CardId → String
 toString (CardId u) = UUID.toString u
 
-legacyFromInt ∷ Int → CardId
-legacyFromInt i =
-  let
-    str = String.take 12 (show i)
-    len = String.length str
-    block =
-      if len < 12
-        then replicate (12 - len) "0" <> str
-        else str
-    ustr = "00000000-0000-4000-8000-" <> block
-  in unsafePartial (fromRight (fromString' ustr))
-
 derive instance eqCardId ∷ Eq CardId
 derive instance ordCardId ∷ Ord CardId
 
 instance showCardId ∷ Show CardId where
   show c = "CardId " <> toString c
 
-instance encodeJsonCardId ∷ EncodeJson CardId where
-  encodeJson (CardId u) = encodeJson u
-
-instance decodeJsonCardId ∷ DecodeJson CardId where
-  decodeJson json = uuid <|> legacy
-    where
-      uuid = fromString' =<< decodeJson json
-      legacy = legacyFromInt <$> decodeJson json
-
 instance arbitraryDeckId ∷ SC.Arbitrary CardId where
   arbitrary = CardId <$> SC.arbitrary
+
+codec ∷ CA.JsonCodec CardId
+codec = dimap (\(CardId uuid) → uuid) CardId UUID.codec <~< migrationCodec
+  where
+    migrationCodec ∷ CA.JsonCodec J.Json
+    migrationCodec = C.basicCodec (\j -> pure $ either (const j) go (C.decode CA.int j)) id
+      where
+        go ∷ Int -> J.Json
+        go i =
+          let
+            str = String.take 12 (show i)
+            len = String.length str
+            block = if len < 12 then replicate (12 - len) "0" <> str else str
+          in
+            J.fromString ("00000000-0000-4000-8000-" <> block)

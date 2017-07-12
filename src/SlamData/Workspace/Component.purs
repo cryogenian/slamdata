@@ -29,9 +29,12 @@ import Control.Monad.Fork (fork)
 import Control.UI.Browser as Browser
 import DOM.Classy.Event (currentTarget, target) as DOM
 import DOM.Classy.Node (toNode) as DOM
+import Data.Argonaut as J
 import Data.Coyoneda (liftCoyoneda)
 import Data.List as List
 import Data.Time.Duration (Milliseconds(..))
+import DOM.Classy.Event (currentTarget, target) as DOM
+import DOM.Classy.Node (toNode) as DOM
 import Halogen as H
 import Halogen.Component.Utils (busEventSource)
 import Halogen.Component.Utils.Throttled (throttledEventSource_)
@@ -246,10 +249,10 @@ eval = case _ of
   HandleGuideMessage slot Guide.Dismissed next → do
     case slot of
       CardGuide → do
-        LS.persist LSK.dismissedCardGuideKey true
+        LS.persist J.encodeJson LSK.dismissedCardGuideKey true
         void $ queryDeck $ H.action Deck.DismissedCardGuide
       FlipGuide → do
-        LS.persist LSK.dismissedFlipGuideKey true
+        LS.persist J.encodeJson LSK.dismissedFlipGuideKey true
     H.modify (_ { guide = Nothing })
     pure next
   HandleNotification msg next →
@@ -374,4 +377,4 @@ queryHeaderGripper =
 initialCardGuideStep ∷ WorkspaceDSL (Maybe Int)
 initialCardGuideStep =
   either (const $ Just 0) (if _ then Nothing else Just 0)
-    <$> LS.retrieve LSK.dismissedCardGuideKey
+    <$> LS.retrieve J.decodeJson LSK.dismissedCardGuideKey

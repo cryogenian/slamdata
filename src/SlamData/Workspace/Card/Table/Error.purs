@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Quasar.QuasarF (QError)
 import SlamData.GlobalError as GE
-import Utils (throwVariantError, hush)
+import Utils (throwVariantError)
 
 data TableError
   = TableMissingResourceInputError
