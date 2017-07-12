@@ -18,14 +18,6 @@ module SlamData.Workspace.PickerUtils
   ( datePickerFormat
   , dateTimePickerFormat
   , timePickerFormat
-  , formatDate
-  , formatDateTime
-  , formatDateTimeZ
-  , formatTime
-  , unformatDate
-  , unformatDateTime
-  , unformatDateTimeZ
-  , unformatTime
   ) where
 
 import SlamData.Prelude
@@ -48,43 +40,3 @@ datePickerFormat = unsafePartial fromRight
 timePickerFormat ∷ TimePickerF.Format
 timePickerFormat = unsafePartial fromRight
   $ TimePickerF.fromString "HH:mm:ss"
-
-dateTimeStringFormat ∷ String
-dateTimeStringFormat = dateStringFormat' <> "T" <> timeStringFormat'
-
-dateStringFormat ∷ String
-dateStringFormat = dateStringFormat' <> "T" <> timeStringFormat' <> "Z"
-
-timeStringFormat ∷ String
-timeStringFormat = timeStringFormat' <> ".SSS"
-
-dateStringFormat' ∷ String
-dateStringFormat' = "YYYY-MM-DD"
-
-timeStringFormat' ∷ String
-timeStringFormat' = "HH:mm:ss"
-
-
-formatDateTime ∷ DT.DateTime → Maybe String
-formatDateTime x = hush $ FD.formatDateTime dateTimeStringFormat x
-
-formatDateTimeZ ∷ DT.DateTime → Maybe String
-formatDateTimeZ x = hush $ FD.formatDateTime (dateTimeStringFormat <> "Z") x
-
-formatDate ∷ DT.Date → Maybe String
-formatDate x = hush $ FD.formatDateTime dateStringFormat $ DT.DateTime x bottom
-
-formatTime ∷ DT.Time → Maybe String
-formatTime x = hush $ FD.formatDateTime timeStringFormat $ DT.DateTime bottom x
-
-unformatDateTime ∷ String → Maybe DT.DateTime
-unformatDateTime x = hush $ FD.unformatDateTime dateTimeStringFormat x
-
-unformatDateTimeZ ∷ String → Maybe DT.DateTime
-unformatDateTimeZ x = hush $ FD.unformatDateTime (dateTimeStringFormat <> "Z") x
-
-unformatDate ∷ String → Maybe DT.Date
-unformatDate x = hush $ map DT.date $ FD.unformatDateTime dateStringFormat x
-
-unformatTime ∷ String → Maybe DT.Time
-unformatTime x = hush $ map DT.time $ FD.unformatDateTime timeStringFormat x

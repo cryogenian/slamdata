@@ -23,7 +23,10 @@ import DOM.Event.Types (Event)
 import Data.Argonaut (JCursor(..))
 import Data.BrowserFeatures.InputType (InputType)
 import Data.BrowserFeatures.InputType as IT
+import Data.DateTime as DT
+import Data.Either (hush)
 import Data.Either.Nested (Either3)
+import Data.Formatter.DateTime as FD
 import Data.Functor.Coproduct.Nested (Coproduct3)
 import Data.Time.Duration (Milliseconds(..))
 import Halogen as H
@@ -42,7 +45,7 @@ import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
 import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Model as M
 import SlamData.Workspace.Card.Port (SetupTextLikeFormInputPort)
-import SlamData.Workspace.PickerUtils (datePickerFormat, dateTimePickerFormat, formatDate, formatDateTimeZ, formatTime, timePickerFormat, unformatDate, unformatDateTimeZ, unformatTime)
+import SlamData.Workspace.PickerUtils (datePickerFormat, dateTimePickerFormat, timePickerFormat)
 import Text.Markdown.SlamDown.Halogen.Component (defaultBrowserFeatures)
 
 type State =
@@ -117,7 +120,7 @@ render state =
             unit
             $ HE.input
             $ \(NotifyChange n) →
-              ValueChanged $ fromMaybe "" $ value n >>= formatDateTimeZ
+              ValueChanged $ fromMaybe "" $ value n >>= formatDateTime
         Date | not state.inputTypeSupported IT.Date →
           HH.slot'
             cpDatePicker
@@ -188,7 +191,7 @@ eval = case _ of
       Datetime | not s.inputTypeSupported IT.DateTimeLocal →
         H.query' cpDateTimePicker unit
         $ setValue
-        $ Right <$> unformatDateTimeZ s.value
+        $ Right <$> unformatDateTime s.value
       Date | not s.inputTypeSupported IT.Date →
         H.query' cpDatePicker unit
         $ setValue
@@ -213,3 +216,22 @@ inputTypeFromFIT = case _ of
   Time → HP.InputTime
   Datetime → HP.InputDatetimeLocal
   _ → HP.InputText
+
+-- NOTE prism can be used here
+formatDateTime ∷ DT.DateTime → Maybe String
+formatDateTime x = hush $ FD.formatDateTime "YYYY-MM-DDTHH:mm:ssZ" x
+
+formatDate ∷ DT.Date → Maybe String
+formatDate x = hush $ FD.formatDateTime "YYYY-MM-DD" $ DT.DateTime x bottom
+
+formatTime ∷ DT.Time → Maybe String
+formatTime x = hush $ FD.formatDateTime "HH:mm:ss" $ DT.DateTime bottom x
+
+unformatDateTime ∷ String → Maybe DT.DateTime
+unformatDateTime x = hush $ FD.unformatDateTime "YYYY-MM-DDTHH:mm:ssZ" x
+
+unformatDate ∷ String → Maybe DT.Date
+unformatDate x = hush $ map DT.date $ FD.unformatDateTime "YYYY-MM-DD" x
+
+unformatTime ∷ String → Maybe DT.Time
+unformatTime x = hush $ map DT.time $ FD.unformatDateTime "HH:mm:ss" x

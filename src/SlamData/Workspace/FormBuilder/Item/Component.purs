@@ -26,10 +26,14 @@ import SlamData.Prelude
 import DOM.HTML.Indexed as DI
 import DOM.HTML.Indexed.StepValue (StepValue(..))
 import Data.BrowserFeatures.InputType as IT
+import Data.DateTime as DT
+import Data.Either (hush)
 import Data.Either.Nested (Either3)
+import Data.Formatter.DateTime as FD
 import Data.Functor.Coproduct.Nested (Coproduct3)
 import Data.Lens ((^?))
 import Data.Lens as Lens
+import Debug.Trace (spy, traceAnyA)
 import Halogen as H
 import Halogen.Component.ChildPath as CP
 import Halogen.Datepicker.Component.Date as DatePicker
@@ -46,8 +50,7 @@ import SlamData.Wiring as Wiring
 import SlamData.Workspace.FormBuilder.Item.Component.State (FieldName(..), Model, State, getModel, putModel)
 import SlamData.Workspace.FormBuilder.Item.Component.State as State
 import SlamData.Workspace.FormBuilder.Item.FieldType (FieldType(..), _FieldTypeDisplayName, allFieldTypes, fieldTypeToInputType)
-import SlamData.Workspace.PickerUtils (datePickerFormat, dateTimePickerFormat, formatDate, formatDateTime, formatTime, timePickerFormat, unformatDate, unformatDateTime, unformatTime)
-
+import SlamData.Workspace.PickerUtils (datePickerFormat, dateTimePickerFormat, timePickerFormat)
 
 
 data Query a
@@ -260,3 +263,27 @@ eval = case _ of
     pure next
   GetModel k →
     k <$> H.gets getModel
+
+
+-- We need to sanitise value (`sanitiseValue{From,For}Form`) for native
+-- date, time and dateTime input, but we don't need to do it with picker
+-- as by using this formats we match what database takes and returns.
+
+-- NOTE prism can be used here
+formatDateTime ∷ DT.DateTime → Maybe String
+formatDateTime x = hush $ FD.formatDateTime "YYYY-MM-DDTHH:mm:ssZ" x
+
+unformatDateTime ∷ String → Maybe DT.DateTime
+unformatDateTime x = hush $ FD.unformatDateTime "YYYY-MM-DDTHH:mm:ssZ" x
+
+formatDate ∷ DT.Date → Maybe String
+formatDate x = hush $ FD.formatDateTime "YYYY-MM-DDTHH:mm:ssZ" $ DT.DateTime x bottom
+
+unformatDate ∷ String → Maybe DT.Date
+unformatDate x = hush $ map DT.date $ FD.unformatDateTime "YYYY-MM-DDTHH:mm:ssZ" x
+
+formatTime ∷ DT.Time → Maybe String
+formatTime x = hush $ FD.formatDateTime "HH:mm:ss.SSS" $ DT.DateTime bottom x
+
+unformatTime ∷ String → Maybe DT.Time
+unformatTime x = hush $ map DT.time $ FD.unformatDateTime "HH:mm:ss.SSS" x
