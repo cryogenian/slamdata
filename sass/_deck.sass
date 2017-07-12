@@ -255,18 +255,25 @@
 
 
 .sd-grab-deck
+  display: flex
+  flex-flow: row nowrap
+  justify-content: space-around
+  align-items: center
   appearance: none
   position: absolute
   bottom: 0
   left: 0
   right: 0
   height: $grid-size
-  width: $grid-size * 4
+  width: ($grid-size * 4) - 0.4rem
   margin: 0 auto
   border: none
   background: none
   color: $gripper-color
   cursor: grab
+
+  > .sd-icon
+    line-height: 0
 
   &:hover
     color: $gripper-hover-color

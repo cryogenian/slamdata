@@ -1,52 +1,4 @@
 <svg aria-hidden="true" style="display:none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-  <symbol id="sd-gripper--global-nav-nub">
-    <circle r="1.25" cx="2" cy="2"/>
-    <circle r="1.25" cx="2" cy="7"/>
-    <circle r="1.25" cx="7" cy="2"/>
-    <circle r="1.25" cx="7" cy="7"/>
-  </symbol>
-  <symbol id="sd-gripper--deck-navigation">
-    <circle r="1.25" cx="2" cy="2"/>
-    <circle r="1.25" cx="2" cy="7"/>
-    <circle r="1.25" cx="2" cy="12"/>
-    <circle r="1.25" cx="2" cy="17"/>
-    <circle r="1.25" cx="2" cy="22"/>
-    <circle r="1.25" cx="2" cy="27"/>
-    <circle r="1.25" cx="2" cy="32"/>
-    <circle r="1.25" cx="2" cy="37"/>
-    <circle r="1.25" cx="2" cy="42"/>
-    <circle r="1.25" cx="2" cy="47"/>
-    <circle r="1.25" cx="2" cy="52"/>
-    <circle r="1.25" cx="2" cy="57"/>
-    <circle r="1.25" cx="2" cy="62"/>
-    <circle r="1.25" cx="2" cy="67"/>
-    <circle r="1.25" cx="2" cy="72"/>
-    <circle r="1.25" cx="2" cy="77"/>
-    <circle r="1.25" cx="2" cy="82"/>
-    <circle r="1.25" cx="2" cy="87"/>
-    <circle r="1.25" cx="2" cy="92"/>
-    <circle r="1.25" cx="2" cy="97"/>
-    <circle r="1.25" cx="7" cy="2"/>
-    <circle r="1.25" cx="7" cy="7"/>
-    <circle r="1.25" cx="7" cy="12"/>
-    <circle r="1.25" cx="7" cy="17"/>
-    <circle r="1.25" cx="7" cy="22"/>
-    <circle r="1.25" cx="7" cy="27"/>
-    <circle r="1.25" cx="7" cy="32"/>
-    <circle r="1.25" cx="7" cy="37"/>
-    <circle r="1.25" cx="7" cy="42"/>
-    <circle r="1.25" cx="7" cy="47"/>
-    <circle r="1.25" cx="7" cy="52"/>
-    <circle r="1.25" cx="7" cy="57"/>
-    <circle r="1.25" cx="7" cy="62"/>
-    <circle r="1.25" cx="7" cy="67"/>
-    <circle r="1.25" cx="7" cy="72"/>
-    <circle r="1.25" cx="7" cy="77"/>
-    <circle r="1.25" cx="7" cy="82"/>
-    <circle r="1.25" cx="7" cy="87"/>
-    <circle r="1.25" cx="7" cy="92"/>
-    <circle r="1.25" cx="7" cy="97"/>
-  </symbol>
   <symbol id="sd-gripper--deck-move">
     <circle r="1.25" cx="2" cy="2"/>
     <circle r="1.25" cx="2" cy="7"/>
@@ -58,27 +10,5 @@
     <circle r="1.25" cx="17" cy="7"/>
     <circle r="1.25" cx="22" cy="2"/>
     <circle r="1.25" cx="22" cy="7"/>
-    <circle r="1.25" cx="27" cy="2"/>
-    <circle r="1.25" cx="27" cy="7"/>
-    <circle r="1.25" cx="32" cy="2"/>
-    <circle r="1.25" cx="32" cy="7"/>
-    <circle r="1.25" cx="37" cy="2"/>
-    <circle r="1.25" cx="37" cy="7"/>
-    <circle r="1.25" cx="42" cy="2"/>
-    <circle r="1.25" cx="42" cy="7"/>
-    <circle r="1.25" cx="47" cy="2"/>
-    <circle r="1.25" cx="47" cy="7"/>
-    <circle r="1.25" cx="52" cy="2"/>
-    <circle r="1.25" cx="52" cy="7"/>
-    <circle r="1.25" cx="57" cy="2"/>
-    <circle r="1.25" cx="57" cy="7"/>
-    <circle r="1.25" cx="62" cy="2"/>
-    <circle r="1.25" cx="62" cy="7"/>
-    <circle r="1.25" cx="67" cy="2"/>
-    <circle r="1.25" cx="67" cy="7"/>
-    <circle r="1.25" cx="72" cy="2"/>
-    <circle r="1.25" cx="72" cy="7"/>
-    <circle r="1.25" cx="77" cy="2"/>
-    <circle r="1.25" cx="77" cy="7"/>
   </symbol>
 </svg>

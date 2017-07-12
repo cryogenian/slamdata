@@ -96,7 +96,8 @@ gripperHelper s vb =
     attr' = HH.AttrName >>> HP.attr
   in
     HH.span
-      [ HP.class_ $ HH.ClassName $ "sd-gripper sd-gripper--" <> s
+      [ HP.classes
+          [ HH.ClassName "sd-gripper", HH.ClassName $ "sd-gripper--" <> s ]
       , ARIA.hidden "true"
       ]
       [ svgElem (HH.ElemName "svg")
@@ -110,4 +111,4 @@ gripperHelper s vb =
       ]
 
 gripperDeckMove ∷ ∀ p i. H.HTML p i
-gripperDeckMove = gripperHelper "deck-move" $ ViewBox 0 0 80 10
+gripperDeckMove = gripperHelper "deck-move" $ ViewBox 0 0 25 10

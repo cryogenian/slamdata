@@ -243,7 +243,10 @@ moveGripper { focused, name } =
     , ARIA.label "Grab deck"
     , HP.title "Grab deck"
     ]
-    [ gripperDeckMove ]
+    [ gripperDeckMove
+    , I.moveSm
+    , gripperDeckMove
+    ]
 
 zoomInButton ∷ DeckHTML
 zoomInButton =
