@@ -41,6 +41,10 @@ _draftboard = SProxy ∷ SProxy "draftboard"
 _tabs = SProxy ∷ SProxy "tabs"
 _structureEditor = SProxy ∷ SProxy "structureEditor"
 _geo = SProxy ∷ SProxy "geo"
+_viz = SProxy ∷ SProxy "viz"
+
+viz ∷ ∀ r. Variant (viz ∷ Unit|r)
+viz = inj _viz unit
 
 search ∷ ∀ r. Variant (search ∷ Unit|r)
 search = inj _search unit
@@ -87,7 +91,6 @@ structureEditor = inj _structureEditor unit
 geo ∷ ∀ r. Variant (geo ∷ Unit|r)
 geo = inj _geo unit
 
-
 type SimpleR r =
   ( search ∷ Unit
   , chart ∷ Unit
@@ -104,6 +107,7 @@ type SimpleR r =
   , tabs ∷ Unit
   , structureEditor ∷ Unit
   , geo ∷ Unit
+  , viz ∷ Unit
   | r)
 
 type Simple r = Variant (SimpleR r)
@@ -125,10 +129,12 @@ all =
   , tabs
   , structureEditor
   , geo
+  , viz
   ]
 
 eq_ ∷ ∀ r rr b. HeytingAlgebra b ⇒ (Variant r → Variant rr → b) → Simple r → Simple rr → b
 eq_ cb r = cb (contractSimple r)
+  # on _viz (on _viz tt ff r)
   # on _search (on _search tt ff r)
   # on _chart (on _chart tt ff r)
   # on _form (on _form tt ff r)
@@ -151,6 +157,7 @@ eq_ cb r = cb (contractSimple r)
 
 print ∷ ∀ r. (Variant r → String) → Simple r → String
 print cb = cb
+  # on _viz (const "viz")
   # on _search (const "search")
   # on _chart (const "chart")
   # on _form (const "form-input")
@@ -169,6 +176,7 @@ print cb = cb
 
 parse ∷ ∀ r. String → String ⊹ Simple r
 parse = case _ of
+  "viz" → pure viz
   "search" → pure search
   "chart" → pure chart
   "form-input" → pure form
@@ -188,6 +196,7 @@ parse = case _ of
 
 name ∷ ∀ r. (Variant r → String) → Simple r → String
 name cb = cb
+  # on _viz (const "Show Visualization")
   # on _search (const "Search")
   # on _chart (const "Show Chart")
   # on _geo (const "Show Geo Chart")
@@ -206,6 +215,7 @@ name cb = cb
 
 icon ∷ ∀ r. (Variant r → I.IconHTML) → Simple r → I.IconHTML
 icon cb = cb
+  # on _viz (const $ I.IconHTML I.cardsShowChart)
   # on _search (const $ I.IconHTML I.cardsSearch)
   # on _download (const $ I.IconHTML I.cardsShowDownload)
   # on _variables (const $ I.IconHTML I.cardsSetupVariables)
@@ -224,6 +234,7 @@ icon cb = cb
 
 cardClasses ∷ ∀ r. (Variant r → Array H.ClassName) → Simple r → Array H.ClassName
 cardClasses cb = cb
+  # on _viz (\_ → [ H.ClassName "sd-card-chart" ] )
   # on _search (\_ → [ H.ClassName "sd-card-search" ])
   # on _chart (\_ → [ H.ClassName "sd-card-chart" ] )
   # on _geo (\_ → [ H.ClassName "sd-card-geo-chart" ])
@@ -242,6 +253,7 @@ cardClasses cb = cb
 
 consumerInteractable ∷ ∀ r. (Variant r → Boolean) → Simple r → Boolean
 consumerInteractable cb = cb
+  # on _viz tt
   # on _search tt
   # on _geo tt
   # on _chart tt
