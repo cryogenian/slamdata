@@ -40,7 +40,7 @@ data Notification
   | Warning String
   | Error String
 
-derive instance genericNotification :: Generic Notification
+derive instance genericNotification :: Generic Notification _
 
 derive instance eqNotification ∷ Eq Notification
 

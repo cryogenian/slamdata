@@ -23,7 +23,6 @@ import Control.Monad.Aff.AVar (AVar, AVAR)
 import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Throw (note)
 import DOM (DOM)
 import DOM.Event.EventTarget as EventTarget
 import DOM.Event.Types (Event, EventType(..))
@@ -88,4 +87,3 @@ putVar avar =
 -- Needs a foldable instance so can't be forall m. MonadError MultipleErrors m => m StorageEvent
 fromEvent ∷ Event → Either MultipleErrors StorageEvent
 fromEvent = StorageEventUtils.fromEvent
-

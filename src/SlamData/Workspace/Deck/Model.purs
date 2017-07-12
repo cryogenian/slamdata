@@ -17,12 +17,12 @@ limitations under the License.
 module SlamData.Workspace.Deck.Model where
 
 import SlamData.Prelude
-import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
-import SlamData.Workspace.Card.CardId (CardId)
+import Data.Codec.Argonaut as CA
+import SlamData.Workspace.Card.CardId as CID
 
 type Deck =
   { name ∷ String
-  , cards ∷ Array CardId
+  , cards ∷ Array CID.CardId
   }
 
 emptyDeck ∷ Deck
@@ -31,17 +31,10 @@ emptyDeck =
   , cards: mempty
   }
 
-encode ∷ Deck → Json
-encode r =
-  "name" := r.name
-  ~> "cards" := r.cards
-  ~> jsonEmptyObject
-
-decode ∷ Json → Either String Deck
-decode = decodeJson >=> \obj → do
-  name ← obj .? "name"
-  cards ← obj .? "cards"
-  pure { name, cards }
+codec ∷ CA.JsonCodec Deck
+codec = CA.object "Deck" $ CA.record
+  # CA.recordProp (SProxy :: SProxy "name") CA.string
+  # CA.recordProp (SProxy :: SProxy "cards") (CA.array CID.codec)
 
 eqDeck ∷ Deck → Deck → Boolean
 eqDeck d1 d2 = d1.name ≡ d2.name && d1.cards ≡ d2.cards

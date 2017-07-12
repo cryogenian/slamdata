@@ -79,8 +79,6 @@ import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
 
-import Utils (hush)
-
 data DisplayMode
   = FrontSide
   | FlipSide
