@@ -33,8 +33,6 @@ import Data.Argonaut as J
 import Data.Coyoneda (liftCoyoneda)
 import Data.List as List
 import Data.Time.Duration (Milliseconds(..))
-import DOM.Classy.Event (currentTarget, target) as DOM
-import DOM.Classy.Node (toNode) as DOM
 import Halogen as H
 import Halogen.Component.Utils (busEventSource)
 import Halogen.Component.Utils.Throttled (throttledEventSource_)

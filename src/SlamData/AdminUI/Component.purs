@@ -18,9 +18,9 @@ module SlamData.AdminUI.Component
 import SlamData.Prelude
 
 import Control.Monad.Eff.Exception as Exception
+import Data.Argonaut as J
 import Data.Array as Array
 import Data.Lens ((.=))
-import Data.Lens.Iso.Newtype (_Newtype)
 import Data.Lens.Record (prop)
 import Data.Newtype (over)
 import Data.Path.Pathy ((</>))
@@ -353,7 +353,7 @@ setDefaultTheme theme =
 eval ∷ AT.Query ~> AT.DSL
 eval = case _ of
   AT.Init next → do
-    defaultTheme ← LS.retrieve LK.adminUIDefaultTheme
+    defaultTheme ← LS.retrieve J.decodeJson LK.adminUIDefaultTheme
     for_ defaultTheme setDefaultTheme
     pure next
   AT.Open next → do
@@ -370,7 +370,7 @@ eval = case _ of
     H.modify (_ { formState { mySettings = new } })
     pure next
   AT.DefaultThemeChanged newTheme next → do
-    LS.persist LK.adminUIDefaultTheme newTheme
+    LS.persist J.encodeJson LK.adminUIDefaultTheme newTheme
     setDefaultTheme newTheme
     pure next
   AT.SetDatabase new next → do
