@@ -139,18 +139,19 @@ deckProperties opts =
   guard (L.length opts.displayCursor <= 1) $> HE.onMouseDown (HE.input Focus)
 
 frameElements ∷ DeckOptions → DCS.State → Array DeckHTML
-frameElements { accessType, displayCursor } st
+frameElements { accessType, cursor, displayCursor } st
   | accessType ≡ AT.ReadOnly = mempty
-  | L.null displayCursor = rootFrameElements st
+  | L.null displayCursor = rootFrameElements (L.null cursor) st
   | otherwise = childFrameElements st
 
-rootFrameElements ∷ DCS.State → Array DeckHTML
-rootFrameElements st =
-  [ deckFrameControls st ]
+rootFrameElements ∷ Boolean → DCS.State → Array DeckHTML
+rootFrameElements n st =
+  [ deckFrameControls (if n then Back else Out) st
+  ]
 
 childFrameElements ∷ DCS.State → Array DeckHTML
 childFrameElements st =
-  [ deckFrameControls st
+  [ deckFrameControls In st
   , moveGripper st
   ]
 
@@ -174,14 +175,19 @@ backside =
         ]
     ]
 
-deckFrameControls ∷ DCS.State → DeckHTML
-deckFrameControls st =
+data Zoom = In | Out | Back
+
+deckFrameControls ∷ Zoom → DCS.State → DeckHTML
+deckFrameControls zoom st =
   HH.div
   [ HP.class_ CSS.deckFrameControls ]
   [ HH.div
       [ HP.class_ CSS.deckFrameActions ]
       [ flipButton
-      , zoomOutButton
+      , case zoom of
+          In → zoomInButton
+          Out → zoomOutButton
+          Back → backToFsButton
       ]
   , deckIndicator st
   , renderName st.name
@@ -232,6 +238,7 @@ moveGripper ∷ DCS.State → DeckHTML
 moveGripper { focused, name } =
   HH.button
     [ HP.classes [ CSS.grabDeck ]
+    , HP.type_ HP.ButtonButton
     , HE.onMouseDown (HE.input HandleGrab)
     , ARIA.label "Grab deck"
     , HP.title "Grab deck"
@@ -241,22 +248,35 @@ moveGripper { focused, name } =
 zoomInButton ∷ DeckHTML
 zoomInButton =
   HH.button
-     [ HP.classes [ CSS.zoomDeckBtn ]
-     , ARIA.label "Zoom in"
-     , HP.title "Zoom in"
-     , HE.onClick (HE.input_ ZoomIn)
-     ]
-     [ I.zoomInSm ]
+    [ HP.classes [ CSS.zoomDeckBtn ]
+    , ARIA.label "Zoom in"
+    , HP.title "Zoom in"
+    , HP.type_ HP.ButtonButton
+    , HE.onClick (HE.input_ ZoomIn)
+    ]
+    [ I.zoomInSm ]
 
 zoomOutButton ∷ DeckHTML
 zoomOutButton =
   HH.button
-   [ HP.classes [ CSS.zoomDeckBtn ]
-   , ARIA.label "Zoom out"
-   , HP.title "Zoom out"
-   , HE.onClick (HE.input_ ZoomOut)
-   ]
-   [ I.zoomOutSm ]
+    [ HP.classes [ CSS.zoomDeckBtn ]
+    , ARIA.label "Zoom out"
+    , HP.title "Zoom out"
+    , HP.type_ HP.ButtonButton
+    , HE.onClick (HE.input_ ZoomOut)
+    ]
+    [ I.zoomOutSm ]
+
+backToFsButton ∷ DeckHTML
+backToFsButton =
+  HH.button
+    [ HP.classes [ CSS.zoomDeckBtn ]
+    , ARIA.label "Back to File System"
+    , HP.title "Back to File System"
+    , HP.type_ HP.ButtonButton
+    , HE.onClick (HE.input_ BackToFileSystem)
+    ]
+    [ I.gripperArrowLeft ]
 
 responsiveSize ∷ DCS.ResponsiveSize → String
 responsiveSize = case _ of

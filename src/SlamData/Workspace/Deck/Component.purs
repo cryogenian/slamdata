@@ -145,10 +145,11 @@ eval opts = case _ of
     navigateToDeck (opts.deckId L.: opts.cursor)
     pure next
   ZoomOut next → do
+    navigateToDeck opts.cursor
+    pure next
+  BackToFileSystem next → do
     { path } ← H.lift Wiring.expose
-    if L.null opts.cursor
-      then void $ H.liftEff $ Browser.setHref $ parentURL $ Left path
-      else navigateToDeck opts.cursor
+    void $ H.liftEff $ Browser.setHref $ parentURL $ Left path
     pure next
   StartSliding gDef mouseEvent next → do
     { cardDimensions } ← H.get

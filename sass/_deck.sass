@@ -89,11 +89,16 @@
 
     > .sd-deck > .sd-card-slider,
     > .sd-deck > .sd-card-sizer
-      $g: $grid-size * 2
       top: $grid-size
       left: $grid-size
       right: $grid-size
-      height: calc(100% - #{$g})
+      height: calc(100% - #{$grid-size})
+
+
+// fixes an inverse height thing
+.sd-deck-level-2
+  .sd-card
+    height: 100%
 
 
 .sd-deck-frame-controls
@@ -153,6 +158,14 @@
 
     .sd-zoom-deck-btn
       font-size: 1.6rem
+
+      > .sd-icon
+        position: relative
+        top: -0.1rem
+
+      > .sd-icon--gripper-arrow-left
+        top: -0.3rem
+        font-size: 1.3rem
 
   .sd-deck-name
     flex: 0 0 auto
@@ -244,7 +257,7 @@
 .sd-grab-deck
   appearance: none
   position: absolute
-  top: 0
+  bottom: 0
   left: 0
   right: 0
   height: $grid-size
@@ -253,9 +266,13 @@
   border: none
   background: none
   color: $gripper-color
+  cursor: grab
 
   &:hover
     color: $gripper-hover-color
+
+  &:active
+    cursor: grabbing
 
 
 .sd-deck-card

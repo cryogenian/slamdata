@@ -117,7 +117,9 @@
   left: 0
   width: $grid-size
   height: $grid-size
-  margin: auto
+  // fixes a weird 1px gap bug from the transition
+  margin: -0.1rem auto 0
+  padding-top: 0.1rem
   line-height: 0
   font-size: 2.4rem
   color: $gripper-color
