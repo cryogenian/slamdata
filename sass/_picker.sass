@@ -1,0 +1,43 @@
+
+.Picker
+  list-style: none
+  padding: 0
+  margin: 0
+
+.Picker-component
+  display: inline-block
+
+.Picker-placeholder
+  white-space: pre
+
+.Picker .Picker
+  margin: 0
+  display: inline-block
+
+.Picker-component + .Picker-component,
+.Picker .Picker + .Picker
+  margin-left: 0.5ch
+
+// We need this to increase specificity to override default input styles
+// .foo.foo.foo is same as .foo but with specifisity 3 instead of 1
+// for more see: https://csswizardry.com/2014/07/hacks-for-dealing-with-specificity/#safely-increasing-specificity
+.Picker-input.Picker-input.Picker-input
+  border: 1px solid hsl(0, 0%, 85%)
+  margin: 0
+  box-sizing: content-box
+  width: auto
+
+  &.Picker-input--invalid
+    color: red
+    outline-color: red
+
+  .Picker--invalid &
+    border: 1px solid red
+    outline-color: red
+
+  &[placeholder="MM"]
+    width: 2.7em
+
+  @for $i from 1 through 7
+    &.Picker-input--length-#{$i}
+      width: 1.2em * $i
