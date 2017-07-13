@@ -29,7 +29,6 @@ import Halogen.Datepicker.Format.Date as DatePickerF
 import Halogen.Datepicker.Format.DateTime as DateTimePickerF
 import Halogen.Datepicker.Format.Time as TimePickerF
 import Halogen.HTML.Core (ClassName(..))
-import SlamData.Render.ClassName (formControl)
 
 dateTimePickerFormat ∷ DateTimePickerF.Format
 dateTimePickerFormat = unsafePartial fromRight
@@ -46,6 +45,4 @@ timePickerFormat = unsafePartial fromRight
 config :: PickerConfig.Config
 config = PickerConfig.defaultConfig
   <> over PickerConfig.Config
-    (_{ input = [ClassName "Picker-input--large", formControl]
-      , choice = [ClassName "Picker-input--large"]
-      }) mempty
+    (_{ choice = [ClassName "Picker-input--choice"] }) mempty

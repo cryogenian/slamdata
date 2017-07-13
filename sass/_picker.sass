@@ -25,6 +25,10 @@
   margin: 0
   box-sizing: content-box
   width: auto
+  display: inline-block
+  height: 3.2rem
+  line-height: 3.2rem
+  padding: 0 .75rem
 
   &.Picker-input--invalid
     color: red
@@ -47,7 +51,6 @@
     &.Picker-input--length-#{$i}
       width: 1.2em * $i
 
-  &.Picker-input--large
-    height: 3.2rem;
-    line-height: 3.2rem;
-    padding: 0 .75rem;
+  &.Picker-input--choice
+    // https://stackoverflow.com/questions/13252835/safari-change-select-height
+    -webkit-appearance: menulist-button
