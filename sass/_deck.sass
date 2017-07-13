@@ -92,7 +92,7 @@
       top: $grid-size
       left: $grid-size
       right: $grid-size
-      height: calc(100% - #{$grid-size})
+      height: calc(100% - #{$grid-size * 2})
 
 
 // fixes an inverse height thing
@@ -104,6 +104,7 @@
 .sd-deck-frame-controls
   display: flex
   flex-flow: row nowrap
+  justify-content: space-between
   align-items: center
   position: absolute
   top: 0
@@ -112,25 +113,23 @@
   width: 100%
   height: $grid-size
   padding: 0 $padding-base-vertical
+  background-color: $frame-controls-bg
+  color: $frame-controls-color
+
+  &.sd-grab-deck
+    cursor: grab
+
+    &:hover
+      //color: $gripper-hover-color
+
+    &:active
+      cursor: grabbing
 
   > *
     position: relative
 
     &:not(:first-of-type)
       padding-left: $padding-base-vertical
-
-      // separator
-      &::before
-        display: block
-        content: ""
-        position: absolute
-        top: 0
-        bottom: 0
-        left: 0
-        margin: auto
-        height: $grid-size - 1rem
-        width: 0.1rem
-        background-color: $color-separator
 
     &:not(:last-of-type)
       padding-right: $padding-base-vertical
@@ -139,6 +138,7 @@
   .sd-deck-frame-actions
     display: flex
     flex: 0 0 auto
+    pointer-events: none
 
     > button
       height: 100%
@@ -148,6 +148,7 @@
       border: none
       background: none
       font-size: 1.5rem
+      pointer-events: all
 
       // same as .indicator dots
       &:not(:first-of-type)
@@ -252,34 +253,6 @@
     transition: 0.2s ease-out opacity
     opacity: 1
     pointer-events: auto
-
-
-.sd-grab-deck
-  display: flex
-  flex-flow: row nowrap
-  justify-content: space-around
-  align-items: center
-  appearance: none
-  position: absolute
-  bottom: 0
-  left: 0
-  right: 0
-  height: $grid-size
-  width: ($grid-size * 4) - 0.4rem
-  margin: 0 auto
-  border: none
-  background: none
-  color: $gripper-color
-  cursor: grab
-
-  > .sd-icon
-    line-height: 0
-
-  &:hover
-    color: $gripper-hover-color
-
-  &:active
-    cursor: grabbing
 
 
 .sd-deck-card

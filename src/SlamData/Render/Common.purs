@@ -23,7 +23,6 @@ module SlamData.Render.Common
   , clearFieldIcon
   , busyFieldIcon
   , svgElem
-  , gripperDeckMove
   ) where
 
 import SlamData.Prelude
@@ -82,33 +81,3 @@ busyFieldIcon label =
 svgElem ∷ ∀ r p i. HH.ElemName → Array (HP.IProp r i) → Array (HTML p i) → HTML p i
 svgElem =
   HH.elementNS (HH.Namespace "http://www.w3.org/2000/svg")
-
-data ViewBox = ViewBox Int Int Int Int
-
-viewBoxToString ∷ ViewBox → String
-viewBoxToString (ViewBox a b c d) =
-  show a <> " " <> show b <> " " <> show c <> " " <> show d
-
-gripperHelper ∷ ∀ p i. String → ViewBox → H.HTML p i
-gripperHelper s vb =
-  let
-    xlinkAttr = HH.attrNS $ HH.Namespace "http://www.w3.org/1999/xlink"
-    attr' = HH.AttrName >>> HP.attr
-  in
-    HH.span
-      [ HP.classes
-          [ HH.ClassName "sd-gripper", HH.ClassName $ "sd-gripper--" <> s ]
-      , ARIA.hidden "true"
-      ]
-      [ svgElem (HH.ElemName "svg")
-        [ attr' "preserveAspectRatio" "xMidYMid meet"
-        , attr' "viewBox" $ viewBoxToString vb
-        ]
-        [ svgElem (HH.ElemName "use")
-          [ xlinkAttr (HH.AttrName "xlink:href") $ "#sd-gripper--" <> s ]
-          [ ]
-        ]
-      ]
-
-gripperDeckMove ∷ ∀ p i. H.HTML p i
-gripperDeckMove = gripperHelper "deck-move" $ ViewBox 0 0 25 10

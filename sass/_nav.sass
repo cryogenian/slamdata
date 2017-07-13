@@ -116,13 +116,14 @@
   top: 100%
   left: 0
   width: $grid-size
-  height: $grid-size
   // fixes a weird 1px gap bug from the transition
+  height: $grid-size + 0.1rem
   margin: -0.1rem auto 0
   padding-top: 0.1rem
-  line-height: 0
+  background-color: $frame-controls-bg
+  color: $frame-controls-color
   font-size: 2.6rem
-  color: $gripper-color
+  line-height: 0
   text-align: center
   transition-property: box-shadow, background-color, color
   transition-duration: 300ms, 300ms, 200ms

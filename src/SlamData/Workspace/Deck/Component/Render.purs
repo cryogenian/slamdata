@@ -29,7 +29,6 @@ import Halogen.HTML.Properties.ARIA as ARIA
 import SlamData.ActionList.Component as ActionList
 import SlamData.ActionList.Filter.Component as ActionFilter
 import SlamData.Render.ClassName as CN
-import SlamData.Render.Common (gripperDeckMove)
 import SlamData.Render.Icon as I
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.Component.CSS as CCSS
@@ -147,12 +146,13 @@ frameElements { accessType, cursor, displayCursor } st
 rootFrameElements ∷ Boolean → DCS.State → Array DeckHTML
 rootFrameElements n st =
   [ deckFrameControls (if n then Back else Out) st
+  , deckIndicator st
   ]
 
 childFrameElements ∷ DCS.State → Array DeckHTML
 childFrameElements st =
   [ deckFrameControls In st
-  , moveGripper st
+  , deckIndicator st
   ]
 
 backside ∷ DeckHTML
@@ -177,21 +177,33 @@ backside =
 
 data Zoom = In | Out | Back
 
+derive instance eqZoom ∷ Eq Zoom
+
 deckFrameControls ∷ Zoom → DCS.State → DeckHTML
-deckFrameControls zoom st =
+deckFrameControls zoom { name } =
   HH.div
-  [ HP.class_ CSS.deckFrameControls ]
-  [ HH.div
-      [ HP.class_ CSS.deckFrameActions ]
-      [ flipButton
-      , case zoom of
-          In → zoomInButton
-          Out → zoomOutButton
-          Back → backToFsButton
-      ]
-  , deckIndicator st
-  , renderName st.name
-  ]
+    attrs
+    [ HH.div
+        [ HP.class_ CSS.deckFrameActions ]
+        [ flipButton
+        , case zoom of
+            In → zoomInButton
+            Out → zoomOutButton
+            Back → backToFsButton
+        ]
+    , renderName name
+    ]
+  where
+    attrs =
+      -- zoom-in-able frame controls are grabbable
+      if zoom == In then
+        [ HP.classes [ CSS.deckFrameControls, CSS.grabDeck ]
+        , HE.onMouseDown (HE.input HandleGrab)
+        , ARIA.label "Move deck"
+        , HP.title "Move deck"
+        ]
+      else
+        [ HP.class_ CSS.deckFrameControls ]
 
 deckIndicator ∷ DCS.State → DeckHTML
 deckIndicator st =
@@ -233,20 +245,6 @@ flipButton =
     , HP.title "Flip deck"
     ]
     [ I.flipDeck ]
-
-moveGripper ∷ DCS.State → DeckHTML
-moveGripper { focused, name } =
-  HH.button
-    [ HP.classes [ CSS.grabDeck ]
-    , HP.type_ HP.ButtonButton
-    , HE.onMouseDown (HE.input HandleGrab)
-    , ARIA.label "Grab deck"
-    , HP.title "Grab deck"
-    ]
-    [ gripperDeckMove
-    , I.moveSm
-    , gripperDeckMove
-    ]
 
 zoomInButton ∷ DeckHTML
 zoomInButton =
