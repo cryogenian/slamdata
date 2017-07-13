@@ -18,7 +18,7 @@ module SlamData.Workspace.Card.Troubleshoot.Component where
 
 import SlamData.Prelude
 
-import Data.StrMap as SM
+import Data.Map as Map
 
 import Halogen as H
 import Halogen.HTML as HH
@@ -62,12 +62,12 @@ render { varMap } =
             , HH.th_ [ HH.text "Value" ]
             ]
         ]
-    , HH.tbody_ $ SM.foldMap renderItem (VM.snapshot varMap)
+    , HH.tbody_ $ foldMap (uncurry renderItem) $ asArray $ Map.toUnfoldable $ VM.snapshot varMap
     ]
 
   where
-    renderItem ∷ String → VM.VarMapValue → Array HTML
-    renderItem name val =
+    renderItem ∷ VM.Var → VM.VarMapValue → Array HTML
+    renderItem (VM.Var name) val =
       [ HH.tr_
           [ HH.td_ [ HH.text name ]
           , HH.td_ case val of

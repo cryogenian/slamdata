@@ -114,7 +114,7 @@ evalCard trans port = CEM.localVarMap >>= \varMap → case trans, port of
   Chart, _ → pure (Port.ResourceKey Port.defaultResourceVar × varMap)
   GeoChart, Port.GeoChart m → tapResource (Geo.eval m) port
   Composite, _ → Port.varMapOut <$> Common.evalComposite
-  Terminal, _ → pure Port.terminalOut
+  Terminal, _ → pure (Port.Terminal × varMap)
   Query sql, _ → Query.evalQuery sql varMap
   Markdown txt, _ → MDE.evalMarkdown txt varMap
   MarkdownForm model, Port.SlamDown doc → MDE.evalMarkdownForm model doc varMap
@@ -150,10 +150,8 @@ evalCard trans port = CEM.localVarMap >>= \varMap → case trans, port of
   SetupStatic model, _ → tapResource (SetupStatic.eval model) port
   SetupGeoMarker model, _ → SetupGeoMarker.eval model port
   SetupGeoHeatmap model, _ → SetupGeoHeatmap.eval model port
-  FormInput (FormInput.Labeled model), Port.SetupLabeledFormInput lp →
-    FormInput.evalLabeled model lp =<< CEM.extractResource port
-  FormInput (FormInput.TextLike model), Port.SetupTextLikeFormInput tlp →
-    FormInput.evalTextLike model tlp =<< CEM.extractResource port
+  FormInput (FormInput.Labeled model), Port.SetupLabeledFormInput lp → FormInput.evalLabeled model lp
+  FormInput (FormInput.TextLike model), Port.SetupTextLikeFormInput tlp → FormInput.evalTextLike model tlp
   FormInput _, _ → pure (Port.ResourceKey Port.defaultResourceVar × varMap)
   DownloadOptions model, _ → tapResource (DOptions.eval model) port
   e, i → CE.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i

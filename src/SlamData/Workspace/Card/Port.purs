@@ -26,7 +26,6 @@ module SlamData.Workspace.Card.Port
   , GeoChartPort
   , tagPort
   , emptyOut
-  , terminalOut
   , varMapOut
   , resourceOut
   , defaultResourceVar
@@ -56,10 +55,8 @@ import Control.Monad.Aff (Aff)
 import Data.Argonaut (JCursor, Json)
 import Data.Lens (Prism', prism', Traversal', wander, lens)
 import Data.List as List
-import Data.List.NonEmpty as NL
 import Data.Map as Map
 import Data.Set as Set
-import Data.StrMap as SM
 import Data.URI (URIRef)
 
 import ECharts.Monad (DSL)
@@ -159,11 +156,11 @@ tagPort  = case _ of
   PivotTable _ → "PivotTable"
   GeoChart _ → "GeoChart"
 
-filterResources ∷ VarMap → SM.StrMap Resource
-filterResources = SM.fold go SM.empty
+filterResources ∷ VarMap → List.List (Var × Resource)
+filterResources = List.mapMaybe (uncurry go) ∘ Map.toUnfoldable ∘ VM.snapshot
   where
-    go m key scope | Resource res ← snd (NL.head scope) = SM.insert key res m
-    go m _ _ = m
+    go key (Resource res) = Just (key × res)
+    go _ _ = Nothing
 
 extractResource ∷ VarMap → Maybe Resource
 extractResource = map snd ∘ extractResourcePair
@@ -172,7 +169,7 @@ extractResourceVar ∷ VarMap → Maybe Var
 extractResourceVar = map fst ∘ extractResourcePair
 
 extractResourcePair ∷ VarMap → Maybe (Var × Resource)
-extractResourcePair = map (lmap Var) ∘ List.head ∘ SM.toUnfoldable ∘ filterResources
+extractResourcePair = List.head ∘ filterResources
 
 extractAnyFilePath ∷ VarMap → Maybe PU.AnyFilePath
 extractAnyFilePath = map filePath ∘ extractResource
@@ -181,10 +178,7 @@ defaultResourceVar ∷ String
 defaultResourceVar = "results"
 
 emptyOut ∷ Out
-emptyOut = Initial × SM.empty
-
-terminalOut ∷ Out
-terminalOut = Terminal × SM.empty
+emptyOut = Initial × VM.empty
 
 varMapOut ∷ VarMap → Out
 varMapOut v = Variables × v

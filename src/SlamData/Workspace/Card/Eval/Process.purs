@@ -31,7 +31,6 @@ import Data.List.NonEmpty as NL
 import Data.Map as Map
 import Data.Path.Pathy as Path
 import Data.Set as Set
-import Data.StrMap as SM
 import Data.String as String
 import Matryoshka (cataM, embed)
 import SlamData.Workspace.Card.CardId as CID
@@ -227,28 +226,33 @@ elaborateVar ∷ ∀ m. Elaborate m (String → m Sql.Sql)
 elaborateVar vari = do
   { varMap, varScope } ← ask
   if Set.member vari varScope
-    then default
-    else maybe default substValue $ SM.lookup vari varMap
+    then defaultSub vari
+    else maybe (defaultSub vari) substPtr $ VM.lookupPtr (VM.Var vari) varMap
+
+substPtr ∷ ∀ m. Elaborate m (VM.VarMapPtr → m Sql.Sql)
+substPtr ptr@(VM.Var vari × source) = do
+  { varMap } ← ask
+  maybe (defaultSub vari) substValue $ VM.lookupValue ptr varMap
 
   where
-  default ∷ m Sql.Sql
-  default = pure $ Sql.vari vari
-
-  substValue ∷ VarMapValues → m Sql.Sql
-  substValue vals | { head: source × value, tail } ← NL.uncons vals = do
+  substValue ∷ VM.VarMapValue → m Sql.Sql
+  substValue value = do
     RWS.tell $ Set.singleton vari
     case value of
-      VM.Expr expr → substExpr (NL.length vals - 1) expr
-      VM.Resource res → substResource source res
-      VM.Union vals' → substUnion source vari vals'
+      VM.Expr expr → substExpr expr
+      VM.Resource res → substResource res
+      VM.Union ptrs → substUnion ptr ptrs
 
-  substExpr ∷ Int → Sql.Sql → m Sql.Sql
-  substExpr mark sql = do
+  substExpr ∷ Sql.Sql → m Sql.Sql
+  substExpr sql = do
     activateProcess
-    pure $ Sql.vari $ VM.uniqueVarName vari mark
+    { varMap } ← ask
+    case VM.lookupMark ptr varMap of
+      Just mark → pure $ Sql.vari $ VM.uniqueVarName vari mark
+      Nothing → defaultSub vari
 
-  substResource ∷ CID.CardId → VM.Resource → m Sql.Sql
-  substResource source = case _ of
+  substResource ∷ VM.Resource → m Sql.Sql
+  substResource = case _ of
     VM.Path filePath → pure $ sqlPath filePath
     VM.View filePath _ _ → sqlPath <$> basePath filePath
     VM.Process filePath _ localVarMap → do
@@ -258,34 +262,13 @@ elaborateVar vari = do
           activateProcess
           filePath' ← basePath filePath
           substProcessVar source filePath' localVarMap vari
-        else default
+        else defaultSub vari
 
-substUnion ∷ ∀ m. Elaborate m (CID.CardId → String → Array VM.VarMapValue → m Sql.Sql)
-substUnion source vari vals = do
-  exprs ← traverse substValue vals
+substUnion ∷ ∀ m. Elaborate m (VM.VarMapPtr → Array VM.VarMapPtr → m Sql.Sql)
+substUnion ptr@(VM.Var vari × source) ptrs = do
+  exprs ← traverse substPtr ptrs
   name ← addAlias source vari $ embed $ Sql.SetLiteral $ L.fromFoldable exprs
   pure $ Sql.ident name
-
-  where
-  substValue ∷ VM.VarMapValue → m Sql.Sql
-  substValue = case _ of
-    VM.Expr sql → pure sql
-    VM.Resource res → substResource res
-    VM.Union vals' → do
-      -- TODO: Maybe this should be indexed instead of unique?
-      tmp ← tmpName
-      substUnion source tmp vals'
-
-  substResource ∷ VM.Resource → m Sql.Sql
-  substResource = case _ of
-    VM.Path filePath → pure $ sqlPath filePath
-    VM.View filePath _ _ → sqlPath <$> basePath filePath
-    VM.Process filePath _ localVarMap → do
-      activateProcess
-      filePath' ← basePath filePath
-      -- TODO: Maybe this should be indexed instead of unique?
-      tmp ← tmpName
-      substProcessVar source filePath' localVarMap tmp
 
 substProcessVar ∷ ∀ m a c. Elaborate m (CID.CardId → Path.Path a Path.File c → VM.VarMap → String → m Sql.Sql)
 substProcessVar source filePath localVarMap vari = do
@@ -294,16 +277,13 @@ substProcessVar source filePath localVarMap vari = do
     Map.lookup (source × vari) aliases
 
   where
-  default ∷ m Sql.Sql
-  default = pure $ Sql.vari vari
-
   genAlias ∷ m Sql.Sql
   genAlias = case Path.peel filePath of
     Just (dir × Right fileName) → do
       addProcessImport dir
       expr ← invokeProcess fileName localVarMap
       Sql.ident <$> addAlias source vari expr
-    _ → default
+    _ → defaultSub vari
 
 invokeProcess ∷ ∀ m. Elaborate m (Path.FileName → VM.VarMap → m Sql.Sql)
 invokeProcess (Path.FileName fileName) localVarMap = do
@@ -320,11 +300,10 @@ invokeProcess (Path.FileName fileName) localVarMap = do
 processVars ∷ ∀ m. Elaborate m (VM.VarMap → m (L.List (CID.CardId × String × Int)))
 processVars localVarMap = do
   { varMap } ← ask
-  let marks = VM.markIndex varMap
   pure $ L.mapMaybe
     (\{ source, name, value } → do
-      guard $ not (VM.isResource value)
-      mark ← Map.lookup (source × name) marks
+      guard $ VM.isDynamic value
+      mark ← VM.lookupMark (VM.Var name × source) varMap
       pure (source × name × mark))
     (VM.expand localVarMap)
 
@@ -380,3 +359,6 @@ activateProcess = RWS.modify _ { isProcess = true }
 
 addFreeVars ∷ ∀ m. MonadState RewriteState m ⇒ String → L.List String → m Unit
 addFreeVars key value = RWS.modify \st → st { freeVars = Map.insert key value st.freeVars }
+
+defaultSub ∷ ∀ m. Elaborate m (String → m Sql.Sql)
+defaultSub vari = pure $ Sql.vari $ "Bad substitution: " <> vari

@@ -4,7 +4,6 @@ import SlamData.Prelude
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console as Console
 import Data.Path.Pathy as Path
-import Data.StrMap as SM
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port.VarMap as VM
@@ -65,10 +64,10 @@ runCard varMap step =
 main ∷ Eff (console ∷ Console.CONSOLE) Unit
 main = do
   let
-    vm1 = SM.fromFoldable
-      [ "country" × pure (CID.legacyFromInt 0 × VM.Expr (sql "\"USA\""))
-      , "type" × pure (CID.legacyFromInt 0 × VM.Expr (sql "\"Gold\""))
-      , "resource" × pure (CID.legacyFromInt 0 × VM.Expr (sql "`/mongodb/olympics`"))
+    vm1 = VM.fromFoldable
+      [ CID.legacyFromInt 0 × VM.Var "country" × VM.Expr (sql "\"USA\"")
+      , CID.legacyFromInt 0 × VM.Var "type" × VM.Expr (sql "\"Gold\"")
+      , CID.legacyFromInt 0 × VM.Var "resource" × VM.Expr (sql "`/mongodb/olympics`")
       ]
     q1 × vm2 = runCard vm1 card1
     q2 × vm3 = runCard vm2 card2

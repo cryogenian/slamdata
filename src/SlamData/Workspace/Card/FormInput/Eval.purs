@@ -25,7 +25,7 @@ import SlamData.Prelude
 import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.State (class MonadState, get, put)
 import Control.Monad.Writer.Class (class MonadTell)
-import Data.Lens (preview, (?~), (.~))
+import Data.Lens (preview, (?~) )
 import Data.List as L
 import Data.Map as Map
 import Data.Set as Set
@@ -45,7 +45,7 @@ import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SqlSquared (SqlQuery)
 import SqlSquared as Sql
 import Utils (stringToNumber)
-import Utils.SqlSquared (all, asRel, tableRelation)
+import Utils.SqlSquared (all, asRel, variRelation)
 
 -- | I removed additional variable from this (It used to be `QueryExpr`)
 -- | not sure that this is right decision, but it's just part of sql expression
@@ -78,9 +78,9 @@ evalLabeled
   ⇒ ParQuasarDSL m
   ⇒ LR.Model
   → Port.SetupLabeledFormInputPort
-  → Port.Resource
   → m Port.Out
-evalLabeled m p r = do
+evalLabeled m p = do
+  resourceVar × r ← CEM.extractResourcePair Port.Initial
   cardState ← get
   let
     lastUsedResource = cardState >>= preview CES._LastUsedResource
@@ -114,7 +114,7 @@ evalLabeled m p r = do
       Sql.buildSelect
         $ all
         ∘ (Sql._relations
-            .~ (tableRelation (Port.filePath r) <#> asRel "res"))
+            ?~ (variRelation (unwrap resourceVar) # asRel "res"))
         ∘ (Sql._filter
              ?~ ( Sql.binop Sql.In
                     ( Sql.binop Sql.FieldDeref
@@ -138,9 +138,9 @@ evalTextLike
   ⇒ ParQuasarDSL m
   ⇒ TLR.Model
   → Port.SetupTextLikeFormInputPort
-  → Port.Resource
   → m Port.Out
-evalTextLike m p r = do
+evalTextLike m p = do
+  resourceVar × r ← CEM.extractResourcePair Port.Initial
   cardState ← get
   let
     selection = case p.formInputType of
@@ -153,7 +153,7 @@ evalTextLike m p r = do
       Sql.buildSelect
         $ all
         ∘ (Sql._relations
-            .~ ( tableRelation (Port.filePath r) <#> asRel "res"))
+            ?~ (variRelation (unwrap resourceVar) # asRel "res"))
         ∘ (Sql._filter
              ?~ ( Sql.binop Sql.Eq
                     ( Sql.binop Sql.FieldDeref

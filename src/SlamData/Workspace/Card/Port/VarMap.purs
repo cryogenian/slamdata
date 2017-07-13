@@ -17,28 +17,34 @@ module SlamData.Workspace.Card.Port.VarMap
   , URLVarMap
   , Resource(..)
   , VarMapValue(..)
-  , VarMapValues
+  , VarMapPtr
+  , Mark
   , empty
   , variables
   , insert
+  , member
   , lookup
   , lookup'
+  , lookupPtr
+  , lookupValue
+  , lookupMark
   , toURLVarMap
   , uniqueVarName
-  , snapshot
   , expand
-  , markIndex
+  , snapshot
+  , varNames
+  , fromFoldable
   , isResource
+  , isDynamic
   , union
   , downloadUrl
   ) where
 
-import SlamData.Prelude
+import SlamData.Prelude hiding (empty)
 import Data.Argonaut.Decode (class DecodeJson)
 import Data.Argonaut.Encode (class EncodeJson)
 import Data.Array as A
 import Data.List as L
-import Data.List.NonEmpty as NL
 import Data.Map as Map
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
@@ -74,20 +80,21 @@ instance showResource ∷ Show Resource where
 data VarMapValue
   = Expr Sql
   | Resource Resource
-  | Union (Array VarMapValue)
+  | Union (Array VarMapPtr)
 
 derive instance eqVarMapValue ∷ Eq VarMapValue
 
-instance semigroupVarMapValue ∷ Semigroup VarMapValue where
-  append v1 v2 | v1 ≡ v2 = v1
-  append (Union v1) (Union v2) = Union (v1 <> v2)
-  append (Union v1) v2 = Union (A.snoc v1 v2)
-  append v1 (Union v2) = Union (A.cons v1 v2)
-  append v1 v2 = Union [ v1, v2 ]
+type Mark = Int
 
-type VarMap = SM.StrMap VarMapValues
+type VarMapPtr = Var × CID.CardId
 
-type VarMapValues = NL.NonEmptyList (CID.CardId × VarMapValue)
+newtype VarMap = VarMap
+  { heap ∷ Map.Map Var (Map.Map CID.CardId VarMapValue)
+  , scope ∷ Map.Map Var VarMapPtr
+  }
+
+instance eqVarMap ∷ Eq VarMap where
+  eq (VarMap v1) (VarMap v2) = v1.heap ≡ v2.heap
 
 -- | A VarMap passed through the URL - the VarMapValues are left unparsed until
 -- | they are unified with the Variables card for the deck so that values can
@@ -95,21 +102,55 @@ type VarMapValues = NL.NonEmptyList (CID.CardId × VarMapValue)
 type URLVarMap = SM.StrMap String
 
 empty ∷ VarMap
-empty = SM.empty
+empty = VarMap { heap: Map.empty, scope: Map.empty }
+
+isEmpty ∷ VarMap → Boolean
+isEmpty (VarMap vm) = Map.isEmpty vm.heap
 
 variables ∷ VarMap → L.List Var
-variables = L.fromFoldable ∘ map Var ∘ A.sort ∘ SM.keys
+variables (VarMap { scope }) = Map.keys scope
 
 insert ∷ CID.CardId → Var → VarMapValue → VarMap → VarMap
-insert cid (Var var) value = flip SM.alter var case _ of
-  Just nl → Just $ NL.singleton (cid × value) <> nl
-  Nothing → Just $ NL.singleton (cid × value)
+insert cid var value (VarMap vm) =
+  let
+    ptr = var × cid
+    scope' = Map.insert var (var × cid) vm.scope
+    heap' = Map.alter alterFn var vm.heap
+    alterFn = case _ of
+      Nothing → Just (Map.singleton cid value)
+      Just m  → Just (Map.insert cid value m)
+  in
+    VarMap { heap: heap', scope: scope' }
+
+member ∷ Var → VarMap → Boolean
+member var (VarMap vm) = Map.member var vm.scope
+
+varNames ∷ VarMap → Array String
+varNames (VarMap vm) = unwrap ∘ fst <$> Map.toUnfoldable vm.scope
 
 lookup ∷ Var → VarMap → Maybe VarMapValue
-lookup var = lookup' var >>> map snd
+lookup var vm = do
+  ptr ← lookupPtr var vm
+  lookupValue ptr vm
 
 lookup' ∷ Var → VarMap → Maybe (CID.CardId × VarMapValue)
-lookup' (Var var) = SM.lookup var >>> map NL.head
+lookup' var vm = do
+  ptr ← lookupPtr var vm
+  ref ← lookupValue ptr vm
+  pure (snd ptr × ref)
+
+lookupPtr ∷ Var → VarMap → Maybe VarMapPtr
+lookupPtr var (VarMap vm) = Map.lookup var vm.scope
+
+lookupValue ∷ VarMapPtr → VarMap → Maybe VarMapValue
+lookupValue ptr (VarMap vm) = do
+  vals ← Map.lookup (fst ptr) vm.heap
+  Map.lookup (snd ptr) vals
+
+lookupMark ∷ VarMapPtr → VarMap → Maybe Int
+lookupMark ptr (VarMap vm) = do
+  vals ← asList ∘ Map.toUnfoldable <$> Map.lookup (fst ptr) vm.heap
+  L.findIndex (eq (snd ptr) ∘ fst) vals
 
 toURLVarMap ∷ VarMap → URLVarMap
 toURLVarMap = SM.fromFoldable ∘ L.mapMaybe go ∘ expand
@@ -122,8 +163,8 @@ uniqueVarName ∷ String → Int → String
 uniqueVarName vari 0 = vari
 uniqueVarName vari n = vari <> "__" <> show n
 
-snapshot ∷ VarMap → SM.StrMap VarMapValue
-snapshot = map (snd ∘ NL.head)
+snapshot ∷ VarMap → Map.Map Var VarMapValue
+snapshot (VarMap vm) = fromMaybe Map.empty $ traverse (flip lookupValue (VarMap vm)) vm.scope
 
 expand
   ∷ VarMap
@@ -133,51 +174,64 @@ expand
       , source ∷ CID.CardId
       , value ∷ VarMapValue
       }
-expand = uncurry go <=< SM.toUnfoldable
+expand (VarMap vm) = join $ uncurry go <$> Map.toUnfoldable (Map.toUnfoldable <$> vm.heap)
   where
-  go name vals = do
-    mark × source × value ←
-      L.mapWithIndex Tuple
-        $ L.reverse
-        $ NL.toList vals
-    pure { name, mark, source, value }
-
-markIndex ∷ VarMap → Map.Map (CID.CardId × String) Int
-markIndex = Map.fromFoldable ∘ map go ∘ expand
-  where
-  go { source, name, mark } = (source × name) × mark
+  go (Var name) =
+    L.mapWithIndex \mark (source × value) →
+      { name, mark, source, value }
 
 isResource ∷ VarMapValue → Boolean
 isResource (Resource _) = true
 isResource _ = false
 
+isDynamic ∷ VarMapValue → Boolean
+isDynamic (Expr sql) = true
+isDynamic _ = false
+
+fromFoldable ∷ ∀ f. Foldable f ⇒ f (CID.CardId × Var × VarMapValue) → VarMap
+fromFoldable = foldl (\vm (cid × var × val) → insert cid var val vm) empty
+
 union ∷ CID.CardId → String → VarMap → VarMap → VarMap
-union source namespace childMap intoMap = SM.fold foldFn intoMap childMap
-  where
-  foldFn ∷ VarMap → String → VarMapValues → VarMap
-  foldFn varMap key values =
-    SM.alter (Just ∘ unionFn values) (mungeKey key) varMap
-
-  mungeKey ∷ String → String
-  mungeKey
-    | namespace ≡ "" = id
-    | otherwise = \k → namespace <> "." <> k
-
-  unionFn ∷ VarMapValues → Maybe VarMapValues → VarMapValues
-  unionFn vs1 = maybe vs1 (unionValues vs1)
-
-  unionValues ∷ VarMapValues → VarMapValues → VarMapValues
-  unionValues vs1 vs2 =
-    let
-      { head: c1 × h1, tail: t1 } = NL.uncons vs1
-      { head: c2 × h2, tail: t2 } = NL.uncons vs2
-      c3 | c1 ≡ source = c1
-         | c2 ≡ source = c2
-         | otherwise = source
-      h3 = h1 <> h2
-      t3 = t1 <> t2
-    in
-      NL.appendFoldable (pure (c3 × h3)) t3
+union source namespace (VarMap child) (VarMap into) =
+  let
+    -- If we have a namespace, we should rename all the variables in the scope.
+    -- They still point to the same references though.
+    childScope =
+      if namespace ≡ ""
+        then child.scope # Map.toUnfoldable
+        else child.scope
+          # Map.toUnfoldable
+          # asArray
+          # map (\(Var k × v) → Var (namespace <> "." <> k) × v)
+  in
+    -- When we go to union two VarMapsValues, we need to create a fresh binding
+    -- for the card in the value map. Otherwise it can just point to the old
+    -- value.
+    foldl
+      case _, _ of
+        VarMap vm, var × ptr
+          | Just ptr' ← lookupPtr var (VarMap into)
+          , ptr ≠ ptr'
+          , Just val ← lookupValue ptr (VarMap child)
+          , Just val' ← lookupValue ptr' (VarMap into)
+          →
+            let
+              val'' = case val, val' of
+                Union a1, Union a2 → Union (a1 <> a2)
+                Union a1, _ → Union (A.snoc a1 ptr')
+                _, Union a2 → Union (A.cons ptr a2)
+                _, _ → Union [ ptr, ptr' ]
+            in
+              insert source var val'' (VarMap vm)
+        vm, var × ptr
+          | Just val ← lookupValue ptr (VarMap child)
+          → insert (snd ptr) var val vm
+        vm, _ → vm
+    (VarMap
+      { heap: Map.unionWith Map.union child.heap into.heap
+      , scope: into.scope
+      })
+    childScope
 
 downloadUrl ∷ Maybe String → Path.AbsDir Path.Sandboxed → Resource → URI.AbsoluteURI
 downloadUrl headers context r =
@@ -192,7 +246,7 @@ downloadUrl headers context r =
 
   query = case r of
     Process _ _ vm
-      | not (SM.isEmpty vm)
+      | not (isEmpty vm)
       → Just (map Just <$> SM.toUnfoldable (toURLVarMap vm))
     _ → Nothing
 

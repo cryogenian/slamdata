@@ -66,7 +66,8 @@ evalMarkdownForm model doc varMap = do
   let inputState = SDH.formStateFromDocument doc
   cardId ← CEM.localCardId
   thisVarMap ← liftEff $ MDS.formStateToVarMap inputState model
-  pure (Port.Variables × map (NEL.singleton ∘ Tuple cardId) thisVarMap `SM.union` varMap)
+  let varMap' = SM.fold (\vm k v → VM.insert cardId (VM.Var k) v vm) varMap thisVarMap
+  pure (Port.Variables × varMap')
 
 evalMarkdown
   ∷ ∀ m v

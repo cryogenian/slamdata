@@ -54,13 +54,11 @@ import Control.Monad.Writer.Class (class MonadTell, tell)
 import Control.Parallel.Class (parallel, sequential)
 import Data.List ((:))
 import Data.List as L
-import Data.List.NonEmpty as NL
 import Data.Map as Map
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Path
 import Data.Set (Set)
 import Data.Set as Set
-import Data.StrMap as SM
 import Quasar.Advanced.QuasarAF as QA
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL, liftQuasar)
@@ -68,6 +66,7 @@ import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.State (EvalState(..))
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Port.VarMap as VM
 import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource(..))
 import Utils.Path (DirPath, RelDirPath, AnyFilePath, FilePath, RelFilePath, tmpDir)
 
@@ -217,13 +216,13 @@ extractResourcePair port = do
   varMap ← localVarMap
   case port of
     Port.ResourceKey key
-      | Just (Port.Resource r) ← map (snd ∘ NL.head) (SM.lookup key varMap) →
-      pure (Port.Var key × r)
+      | Just (Port.Resource r) ← VM.lookup (Port.Var key) varMap
+      → pure (Port.Var key × r)
     _ →
-      case SM.toUnfoldable (Port.filterResources varMap) of
+      case Port.filterResources varMap of
         rs@(_ : _ : _) → CE.throwResourceError $ CE.ResourceError (snd <$> rs)
         L.Nil → CE.throwResourceError $ CE.ResourceError L.Nil
-        r : L.Nil → pure (lmap Port.Var r)
+        r : L.Nil → pure r
 
 extractResource
   ∷ ∀ m v
