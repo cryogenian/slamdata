@@ -88,7 +88,7 @@ $hr-border: $color-separator !default
 $action-list-btn-color: if(luma($brand-primary) < 210, #fff, #000) !default
 $action-list-active-bg: $brand-primary !default
 $action-list-disabled-bg: brighten($body-bg, 20%, 5%) !default
-$action-list-disabled-color: $text-color !default
+$action-list-disabled-color: mix($action-list-disabled-bg, $text-color, 40%) !default
 
 // Draftboard
 $draftboard-bg: if(luma($body-bg) > 20, darken($body-bg, 7.5%), lighten($body-bg, 5%)) !default
