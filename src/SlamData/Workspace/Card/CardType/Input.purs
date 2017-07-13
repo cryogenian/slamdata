@@ -135,3 +135,6 @@ cardClasses cb = cb
   # on _datetime clss
   where
   clss _ = [ H.ClassName "sd-form-input-setup" ]
+
+upcastToInput ∷ ∀ r. Upcastable r (InputR ()) ⇒ Variant r → Maybe (Input ())
+upcastToInput = upcast

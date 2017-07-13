@@ -89,3 +89,6 @@ consumerInteractable ∷ ∀ r. (Variant r → Boolean) → Ace r → Boolean
 consumerInteractable cb = cb
   # on _aceMarkdown ff
   # on _aceSql ff
+
+upcastToAce ∷ ∀ r. Upcastable r (AceR ()) ⇒ Variant r → Maybe (Ace ())
+upcastToAce = upcast

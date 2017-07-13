@@ -36,7 +36,7 @@ import SlamData.Workspace.Card.Setups.FormInput.Labeled.Error as FILE
 import SlamData.Workspace.Card.Setups.FormInput.Static.Error as FISE
 import SlamData.Workspace.Card.Table.Error as CTE
 import SlamData.Workspace.Card.Variables.Error as CVE
-import Utils (throwVariantError, hush)
+import Utils (throwVariantError)
 
 type CardError = Variant
   ( qerror ∷ QError

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.FormInput.LabeledRenderer.Component where
+module SlamData.Workspace.Card.Viz.Renderer.Select.Component where
 
 import SlamData.Prelude
 
@@ -81,8 +81,8 @@ data Message = Updated
 type DSL = H.ComponentDSL State Query Message Slam
 type HTML = H.ComponentHTML Query
 
-comp ∷ H.Component HH.HTML Query Unit Message Slam
-comp =
+component ∷ H.Component HH.HTML Query Unit Message Slam
+component =
   H.component
     { initialState: const initialState
     , render

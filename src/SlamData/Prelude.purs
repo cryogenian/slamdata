@@ -21,7 +21,6 @@ module SlamData.Prelude
   , type (⨁), type (⊹), type (×)
   , As, As1
   , asList, asArray
-  , expandVariant, case2_
   , module Prelude
   , module Control.Alt
   , module Control.Apply
@@ -29,8 +28,10 @@ module SlamData.Prelude
   , module Control.Monad
   , module Control.Monad.Error.Class
   , module Control.Monad.Except
+  , module Control.Monad.Gen.Class
   , module Control.Monad.Maybe.Trans
   , module Control.Monad.Reader
+  , module Control.Monad.Rec.Class
   , module Control.Monad.Trans.Class
   , module Control.MonadPlus
   , module Control.Parallel
@@ -43,17 +44,21 @@ module SlamData.Prelude
   , module Data.Foldable
   , module Data.Functor
   , module Data.Functor.Coproduct
-  , module Data.Generic
   , module Data.HeytingAlgebra
+  , module Data.Generic.Rep
+  , module Data.Generic.Rep.Show
+  , module Data.Lens.Iso.Newtype
   , module Data.Maybe
-  , module Data.Newtype
   , module Data.Monoid
+  , module Data.Newtype
+  , module Data.Profunctor
   , module Data.Traversable
   , module Data.Tuple
   , module Data.Variant
   , module Data.Void
   , module Debug.Trace
   , module Partial.Unsafe
+  , module Utils.Variant
   )
   where
 
@@ -65,37 +70,40 @@ import Control.Bind (join, (>=>), (<=<))
 import Control.Monad (when, unless)
 import Control.Monad.Error.Class (class MonadError, class MonadThrow, throwError, catchError)
 import Control.Monad.Except (ExceptT(..), runExcept, runExceptT, except)
+import Control.Monad.Gen.Class (class MonadGen)
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
 import Control.Monad.Reader (class MonadAsk, class MonadReader, ask)
+import Control.Monad.Rec.Class (class MonadRec)
 import Control.Monad.Trans.Class (class MonadTrans, lift)
 import Control.MonadPlus (class MonadPlus, guard)
 import Control.Parallel (class Parallel, parTraverse, parTraverse_)
 import Control.Plus (class Plus, empty)
-
 import Data.Bifoldable (class Bifoldable, bitraverse_, bifor_)
 import Data.Bifunctor (class Bifunctor, bimap, lmap, rmap)
 import Data.Bitraversable (class Bitraversable, bitraverse, bisequence, bifor)
 import Data.Const (Const(..))
-import Data.Either (Either(..), either, isLeft, isRight, fromRight)
+import Data.Either (Either(..), either, isLeft, isRight, fromRight, note, hush)
 import Data.Foldable (class Foldable, traverse_, for_, foldMap, foldl, foldr, fold)
 import Data.Functor (($>), (<$))
 import Data.Functor.Coproduct (Coproduct, coproduct, left, right)
-import Data.Generic (class Generic)
 import Data.HeytingAlgebra (tt, ff)
+import Data.Generic.Rep (class Generic)
+import Data.Generic.Rep.Show (genericShow)
+import Data.Lens.Iso.Newtype (_Newtype)
 import Data.List (List)
 import Data.Maybe (Maybe(..), fromMaybe, fromMaybe', isJust, isNothing, maybe, maybe', fromJust)
 import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (class Newtype, unwrap, ala, alaF)
+import Data.Profunctor (class Profunctor, dimap)
 import Data.Traversable (class Traversable, traverse, sequence, for)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Data.Variant (SProxy(..), Variant, case_)
 import Data.Void (Void, absurd)
-
 import Debug.Trace (spy, trace, traceA, traceAny, traceAnyA, traceAnyM, traceShow, traceShowA, traceShowM)
 
 import Partial.Unsafe (unsafePartial)
 
-import Unsafe.Coerce (unsafeCoerce)
+import Utils.Variant (upcast, downcast, case2_, class Upcastable)
 
 flipCompose ∷ ∀ a b c d. Semigroupoid a ⇒ a b c → a c d → a b d
 flipCompose = flip compose
@@ -132,14 +140,3 @@ type As1 f = f ~> f
 
 asList = id ∷ As1 List
 asArray = id ∷ As1 Array
-
--- That's safe actually
-expandVariant
-  ∷ ∀ r rr out
-  . Union r rr out
-  ⇒ Variant r
-  → Variant out
-expandVariant = unsafeCoerce
-
-case2_ ∷ ∀ a. Variant () → Variant () → a
-case2_ _ = case_

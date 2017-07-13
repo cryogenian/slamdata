@@ -167,7 +167,7 @@ evalTextLike
   ⇒ QuasarDSL m
   ⇒ ParQuasarDSL m
   ⇒ TLR.Model
-  → Port.SetupTextLikeFormInputPort
+  → Port.SetupInputPort
   → Port.Resource
   → m Port.Out
 evalTextLike m p r = do

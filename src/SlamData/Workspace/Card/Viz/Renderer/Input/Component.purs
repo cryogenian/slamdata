@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.FormInput.TextLikeRenderer.Component where
+module SlamData.Workspace.Card.Viz.Renderer.Input.Component where
 
 import SlamData.Prelude
 
@@ -34,8 +34,8 @@ import Halogen.HTML.Properties as HP
 import SlamData.Monad (Slam)
 import SlamData.Render.ClassName as CN
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Model as M
-import SlamData.Workspace.Card.Port (SetupTextLikeFormInputPort)
+import SlamData.Workspace.Card.Port (SetupInputPort)
+import SlamData.Workspace.Card.Viz.Renderer.Input.Model as M
 
 type State =
   { label ∷ Maybe String
@@ -53,7 +53,7 @@ initialState =
   }
 
 data Query a
-  = Setup SetupTextLikeFormInputPort a
+  = Setup SetupInputPort a
   | ValueChanged String a
   | Save (M.Model → a)
   | Load M.Model a
@@ -65,8 +65,8 @@ data Message = Updated
 type DSL = H.ComponentDSL State Query Message Slam
 type HTML = H.ComponentHTML Query
 
-comp ∷ H.Component HH.HTML Query Unit Message Slam
-comp =
+component ∷ H.Component HH.HTML Query Unit Message Slam
+component =
   H.component
     { initialState: const initialState
     , render

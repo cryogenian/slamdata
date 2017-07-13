@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Chart.PivotTableRenderer.Component where
+module SlamData.Workspace.Card.Viz.Renderer.PivotTable.Component where
 
 import SlamData.Prelude
 
@@ -35,8 +35,8 @@ import SlamData.Monad (Slam)
 import SlamData.Render.CSS.New as CSS
 import SlamData.Render.Icon as I
 import SlamData.Workspace.Card.Eval.State as ES
-import SlamData.Workspace.Card.Chart.PivotTableRenderer.Model as PTRM
-import SlamData.Workspace.Card.Chart.PivotTableRenderer.Common (PTree, foldTree, sizeOfRow, topField)
+import SlamData.Workspace.Card.Viz.Renderer.PivotTable.Model as PTRM
+import SlamData.Workspace.Card.Viz.Renderer.PivotTable.Common (PTree, foldTree, sizeOfRow, topField)
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (Column(..))

@@ -54,6 +54,7 @@ deleteFile ∷ String → SlamFeature Unit
 deleteFile name =
   Feature.click (XPath.anywhere $ XPaths.selectFile name)
     *> Feature.click (XPath.anywhere $ XPaths.removeFile name)
+    *> Feature.click (XPath.anywhere $ XPaths.confirmRemoval)
     *> Feature.expectNotPresented (XPath.anywhere $ XPath.nodeWithExactText XPath.any name)
 
 deleteFileInTestFolder ∷ String → SlamFeature Unit

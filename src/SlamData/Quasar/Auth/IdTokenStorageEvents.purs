@@ -20,12 +20,14 @@ import SlamData.Prelude
 
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar (AVAR)
+import Data.Argonaut as J
 import DOM (DOM)
 import OIDC.Crypt.Types (IdToken)
 import SlamData.LocalStorage.Class as LocalStorage
-import SlamData.Quasar.Auth.Keys (fromRedirectSuffix)
 import SlamData.LocalStorage.Keys as LocalStorageKeys
+import SlamData.Quasar.Auth.Keys (fromRedirectSuffix)
 
 pullIdTokenFromStorageEvent ∷ ∀ eff. Aff (dom ∷ DOM, avar ∷ AVAR | eff) (Either String IdToken)
-pullIdTokenFromStorageEvent = LocalStorage.awaitChange $ LocalStorageKeys.idTokenLocalStorageKey fromRedirectSuffix
-
+pullIdTokenFromStorageEvent =
+  LocalStorage.awaitChange J.decodeJson
+    $ LocalStorageKeys.idTokenLocalStorageKey fromRedirectSuffix

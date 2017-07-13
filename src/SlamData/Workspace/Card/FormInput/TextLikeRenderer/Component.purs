@@ -35,7 +35,7 @@ import SlamData.Monad (Slam)
 import SlamData.Render.ClassName as CN
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Model as M
-import SlamData.Workspace.Card.Port (SetupTextLikeFormInputPort)
+import SlamData.Workspace.Card.Port (SetupInputPort)
 
 type State =
   { label ∷ Maybe String
@@ -53,7 +53,7 @@ initialState =
   }
 
 data Query a
-  = Setup SetupTextLikeFormInputPort a
+  = Setup SetupInputPort a
   | ValueChanged String a
   | Save (M.Model → a)
   | Load M.Model a

@@ -1,0 +1,71 @@
+.sd-miller-column
+  // width is inlined via PS
+  display: inline-block
+  height: 100%
+  vertical-align: top
+  border: 0.1rem solid $miller-column-border-color
+  transition: border-color 200ms ease-out 100ms
+
+.sd-miller-column-container
+  display: flex
+  height: 100%
+  flex-direction: column
+
+.sd-miller-column-selection
+  display: flex
+  flex-flow: row nowrap
+  justify-content: space-between
+  align-items: center
+  position: relative
+  border-bottom: 0.3rem solid $miller-column-border-color
+  padding: $padding-base-horizontal $padding-base-vertical
+
+  &.selected
+    cursor: pointer
+    font-weight: 700
+
+    .sd-clear-field-icon
+      flex: 0 0 auto
+
+    .sd-miller-column-selection-label
+      flex: 0 1 auto
+      opacity: 1
+
+.sd-miller-column-selection-label
+  opacity: 0.5
+  width: 100%
+  display: block
+  overflow: hidden
+  white-space: nowrap
+  text-overflow: ellipsis
+
+.sd-miller-column-items
+  flex: 1 1 100%
+  overflow: auto
+
+.sd-miller-column-items-list
+  list-style: none
+  padding: 0
+  margin: 0
+  width: 100%
+  min-height: 100%
+  overflow: auto
+
+.sd-miller-column-resizer
+  display: inline-block
+  appearance: none
+  position: relative
+  z-index: 2
+  vertical-align: top
+  left: -0.5rem
+  width: 0.9rem
+  height: 100%
+  margin-right: -1rem
+  padding: 0
+  border: none
+  background: none
+  cursor: ew-resize
+  speak: none
+
+  ::-moz-focus-inner
+    border: 0

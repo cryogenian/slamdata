@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Chart.PivotTableRenderer.Eval where
+module SlamData.Workspace.Card.Viz.Renderer.PivotTable.Eval where
 
 import SlamData.Prelude
 
@@ -26,11 +26,11 @@ import Data.List as List
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Query as Quasar
 import SlamData.Workspace.Card.Chart.Error (ChartError(..), throwChartError)
-import SlamData.Workspace.Card.Chart.PivotTableRenderer.Common (PTree(..), topField, buildTree, pagedTree, sizeOfRow, calcPageCount)
-import SlamData.Workspace.Card.Chart.PivotTableRenderer.Model as M
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Viz.Renderer.PivotTable.Common (PTree(..), topField, buildTree, pagedTree, sizeOfRow, calcPageCount)
+import SlamData.Workspace.Card.Viz.Renderer.PivotTable.Model as M
 
 initialState ∷ Port.Resource → Int → Port.PivotTablePort → ES.PivotTableR
 initialState resource pageSize options =

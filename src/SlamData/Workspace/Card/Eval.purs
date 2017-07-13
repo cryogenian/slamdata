@@ -158,7 +158,7 @@ evalCard trans port varMap = map (_ `SM.union` varMap) <$> case trans, port of
   SetupGeoHeatmap model, _ → SetupGeoHeatmap.eval model =<< extractResource varMap
   FormInput (FormInput.Labeled model), Port.SetupLabeledFormInput lp →
     FormInput.evalLabeled model lp =<< extractResource varMap
-  FormInput (FormInput.TextLike model), Port.SetupTextLikeFormInput tlp →
+  FormInput (FormInput.TextLike model), Port.SetupInput tlp →
     FormInput.evalTextLike model tlp =<< extractResource varMap
   FormInput _, _ → pure (Port.ResourceKey Port.defaultResourceVar × varMap)
   DownloadOptions model, _ → tapResource (DOptions.eval model) varMap

@@ -262,7 +262,7 @@ fromPort = case _ of
   Port.ChartInstructions _ → Chart
   Port.PivotTable _ → Chart
   Port.SetupLabeledFormInput _ → Form
-  Port.SetupTextLikeFormInput _ → Form
+  Port.SetupInput _ → Form
   Port.Variables → Variables
   Port.ValueMetric _ → Chart
   Port.CategoricalMetric _ → Form

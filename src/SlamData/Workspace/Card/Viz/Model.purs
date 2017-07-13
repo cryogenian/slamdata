@@ -2,15 +2,10 @@ module SlamData.Workspace.Card.Viz.Model where
 
 import SlamData.Prelude
 
-import Data.Argonaut ((~>), (:=), (.?))
-import Data.Argonaut as J
 import Data.Variant as V
-import Data.Codec as C
 import Data.Codec.Argonaut as CA
 import Data.Codec.Argonaut.Variant as CAV
 
-import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
-import Test.StrongCheck.Gen as Gen
 import SlamData.Workspace.Card.Viz.Renderer.PivotTable.Model as PM
 import SlamData.Workspace.Card.Viz.Renderer.Select.Model as SM
 import SlamData.Workspace.Card.Viz.Renderer.Input.Model as IM
@@ -26,12 +21,33 @@ type Model = Variant
   , chart ∷ Unit
   )
 
+initial ∷ Model
+initial = chart unit
+
 _pivot = SProxy ∷ SProxy "pivot"
 _select = SProxy ∷ SProxy "select"
 _input = SProxy ∷ SProxy "input"
 _static = SProxy ∷ SProxy "static"
 _metric = SProxy ∷ SProxy "metric"
 _chart = SProxy ∷ SProxy "chart"
+
+pivot ∷ ∀ a r. a → Variant (pivot ∷ a|r)
+pivot = V.inj _pivot
+
+select ∷ ∀ a r. a → Variant (select ∷ a|r)
+select = V.inj _select
+
+input ∷ ∀ a r. a → Variant (input ∷ a|r)
+input = V.inj _input
+
+static ∷ ∀ a r. a → Variant (static ∷ a|r)
+static = V.inj _static
+
+metric ∷ ∀ a r. a → Variant (metric ∷ a|r)
+metric = V.inj _metric
+
+chart ∷ ∀ a r. a → Variant (chart ∷ a|r)
+chart = V.inj _chart
 
 eq_ ∷ Model → Model → Boolean
 eq_ r1 = V.default false

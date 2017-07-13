@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Chart.MetricRenderer.Component where
+module SlamData.Workspace.Card.Viz.Renderer.Metric.Component where
 
 import SlamData.Prelude
 
@@ -58,8 +58,8 @@ data Query a
 type DSL = H.ComponentDSL State Query Void Slam
 type HTML = H.ComponentHTML Query
 
-comp ∷ H.Component HH.HTML Query Dimensions Void Slam
-comp =
+component ∷ H.Component HH.HTML Query Dimensions Void Slam
+component =
   H.component
     { initialState
     , render

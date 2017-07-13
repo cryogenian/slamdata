@@ -59,7 +59,7 @@ textLikeSetupComponent
   → CC.CardOptions
   → CC.CardComponent
 textLikeSetupComponent fit projection =
-  CC.makeCardComponent (expandVariant fit) $ H.parentComponent
+  CC.makeCardComponent (downcast fit) $ H.parentComponent
     { render
     , eval: (cardEval fit projection) ⨁ (setupEval projection)
     , receiver: const Nothing

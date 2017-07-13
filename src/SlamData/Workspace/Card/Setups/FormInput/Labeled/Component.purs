@@ -54,7 +54,7 @@ labeledSetupComponent
   → CC.CardOptions
   → CC.CardComponent
 labeledSetupComponent fit =
-  CC.makeCardComponent (expandVariant fit) $ H.parentComponent
+  CC.makeCardComponent (downcast fit) $ H.parentComponent
     { render
     , eval: (cardEval fit) ⨁ setupEval
     , receiver: const Nothing

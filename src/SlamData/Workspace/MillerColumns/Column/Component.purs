@@ -83,39 +83,39 @@ component' (ColumnOptions colSpec) colPath =
 
   render ∷ State a i o → HTML a i o
   render { items, state, selected, filterText, width } =
-    let
-      listItems = A.fromFoldable (renderItem selected <$> items)
-    in
-      HH.div
-        [ HP.class_ (HH.ClassName "sd-miller-column-container")
-        , HCSS.style (CSS.width (CSS.px (unwrap width)))
-        ]
-        [ HH.div
-            [ HP.class_ (HH.ClassName "sd-miller-column-filter") ]
-            [ HH.div
-                [ HP.class_ (HH.ClassName "sd-action-filter-icon") ]
-                [ I.searchSm ]
-            , HH.input
-                [ HP.class_ (HH.ClassName "sd-form-input")
-                , HP.value filterText
-                , HE.onValueInput (HE.input HandleFilterChange)
-                ]
-            , HH.button
-                [ HP.type_ HP.ButtonButton
-                , HE.onClick (HE.input_ (UpdateFilter ""))
-                , HP.enabled (filterText /= "")
-                ]
-                [ RC.clearFieldIcon "Clear filter" ]
-            ]
-        , renderSelected selected
-        , HH.div
-            [ HP.class_ (HH.ClassName "sd-miller-column-items") ]
-            [ HH.ul
-                [ HE.onScroll \e -> H.action ∘ HandleScroll <$> DOM.fromNode (DOM.currentTarget e) ]
-                $ listItems
-                <> (guard (state == Loading) $> loadIndicator)
-            ]
-        ]
+    HH.div
+      [ HP.class_ (HH.ClassName "sd-miller-column-container")
+      , HCSS.style (CSS.width (CSS.px (unwrap width)))
+      ]
+      [ HH.div
+          [ HP.class_ (HH.ClassName "sd-miller-column-filter") ]
+          [ HH.div
+              [ HP.class_ (HH.ClassName "sd-action-filter-icon") ]
+              [ I.searchSm ]
+          , HH.input
+              [ HP.class_ (HH.ClassName "sd-form-input")
+              , HP.value filterText
+              , HE.onValueInput (HE.input HandleFilterChange)
+              ]
+          , HH.button
+              [ HP.class_ (HH.ClassName "sd-action-filter-clear")
+              , HP.type_ HP.ButtonButton
+              , HE.onClick (HE.input_ (UpdateFilter ""))
+              , HP.enabled (filterText /= "")
+              ]
+              [ RC.clearFieldIcon "Clear filter" ]
+          ]
+      , renderSelected selected
+      , HH.div
+          [ HP.class_ (HH.ClassName "sd-miller-column-items") ]
+          [ HH.ul
+              [ HP.class_ (HH.ClassName "sd-miller-column-items-list")
+              , HE.onScroll \e → H.action ∘ HandleScroll <$> DOM.fromNode (DOM.currentTarget e)
+              ]
+              $ A.fromFoldable (renderItem selected <$> items)
+                  <> (guard (state == Loading) $> loadIndicator)
+          ]
+      ]
 
   loadIndicator ∷ HTML a i o
   loadIndicator =

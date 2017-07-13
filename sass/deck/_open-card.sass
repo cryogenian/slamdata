@@ -2,6 +2,28 @@
   > div, > div > div
     height: 100%
 
+.sd-card-open .sd-miller-column-item-inner
+  display: flex
+  flex-flow: row nowrap
+  justify-content: space-between
+  align-items: center
+
+  .sd-icon--chevron-right-sm
+    flex: 0 0 auto
+    font-size: 0.75em
+    vertical-align: text-top
+
+  span
+    display: block
+    flex: 0 1 auto
+    position: relative
+    white-space: nowrap
+    overflow: hidden
+    text-overflow: ellipsis
+
+    > .sd-icon
+      margin-right: 0.375em
+
 .sd-unfocused > .sd-deck > .sd-card-slider > .sd-card > div > .sd-deck-card > .sd-card-open > div > div > .sd-miller-columns .sd-miller-column
   border-top: none
   border-bottom: none

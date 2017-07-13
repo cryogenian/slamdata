@@ -304,3 +304,6 @@ cardClasses cb = cb
   # on _parallel clss
   where
   clss _ = [ H.ClassName "sd-card-chart-options" ]
+
+upcastToChart ∷ ∀ r. Upcastable r (ChartR ()) ⇒ Variant r → Maybe (Chart ())
+upcastToChart = upcast

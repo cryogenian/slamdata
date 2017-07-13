@@ -269,3 +269,6 @@ consumerInteractable cb = cb
   # on _draftboard tt
   # on _tabs tt
   # on _structureEditor ff
+
+upcastToSimple ∷ ∀ r. Upcastable r (SimpleR ()) ⇒ Variant r → Maybe (Simple ())
+upcastToSimple = upcast

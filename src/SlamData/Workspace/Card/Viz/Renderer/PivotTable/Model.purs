@@ -35,7 +35,6 @@ module SlamData.Workspace.Card.Viz.Renderer.PivotTable.Model where
 
 import SlamData.Prelude
 
-import Data.Codec as C
 import Data.Codec.Argonaut as CA
 
 import Test.StrongCheck.Arbitrary (arbitrary)

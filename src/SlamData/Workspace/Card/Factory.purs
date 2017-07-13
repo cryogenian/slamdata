@@ -119,3 +119,4 @@ cardComponent = case_
   # on CT._geoHeatmap (const GeoHeatmap.component)
   # on CT._geo (const Geo.component)
   # on CT._static (const staticSetupComponent)
+  # on CT._viz  (const staticSetupComponent)

@@ -53,7 +53,7 @@
     "test:marklogic": "ABV=ml CONNECTOR_HOST=marklogic CONNECTOR_TYPE=Marklogic CONNECTOR_PORT=8000 QUASAR_PORT=63177 npm run test:docker:isrunning",
     "test:marklogic:fast": "ABV=ml CONNECTOR_HOST=marklogic CONNECTOR_TYPE=Marklogic CONNECTOR_PORT=8000 QUASAR_PORT=63177 npm run test",
     "test:property": "gulp bundle-property-tests && node tmp/js/property-tests",
-    "watch:sass": "echo todo",
+    "watch:sass": "gulp watch-sass",
     "versionify": "gulp versionify"
   },
   "license": "Apache-2.0",
