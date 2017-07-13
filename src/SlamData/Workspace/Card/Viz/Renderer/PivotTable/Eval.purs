@@ -25,7 +25,7 @@ import Data.Lens ((^.), preview, _Just)
 import Data.List as List
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Query as Quasar
-import SlamData.Workspace.Card.Chart.Error (ChartError(..), throwChartError)
+import SlamData.Workspace.Card.Viz.Error (ChartError(..), throwChartError)
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Port as Port

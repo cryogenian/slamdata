@@ -43,7 +43,7 @@ type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
 
 component ∷ CC.CardOptions → CC.CardComponent
 component =
-  CC.makeCardComponent CT.chart $ H.lifecycleParentComponent
+  CC.makeCardComponent CT.viz $ H.lifecycleParentComponent
     { render: render
     , eval: evalCard ⨁ evalComponent
     , initialState: const ST.initialState

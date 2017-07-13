@@ -42,7 +42,7 @@ import Data.String as Str
 import Halogen.HTML as H
 
 import SlamData.Render.Icon as I
-import SlamData.Workspace.Card.CardType.Simple ( _search, search, _chart, chart, _form, form, _markdown, markdown, _table, table, _download, download, _variables, variables, _troubleshoot, troubleshoot, _open, open, _downloadOptions, downloadOptions, _tabs, tabs, _structureEditor, structureEditor, _cache, cache, _draftboard, draftboard, _geo, geo, _viz, viz, SimpleR, Simple, upcastToSimple)
+import SlamData.Workspace.Card.CardType.Simple ( _search, search, _markdown, markdown, _table, table, _download, download, _variables, variables, _troubleshoot, troubleshoot, _open, open, _downloadOptions, downloadOptions, _tabs, tabs, _structureEditor, structureEditor, _cache, cache, _draftboard, draftboard, _geo, geo, _viz, viz, SimpleR, Simple, upcastToSimple)
 import SlamData.Workspace.Card.CardType.Simple as Sim
 import SlamData.Workspace.Card.CardType.Ace ( _aceMarkdown, aceMarkdown, _aceSql, aceSql, mode, AceR, Ace, upcastToAce)
 import SlamData.Workspace.Card.CardType.Ace as Ace

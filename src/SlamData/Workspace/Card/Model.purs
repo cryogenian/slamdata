@@ -31,13 +31,11 @@ import Data.Variant (on)
 import SlamData.Workspace.Card.Ace.Model as Ace
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.Ace as CTA
-import SlamData.Workspace.Card.Chart.Model as Chart
 import SlamData.Workspace.Card.DownloadOptions.Component.State as DLO
 import SlamData.Workspace.Card.Draftboard.Layout as Layout
 import SlamData.Workspace.Card.Draftboard.Model as DB
 import SlamData.Workspace.Card.Draftboard.Orientation as Orn
 import SlamData.Workspace.Card.Draftboard.Pane as Pane
-import SlamData.Workspace.Card.FormInput.Model as FormInput
 import SlamData.Workspace.Card.Geo.Model as Geo
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Open.Model as Open
@@ -88,7 +86,6 @@ import Utils (decodec)
 data AnyCardModel
   = Ace (CT.Ace ()) Ace.Model
   | Search String
-  | Chart Chart.Model
   | Markdown MD.Model
   | Table JT.Model
   | Download
@@ -126,7 +123,6 @@ data AnyCardModel
   | SetupStatic SetupStatic.Model
   | SetupGeoMarker SetupGeoMarker.Model
   | SetupGeoHeatmap SetupGeoHeatmap.Model
-  | FormInput FormInput.Model
   | Tabs Tabs.Model
   | StructureEditor StructureEditor.Model
   | Geo Geo.Model
@@ -137,7 +133,6 @@ instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
     Gen.oneOf (pure Download)
       [ Ace <$> Gen.allInArray CTA.all <*> Ace.genModel
       , Search <$> SC.arbitrary
-      , Chart <$> Chart.genModel
       , Markdown <$> MD.genModel
       , Table <$> JT.genModel
       , Variables <$> Variables.genModel
@@ -170,7 +165,6 @@ instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
       , SetupTime <$> SetupTime.genModel
       , SetupDatetime <$> SetupDatetime.genModel
       , SetupStatic <$> SetupStatic.genModel
-      , FormInput <$> FormInput.genModel
       , Tabs <$> Tabs.genModel
       , StructureEditor <$> StructureEditor.genModel
       , SetupGeoMarker <$> SetupGeoMarker.genModel
@@ -185,8 +179,6 @@ updateCardModel = case _, _ of
     Markdown $ StrMap.union author consumer
   Search _, Search consumer →
     Search consumer
-  FormInput _, FormInput consumer →
-    FormInput consumer
   Viz _, Viz consumer →
     Viz consumer
   author, _ →
@@ -196,7 +188,6 @@ instance eqAnyCardModel ∷ Eq AnyCardModel where
   eq = case _, _ of
     Ace x1 y1, Ace x2 y2 → CT.eq_ (downcast x1) (downcast x2) && Ace.eqModel y1 y2
     Search s1, Search s2 → s1 ≡ s2
-    Chart x, Chart y → Chart.eqModel x y
     Markdown x, Markdown y → x ≡ y
     Table x, Table y → JT.eqModel x y
     Download, Download → true
@@ -231,7 +222,6 @@ instance eqAnyCardModel ∷ Eq AnyCardModel where
     SetupTime x, SetupTime y → SetupTime.eqModel x y
     SetupDatetime x, SetupDatetime y → SetupDatetime.eqModel x y
     SetupStatic x, SetupStatic y → SetupStatic.eqModel x y
-    FormInput x, FormInput y → FormInput.eqModel x y
     Tabs x, Tabs y → Tabs.eqModel x y
     StructureEditor x, StructureEditor y → x == y
     SetupGeoMarker x, SetupGeoMarker y → SetupGeoMarker.eqModel x y
@@ -267,7 +257,6 @@ modelCardType = case _ of
   BuildPunchCard _ → CT.punchCard
   BuildCandlestick _ → CT.candlestick
   BuildParallel _ → CT.parallel
-  Chart _ → CT.chart
   Geo _ → CT.geo
   Markdown _ → CT.markdown
   Table _ → CT.table
@@ -287,7 +276,6 @@ modelCardType = case _ of
   SetupTime _ → CT.time
   SetupDatetime _ → CT.datetime
   SetupStatic _ → CT.static
-  FormInput _ → CT.form
   Tabs _ → CT.tabs
   StructureEditor _ → CT.structureEditor
   SetupGeoMarker _ → CT.geoMarker
@@ -311,7 +299,6 @@ encodeCardModel ∷ AnyCardModel → J.Json
 encodeCardModel = case _ of
   Ace mode model → Ace.encode model
   Search txt → J.encodeJson txt
-  Chart model → Chart.encode model
   Geo model → Geo.encode model
   Markdown model → MD.encode model
   Table model → CA.encode JT.codec model
@@ -348,7 +335,6 @@ encodeCardModel = case _ of
   SetupTime model → SetupTime.encode model
   SetupDatetime model → SetupDatetime.encode model
   SetupStatic model → SetupStatic.encode model
-  FormInput model → FormInput.encode model
   Tabs model → CA.encode Tabs.codec model
   StructureEditor model → StructureEditor.encode model
   SetupGeoMarker model → SetupGeoMarker.encode model
@@ -389,8 +375,6 @@ decodeCardModel js = case_
   # on CT._time (const $ map SetupTime $ SetupTime.decode js)
   # on CT._datetime (const $ map SetupDatetime $ SetupDatetime.decode js)
   # on CT._static (const $ map SetupStatic $ SetupStatic.decode js)
-  # on CT._form (const $ map FormInput $ FormInput.decode js)
-  # on CT._chart (const $ map Chart $ Chart.decode js)
   # on CT._markdown (const $ map Markdown $ MD.decode js)
   # on CT._table (const $ map Table $ decodec JT.codec js)
   # on CT._download (const $ pure Download)
@@ -443,8 +427,6 @@ cardModelOfType (port × varMap) = case_
   # on CT._date (const $ SetupDate SetupDate.initialModel)
   # on CT._datetime (const $ SetupDatetime SetupDatetime.initialModel)
   # on CT._static (const $ SetupStatic SetupStatic.initialModel)
-  # on CT._form (const $ FormInput FormInput.initialModel)
-  # on CT._chart (const $ Chart Chart.emptyModel)
   # on CT._markdown (const $ Markdown MD.emptyModel)
   # on CT._table (const $ Table JT.emptyModel)
   # on CT._download (const Download)

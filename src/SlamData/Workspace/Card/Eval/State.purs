@@ -55,7 +55,7 @@ import Leaflet.Core as LC
 
 import SlamData.Effects (SlamDataEffects)
 
-import SlamData.Workspace.Card.Chart.PivotTableRenderer.Common (PTree)
+import SlamData.Workspace.Card.Viz.Renderer.PivotTable.Common (PTree)
 import SlamData.Workspace.Card.Model as CM
 import SlamData.Workspace.Card.Port (Resource, PivotTablePort)
 import SlamData.Workspace.Card.Setups.Axis (Axes)

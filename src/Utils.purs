@@ -51,10 +51,9 @@ import Data.Codec.Argonaut as CA
 import Data.Formatter.Number as FN
 import Data.Int as Int
 import Data.String as S
-import Data.Symbol (class IsSymbol, reflectSymbol)
+import Data.Symbol (class IsSymbol)
 import Data.Variant (inj)
 import Global (readFloat, isNaN, isFinite)
-import Type.Row (kind RowList,
 import SqlSquared.Signature.Ident (printIdent)
 
 foreign import debugTime_ ∷ ∀ a. String → (Unit → a) → a

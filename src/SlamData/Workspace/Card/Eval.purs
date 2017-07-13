@@ -28,22 +28,18 @@ import Control.Monad.Writer.Class (class MonadTell)
 
 import Data.StrMap as SM
 import Data.List ((:))
-import Data.Variant (on)
+import Data.Variant (on, default)
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
 import SlamData.Workspace.Card.Cache.Eval as Cache
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Chart.Eval as Chart
-import SlamData.Workspace.Card.Chart.Model as ChartModel
-import SlamData.Workspace.Card.Chart.PivotTableRenderer.Eval as PivotTable
-import SlamData.Workspace.Card.Chart.PivotTableRenderer.Model as PTM
 import SlamData.Workspace.Card.DownloadOptions.Eval as DOptions
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Common as Common
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.Transition (Eval(..), tagEval)
-import SlamData.Workspace.Card.FormInput.Eval as FormInput
+import SlamData.Workspace.Card.Geo.Eval as Geo
 import SlamData.Workspace.Card.Markdown.Eval as MDE
 import SlamData.Workspace.Card.Model as Model
 import SlamData.Workspace.Card.Open.Eval as Open
@@ -74,11 +70,14 @@ import SlamData.Workspace.Card.Setups.FormInput.Numeric.Eval as SetupNumeric
 import SlamData.Workspace.Card.Setups.FormInput.Static.Eval as SetupStatic
 import SlamData.Workspace.Card.Setups.FormInput.Text.Eval as SetupText
 import SlamData.Workspace.Card.Setups.FormInput.Time.Eval as SetupTime
-import SlamData.Workspace.Card.Setups.Geo.Marker.Eval as SetupGeoMarker
 import SlamData.Workspace.Card.Setups.Geo.Heatmap.Eval as SetupGeoHeatmap
-import SlamData.Workspace.Card.Geo.Eval as Geo
+import SlamData.Workspace.Card.Setups.Geo.Marker.Eval as SetupGeoMarker
 import SlamData.Workspace.Card.Table.Eval as Table
 import SlamData.Workspace.Card.Variables.Eval as VariablesE
+import SlamData.Workspace.Card.Viz.Eval as Viz
+import SlamData.Workspace.Card.Viz.Model as VizM
+import SlamData.Workspace.Card.Viz.Renderer.PivotTable.Eval as PivotTable
+import SlamData.Workspace.Card.Viz.Renderer.PivotTable.Model as PTM
 
 runCard
   ∷ ∀ f m
@@ -115,9 +114,18 @@ evalCard trans port varMap = map (_ `SM.union` varMap) <$> case trans, port of
   Pass, _ → pure (port × varMap)
   Table m, _ → Table.eval m port varMap
   PivotTable m, Port.PivotTable p → PivotTable.eval m p varMap
-  Chart, Port.PivotTable p → PivotTable.eval PTM.initialModel p varMap
-  Chart, Port.ChartInstructions { options } → tapResource (Chart.eval options) varMap
-  Chart, _ → pure (Port.ResourceKey Port.defaultResourceVar × varMap)
+  Viz _, Port.PivotTable p →
+    PivotTable.eval PTM.initialModel p varMap
+  Viz m, Port.SetupLabeledFormInput lp →
+    default (pure $ Port.ResourceKey Port.defaultResourceVar × varMap)
+      # on VizM._select (\model → Viz.evalLabeled model lp =<< extractResource varMap)
+      $ m
+  Viz m, Port.SetupInput tlp →
+    default (pure $ Port.ResourceKey Port.defaultResourceVar × varMap)
+      # on VizM._input (\model → Viz.evalTextLike model tlp =<< extractResource varMap)
+      $ m
+  Viz _, _ →
+    pure $ Port.ResourceKey Port.defaultResourceVar × varMap
   GeoChart, Port.GeoChart m → tapResource (Geo.eval m) varMap
   Composite, _ → Port.varMapOut <$> Common.evalComposite
   Terminal, _ → pure Port.terminalOut
@@ -156,11 +164,7 @@ evalCard trans port varMap = map (_ `SM.union` varMap) <$> case trans, port of
   SetupStatic model, _ → tapResource (SetupStatic.eval model) varMap
   SetupGeoMarker model, _ → SetupGeoMarker.eval model =<< extractResource varMap
   SetupGeoHeatmap model, _ → SetupGeoHeatmap.eval model =<< extractResource varMap
-  FormInput (FormInput.Labeled model), Port.SetupLabeledFormInput lp →
-    FormInput.evalLabeled model lp =<< extractResource varMap
-  FormInput (FormInput.TextLike model), Port.SetupInput tlp →
-    FormInput.evalTextLike model tlp =<< extractResource varMap
-  FormInput _, _ → pure (Port.ResourceKey Port.defaultResourceVar × varMap)
+
   DownloadOptions model, _ → tapResource (DOptions.eval model) varMap
   e, i → CE.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i
 
@@ -194,8 +198,7 @@ modelToEval = case _ of
   Model.BuildPunchCard model → BuildPunchCard model
   Model.BuildCandlestick model → BuildCandlestick model
   Model.BuildParallel model → BuildParallel model
-  Model.Chart (Just (ChartModel.PivotTableRenderer model)) → PivotTable model
-  Model.Chart Nothing → Chart
+  Model.Viz m → default (Viz m) # on VizM._pivot PivotTable $ m
   Model.SetupDropdown model → SetupDropdown model
   Model.SetupStatic model → SetupStatic model
   Model.SetupText model → SetupText model
@@ -205,7 +208,6 @@ modelToEval = case _ of
   Model.SetupDate model → SetupDate model
   Model.SetupTime model → SetupTime model
   Model.SetupDatetime model → SetupDatetime model
-  Model.FormInput model → FormInput model
   Model.Tabs _ → Terminal
   Model.Table model → Table model
   Model.SetupGeoMarker model → SetupGeoMarker model

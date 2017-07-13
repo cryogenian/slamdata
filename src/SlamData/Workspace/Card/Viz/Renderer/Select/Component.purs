@@ -38,7 +38,7 @@ import Halogen.HTML.Properties as HP
 import SlamData.Monad (Slam)
 import SlamData.Render.ClassName as CN
 import SlamData.Workspace.Card.CardType.Select as Sel
-import SlamData.Workspace.Card.FormInput.LabeledRenderer.Model as M
+import SlamData.Workspace.Card.Viz.Renderer.Select.Model as M
 import SlamData.Workspace.Card.Port (SetupLabeledFormInputPort)
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 

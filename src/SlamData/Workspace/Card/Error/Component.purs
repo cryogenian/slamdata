@@ -46,7 +46,7 @@ import SlamData.Workspace.AccessType (AccessType(..))
 import SlamData.Workspace.Card.Cache.Error as CCaE
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.Select as Sel
-import SlamData.Workspace.Card.Chart.Error as CChE
+import SlamData.Workspace.Card.Viz.Error as VE
 import SlamData.Workspace.Card.DownloadOptions.Error as CDOE
 import SlamData.Workspace.Card.Error (CardError, cardToGlobalError)
 import SlamData.Workspace.Card.Error as CE
@@ -495,7 +495,7 @@ tableErrorMessage { accessType, expanded } err =
           , pure $ printQErrorWithDetails qErr
           ]
 
-chartErrorMessage ∷ State → CChE.ChartError → HTML
+chartErrorMessage ∷ State → VE.ChartError → HTML
 chartErrorMessage { accessType, expanded } err =
   case accessType of
     Editable → renderDetails err
@@ -504,24 +504,24 @@ chartErrorMessage { accessType, expanded } err =
         [ HH.p_
           [ HH.text
             $ "A problem occurred in the "
-            <> CT.name CT.chart
+            <> CT.name CT.viz
             <> " card, please notify the author of this workspace." ]
         , collapsible "Error details" (renderDetails err) expanded
         ]
   where
   renderDetails = case _ of
-    CChE.ChartMissingResourceInputError →
+    VE.ChartMissingResourceInputError →
       HH.div_
         [ errorTitle
           [ HH.text
-            $ "The " <> CT.name CT.chart <> " card requires data as an input." ] ]
-    CChE.ChartCountQuasarError qErr →
+            $ "The " <> CT.name CT.viz <> " card requires data as an input." ] ]
+    VE.ChartCountQuasarError qErr →
       HH.div_
         $ join
           [ pure $ errorTitle [ HH.text "An error occured when counting the chart data." ]
           , pure $ printQErrorWithDetails qErr
           ]
-    CChE.ChartSampleQuasarError qErr →
+    VE.ChartSampleQuasarError qErr →
       HH.div_
         $ join
           [ pure $ errorTitle [ HH.text "An error occured during sampling of the chart data." ]

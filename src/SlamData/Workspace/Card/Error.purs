@@ -25,7 +25,7 @@ import Data.Variant (on)
 import SlamData.GlobalError as GE
 import SlamData.Quasar.Error (QError)
 import SlamData.Workspace.Card.Cache.Error as CCE
-import SlamData.Workspace.Card.Chart.Error as CHE
+import SlamData.Workspace.Card.Viz.Error as VE
 import SlamData.Workspace.Card.DownloadOptions.Error as CDLOE
 import SlamData.Workspace.Card.Markdown.Error as CMDE
 import SlamData.Workspace.Card.Open.Error as COE
@@ -42,7 +42,7 @@ type CardError = Variant
   ( qerror ∷ QError
   , stringly ∷ String
   , cache ∷ CCE.CacheError
-  , chart ∷ CHE.ChartError
+  , chart ∷ VE.ChartError
   , downloadOptions ∷ CDLOE.DownloadOptionsError
   , formInputLabeled ∷ FILE.FormInputLabeledError
   , formInputStatic ∷ FISE.FormInputStaticError
@@ -94,7 +94,7 @@ cardToGlobalError =
     # on _qerror (hush ∘ GE.fromQError)
     # on _stringly (const Nothing)
     # on _cache CCE.cacheToGlobalError
-    # on _chart CHE.chartToGlobalError
+    # on _chart VE.chartToGlobalError
     # on _downloadOptions (const Nothing)
     # on _formInputLabeled (const Nothing)
     # on _formInputStatic (const Nothing)
