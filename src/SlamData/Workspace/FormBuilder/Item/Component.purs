@@ -33,7 +33,6 @@ import Data.Formatter.DateTime as FD
 import Data.Functor.Coproduct.Nested (Coproduct3)
 import Data.Lens ((^?))
 import Data.Lens as Lens
-import Debug.Trace (spy, traceAnyA)
 import Halogen as H
 import Halogen.Component.ChildPath as CP
 import Halogen.Datepicker.Component.Date as DatePicker
