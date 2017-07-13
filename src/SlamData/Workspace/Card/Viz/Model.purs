@@ -9,6 +9,7 @@ import Data.Codec.Argonaut.Variant as CAV
 import SlamData.Workspace.Card.Viz.Renderer.PivotTable.Model as PM
 import SlamData.Workspace.Card.Viz.Renderer.Select.Model as SM
 import SlamData.Workspace.Card.Viz.Renderer.Input.Model as IM
+import SlamData.Workspace.Card.Viz.Renderer.Geo.Model as GM
 
 import Test.StrongCheck.Gen as Gen
 
@@ -16,6 +17,7 @@ type Model = Variant
   ( pivot ∷ PM.Model
   , select ∷ SM.Model
   , input ∷ IM.Model
+  , geo ∷ GM.Model
   , static ∷ Unit
   , metric ∷ Unit
   , chart ∷ Unit
@@ -30,6 +32,7 @@ _input = SProxy ∷ SProxy "input"
 _static = SProxy ∷ SProxy "static"
 _metric = SProxy ∷ SProxy "metric"
 _chart = SProxy ∷ SProxy "chart"
+_geo = SProxy ∷ SProxy "geo"
 
 pivot ∷ ∀ a r. a → Variant (pivot ∷ a|r)
 pivot = V.inj _pivot
@@ -49,6 +52,9 @@ metric = V.inj _metric
 chart ∷ ∀ a r. a → Variant (chart ∷ a|r)
 chart = V.inj _chart
 
+geo ∷ ∀ a r. a → Variant (geo ∷ a|r)
+geo = V.inj _geo
+
 eq_ ∷ Model → Model → Boolean
 eq_ r1 = V.default false
   # V.on _pivot (\r2 → V.on _pivot (PM.eq_ r2) ff r1)
@@ -57,14 +63,16 @@ eq_ r1 = V.default false
   # V.on _static (V.on _static tt ff r1)
   # V.on _metric (V.on _metric tt ff r1)
   # V.on _chart (V.on _chart tt ff r1)
+  # V.on _geo (V.on _geo tt ff r1)
 
 gen ∷ Gen.Gen Model
 gen = Gen.oneOf (pure $ V.inj _static unit)
-  [ pure $ V.inj _chart unit
-  , pure $ V.inj _metric unit
-  , map (V.inj _pivot) PM.gen
-  , map (V.inj _select) SM.gen
-  , map (V.inj _input) IM.gen
+  [ pure $ chart unit
+  , pure $ metric unit
+  , map pivot PM.gen
+  , map select SM.gen
+  , map input IM.gen
+  , map geo GM.gen
   ]
 
 empty ∷ Model
@@ -78,3 +86,4 @@ codec = CAV.variant
   # CAV.variantCase _static (Left unit)
   # CAV.variantCase _metric (Left unit)
   # CAV.variantCase _chart (Left unit)
+  # CAV.variantCase _geo (Right GM.codec)

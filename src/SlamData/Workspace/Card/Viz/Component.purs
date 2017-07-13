@@ -34,6 +34,7 @@ import SlamData.Workspace.Card.Viz.Renderer.Input.Component as IR
 import SlamData.Workspace.Card.Viz.Renderer.Metric.Component as MR
 import SlamData.Workspace.Card.Viz.Renderer.PivotTable.Component as PR
 import SlamData.Workspace.Card.Viz.Renderer.Select.Component as SR
+import SlamData.Workspace.Card.Viz.Renderer.Geo.Component as GR
 import SlamData.Workspace.LevelOfDetails as LOD
 
 import Utils (hush')
@@ -114,7 +115,11 @@ render state =
 
   renderGeo ∷ Array HTML
   renderGeo =
-    [ ]
+    A.singleton
+    $ HH.slot' CS.cpGeo unit
+      GR.component
+      unit
+      (HE.input $ \f → right ∘ Q.RaiseUpdate (Just f))
 
 evalCard ∷ CC.CardEvalQuery ~> DSL
 evalCard = case _ of
@@ -138,6 +143,9 @@ evalCard = case _ of
         sm ← for (CT.upcastToSelect vt) \_ → do
           res ← H.query' CS.cpSelect unit $ H.request SR.Save
           pure $ map M.select res
+        gm ← for (CT.upcastToGeo vt) \_ → do
+          res ← H.query' CS.cpGeo unit $ H.request GR.Save
+          pure $ map M.geo res
         pure $ k $ Card.Viz
           $ fromMaybe (M.chart unit)
           $ mm <|> join im <|> join pm <|> join sm

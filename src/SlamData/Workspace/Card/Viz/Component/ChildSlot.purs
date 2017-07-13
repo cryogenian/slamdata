@@ -9,6 +9,7 @@ import SlamData.Workspace.Card.Viz.Renderer.Metric.Component as MR
 import SlamData.Workspace.Card.Viz.Renderer.PivotTable.Component as PR
 import SlamData.Workspace.Card.Viz.Renderer.Input.Component as IR
 import SlamData.Workspace.Card.Viz.Renderer.Select.Component as SR
+import SlamData.Workspace.Card.Viz.Renderer.Geo.Component as GR
 
 type ChildQuery
   = MR.Query
@@ -16,10 +17,12 @@ type ChildQuery
   ⨁ HEC.EChartsQuery
   ⨁ IR.Query
   ⨁ SR.Query
+  ⨁ GR.Query
   ⨁ Const Void
 
 type ChildSlot
   = Unit
+  ⊹ Unit
   ⊹ Unit
   ⊹ Unit
   ⊹ Unit
@@ -42,3 +45,6 @@ cpInput = CP.cp4
 
 cpSelect ∷ Path SR.Query
 cpSelect = CP.cp5
+
+cpGeo ∷ Path GR.Query
+cpGeo = CP.cp6
