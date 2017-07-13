@@ -68,8 +68,7 @@ eval sql selection r = do
   CEM.CardEnv { varMap, cardId } ← ask
   let varMap' = varMap # VM.insert cardId (VM.Var defaultSelectionVar) (VM.Expr selection)
   resource ← CE.liftQ $ CEC.localEvalResource sql varMap'
-  let varMap'' = varMap' # VM.insert cardId (VM.Var Port.defaultResourceVar) (VM.Resource resource)
-  pure $ Port.ResourceKey Port.defaultResourceVar × varMap''
+  pure $ Port.resourceOut cardId resource varMap'
 
 evalLabeled
   ∷ ∀ m

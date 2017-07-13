@@ -71,7 +71,7 @@ evalSearch queryText port = do
         # VM.insert cardId Search.defaultDistinctVar isDistinct
   put $ Just state'
   resource' ← CEC.localEvalResource (Sql.Query mempty sql) varMap >>= searchError SearchQueryCompilationError
-  pure $ Port.resourceOut cardId resource' varMap
+  pure $ Port.resourceOut cardId resource' varMap'
 
 searchError ∷ ∀ e a m v. MonadThrow (Variant (search ∷ SearchError | v)) m ⇒ (e → SearchError) → Either e a → m a
 searchError f = either (throwSearchError ∘ f) pure
