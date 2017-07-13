@@ -22,7 +22,6 @@ import Data.Argonaut as J
 import Data.Codec as C
 import Data.Codec.Argonaut as CA
 import Data.Set as Set
-import Data.Profunctor (dimap)
 
 import SlamData.Workspace.Card.CardType.Select as Sel
 import SlamData.Workspace.Card.Setups.Semantics as Sem

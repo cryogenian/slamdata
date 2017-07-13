@@ -19,19 +19,14 @@ module SlamData.Workspace.Legacy where
 import SlamData.Prelude
 
 import Control.Monad.Aff.Class (class MonadAff)
-import Control.Monad.Aff.Class (class MonadAff)
-import Control.Monad.Aff.Future (defer, wait)
 import Control.Monad.Aff.Future (defer, wait)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Fork (class MonadFork)
-import Control.Monad.Fork (class MonadFork)
 
-import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array as Array
 import Data.Codec.Argonaut.Compat as CA
 import Data.Map as Map
-import Data.Path.Pathy ((</>))
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 
@@ -46,12 +41,8 @@ import SlamData.Wiring.Cache as Cache
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Model (AnyCardModel(..))
+import SlamData.Workspace.Card.Model (AnyCardModel)
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Setups.Chart.Gauge.Model as BuildGauge
-import SlamData.Workspace.Card.Setups.Chart.Graph.Model as BuildGraph
-import SlamData.Workspace.Card.Setups.Chart.Metric.Model as BuildMetric
-import SlamData.Workspace.Card.Setups.Chart.Sankey.Model as BuildSankey
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.DeckId as DID
 import SlamData.Workspace.Deck.Model (Deck, emptyDeck) as Current
