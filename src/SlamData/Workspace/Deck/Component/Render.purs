@@ -183,15 +183,15 @@ deckFrameControls ∷ Zoom → DCS.State → DeckHTML
 deckFrameControls zoom { name } =
   HH.div
     attrs
-    [ HH.div
+    [ renderName name
+    , HH.div
         [ HP.class_ CSS.deckFrameActions ]
-        [ flipButton
-        , case zoom of
+        [ case zoom of
             In → zoomInButton
             Out → zoomOutButton
             Back → backToFsButton
+        , flipButton
         ]
-    , renderName name
     ]
   where
     attrs =
