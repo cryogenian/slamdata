@@ -41,17 +41,16 @@ import SlamData.Workspace.Card.FormInput.LabeledRenderer.Model as LR
 import SlamData.Workspace.Card.FormInput.Model (Model(..))
 import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Model as TLR
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Port.VarMap as VM
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SqlSquared (SqlQuery)
 import SqlSquared as Sql
 import Utils (stringToNumber)
 import Utils.SqlSquared (all, asRel, variRelation)
 
--- | I removed additional variable from this (It used to be `QueryExpr`)
--- | not sure that this is right decision, but it's just part of sql expression
--- | encoded as string. And it's actually can't be used to query anything
--- | because it's kinda `"foo"` or `("foo", "bar", true)`
--- | @cryogenian
+defaultSelectionVar ∷ String
+defaultSelectionVar = "selection"
+
 eval
   ∷ ∀ m v
   . MonadAff SlamDataEffects m
@@ -62,10 +61,15 @@ eval
   ⇒ QuasarDSL m
   ⇒ ParQuasarDSL m
   ⇒ SqlQuery
+  → Sql.Sql
   → Port.Resource
   → m Port.Out
-eval sql r =
-  CEM.resourceOut =<< CE.liftQ <<< CEC.localEvalResource sql =<< CEM.localVarMap
+eval sql selection r = do
+  CEM.CardEnv { varMap, cardId } ← ask
+  let varMap' = varMap # VM.insert cardId (VM.Var defaultSelectionVar) (VM.Expr selection)
+  resource ← CE.liftQ $ CEC.localEvalResource sql varMap'
+  let varMap'' = varMap' # VM.insert cardId (VM.Var Port.defaultResourceVar) (VM.Resource resource)
+  pure $ Port.ResourceKey Port.defaultResourceVar × varMap''
 
 evalLabeled
   ∷ ∀ m
@@ -110,6 +114,9 @@ evalLabeled m p = do
     semantics =
       foldMap Sem.semanticsToSql selected
 
+    selection =
+      Sql.set semantics
+
     sql =
       Sql.buildSelect
         $ all
@@ -120,12 +127,12 @@ evalLabeled m p = do
                     ( Sql.binop Sql.FieldDeref
                         ( Sql.ident "res" )
                         ( QQ.jcursorToSql p.cursor ))
-                    ( Sql.set semantics )))
+                    ( Sql.vari defaultSelectionVar)))
 
 
   put $ Just $ CEM.AutoSelect {lastUsedResource: r, autoSelect: selected}
 
-  eval (Sql.Query mempty sql) r
+  eval (Sql.Query mempty sql) selection r
 
 evalTextLike
   ∷ ∀ m
@@ -159,6 +166,6 @@ evalTextLike m p = do
                     ( Sql.binop Sql.FieldDeref
                         ( Sql.ident "res" )
                         ( QQ.jcursorToSql p.cursor ))
-                    selection ))
+                    (Sql.vari defaultSelectionVar) ))
 
-  eval (Sql.Query mempty sql) r
+  eval (Sql.Query mempty sql) selection r
