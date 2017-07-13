@@ -54,7 +54,6 @@ data Eval
   = Pass
   | Composite
   | Terminal
-  | GeoChart
   | Query SQL
   | Search String
   | Cache (Maybe String)
@@ -102,7 +101,6 @@ tagEval = case _ of
   Pass → "Pass"
   Composite → "Composite"
   Terminal → "Terminal"
-  GeoChart → "GeoChart"
   Query str → "Query " <> show str
   Search str → "Search " <> show str
   Cache str → "Cache " <> show str

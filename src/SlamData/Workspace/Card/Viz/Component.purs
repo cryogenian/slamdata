@@ -9,7 +9,7 @@ import Data.Foreign.Index (readProp)
 import Data.Int (toNumber, floor)
 import Data.Lens ((^?), _Just)
 import Data.String as S
-import Data.Variant (default, on)
+import Data.Variant (on)
 
 import Global (readFloat, isNaN)
 
@@ -148,11 +148,11 @@ evalCard = case _ of
           pure $ map M.geo res
         pure $ k $ Card.Viz
           $ fromMaybe (M.chart unit)
-          $ mm <|> join im <|> join pm <|> join sm
+          $ mm <|> join im <|> join pm <|> join sm <|> join gm
 
   CC.Load model next →
     case model of
-      Card.Viz vm → default (pure next)
+      Card.Viz vm → case_
         # on M._pivot (\m → do
                           H.modify _{ vizType = Just CT.pivot }
                           _ ← H.query' CS.cpPivotTable unit $ H.action $ PR.Load m
@@ -168,6 +168,14 @@ evalCard = case _ of
                           _ ← H.query' CS.cpInput unit $ H.action $ IR.Load m
                           pure next
                       )
+        # on M._geo (\m → do
+                        H.modify _{ vizType = Just CT.geoMarker }
+                        _ ← H.query' CS.cpGeo unit $ H.action $ GR.Load m
+                        pure next
+                    )
+        # on M._static (const $ H.modify _{ vizType = Just CT.static } $> next )
+        # on M._metric (const $ H.modify _{ vizType = Just CT.metric } $> next )
+        # on M._chart (const $ H.modify _{ vizType = Just CT.pie } $> next )
         $ vm
       _ →
         pure next
@@ -189,6 +197,9 @@ evalCard = case _ of
         H.query' CS.cpMetric unit $ H.action $ MR.SetMetric m
       PivotTable _ → void do
         H.modify _{ vizType = Just CT.pivot }
+      GeoChart m → void do
+        H.modify _{ vizType = Just CT.geoMarker }
+        H.query' CS.cpGeo unit $ H.action $ GR.Setup m
       _ → void do
         H.query' CS.cpECharts unit $ H.action HEC.Clear
     pure next
@@ -203,6 +214,8 @@ evalCard = case _ of
         H.query' CS.cpPivotTable unit $ H.action $ PR.Update options
       ES.AutoSelect {autoSelect} → void do
         H.query' CS.cpSelect unit $ H.action $ SR.SetSelected autoSelect
+      ES.Geo geo → void do
+        H.query' CS.cpGeo unit $ H.action $ GR.Update geo
       _ → pure unit
     pure next
   CC.ReceiveDimensions dims reply → do

@@ -38,7 +38,6 @@ _downloadOptions = SProxy ∷ SProxy "downloadOptions"
 _draftboard = SProxy ∷ SProxy "draftboard"
 _tabs = SProxy ∷ SProxy "tabs"
 _structureEditor = SProxy ∷ SProxy "structureEditor"
-_geo = SProxy ∷ SProxy "geo"
 _viz = SProxy ∷ SProxy "viz"
 
 viz ∷ ∀ r. Variant (viz ∷ Unit|r)
@@ -80,9 +79,6 @@ tabs = inj _tabs unit
 structureEditor ∷ ∀ r. Variant (structureEditor ∷ Unit|r)
 structureEditor = inj _structureEditor unit
 
-geo ∷ ∀ r. Variant (geo ∷ Unit|r)
-geo = inj _geo unit
-
 type SimpleR r =
   ( search ∷ Unit
   , markdown ∷ Unit
@@ -96,7 +92,6 @@ type SimpleR r =
   , draftboard ∷ Unit
   , tabs ∷ Unit
   , structureEditor ∷ Unit
-  , geo ∷ Unit
   , viz ∷ Unit
   | r)
 
@@ -116,7 +111,6 @@ all =
   , draftboard
   , tabs
   , structureEditor
-  , geo
   , viz
   ]
 
@@ -135,7 +129,6 @@ eq_ cb r = cb (contractSimple r)
   # on _draftboard (on _draftboard tt ff r)
   # on _tabs (on _tabs tt ff r)
   # on _structureEditor (on _structureEditor tt ff r)
-  # on _geo (on _geo tt ff r)
   where
   contractSimple ∷ ∀ ω. Simple ω → Variant ω
   contractSimple = unsafeCoerce
@@ -156,7 +149,6 @@ print cb = cb
   # on _cache (const "cache")
   # on _open (const "open")
   # on _tabs (const "tabs")
-  # on _geo (const "geo-chart")
 
 parse ∷ ∀ r. String → String ⊹ Simple r
 parse = case _ of
@@ -173,16 +165,15 @@ parse = case _ of
   "draftboard" → pure draftboard
   "tabs" → pure tabs
   "structure-editor" → pure structureEditor
-  "geo-chart" → pure geo
   "chart" → pure viz
   "form-input" → pure viz
+  "geo-chart" → pure viz
   ty → Left $ ty ⊕ " is unknown basic card type"
 
 name ∷ ∀ r. (Variant r → String) → Simple r → String
 name cb = cb
   # on _viz (const "Show Visualization")
   # on _search (const "Search")
-  # on _geo (const "Show Geo Chart")
   # on _markdown (const "Show Markdown")
   # on _table (const "Preview Table")
   # on _download (const "Show Download")
@@ -210,13 +201,11 @@ icon cb = cb
   # on _draftboard (const $ I.IconHTML I.cardsDashboard)
   # on _tabs (const $ I.IconHTML I.cardsTabs)
   # on _structureEditor (const $ I.IconHTML I.cardsStructureEditor)
-  # on _geo (const $ I.IconHTML I.cardsGeoChart)
 
 cardClasses ∷ ∀ r. (Variant r → Array H.ClassName) → Simple r → Array H.ClassName
 cardClasses cb = cb
   # on _viz (\_ → [ H.ClassName "sd-card-chart" ] )
   # on _search (\_ → [ H.ClassName "sd-card-search" ])
-  # on _geo (\_ → [ H.ClassName "sd-card-geo-chart" ])
   # on _markdown (\_ → [ H.ClassName "sd-card-markdown" ])
   # on _table (\_ → [ H.ClassName "sd-card-table" ])
   # on _download (\_ → [ H.ClassName "sd-card-download" ])
@@ -233,7 +222,6 @@ consumerInteractable ∷ ∀ r. (Variant r → Boolean) → Simple r → Boolean
 consumerInteractable cb = cb
   # on _viz tt
   # on _search tt
-  # on _geo tt
   # on _markdown tt
   # on _table tt
   # on _download tt

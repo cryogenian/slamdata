@@ -386,7 +386,6 @@ fromCardType = case_
     # on CT._draftboard (const DraftboardCard)
     # on CT._open (const OpenCard)
     # on CT._search (const SearchCard)
-    # on CT._geo (const ShowVizCard)
     # on CT._downloadOptions (const SetupDownloadCard)
     # on CT._variables (const SetupVariablesCard)
     # on CT._download (const ShowDownloadCard)

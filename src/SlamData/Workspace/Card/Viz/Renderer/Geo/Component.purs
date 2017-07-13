@@ -98,15 +98,13 @@ eval = case _ of
     pure next
   Save cont → do
     st ← H.get
-    pure $ cont $ Just { osmURI: st.osmURI, view: st.view, zoom: st.zoom }
-  Load (Just r) next → do
+    pure $ cont $ { osmURI: st.osmURI, view: st.view, zoom: st.zoom }
+  Load r next → do
     H.modify _{ zoom = r.zoom
               , view = r.view
               , osmURI = r.osmURI
               }
     sync
-    pure next
-  Load _ next →
     pure next
   Setup p next → do
     H.modify _{ osmURI = p.osmURI }

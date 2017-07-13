@@ -39,7 +39,6 @@ import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Common as Common
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.Transition (Eval(..), tagEval)
-import SlamData.Workspace.Card.Geo.Eval as Geo
 import SlamData.Workspace.Card.Markdown.Eval as MDE
 import SlamData.Workspace.Card.Model as Model
 import SlamData.Workspace.Card.Open.Eval as Open
@@ -76,6 +75,7 @@ import SlamData.Workspace.Card.Table.Eval as Table
 import SlamData.Workspace.Card.Variables.Eval as VariablesE
 import SlamData.Workspace.Card.Viz.Eval as Viz
 import SlamData.Workspace.Card.Viz.Model as VizM
+import SlamData.Workspace.Card.Viz.Renderer.Geo.Eval as Geo
 import SlamData.Workspace.Card.Viz.Renderer.PivotTable.Eval as PivotTable
 import SlamData.Workspace.Card.Viz.Renderer.PivotTable.Model as PTM
 
@@ -123,6 +123,10 @@ evalCard trans port varMap = map (_ `SM.union` varMap) <$> case trans, port of
   Viz m, Port.SetupInput tlp →
     default (pure $ Port.ResourceKey Port.defaultResourceVar × varMap)
       # on VizM._input (\model → Viz.evalTextLike model tlp =<< extractResource varMap)
+      $ m
+  Viz m, Port.GeoChart r →
+    default (pure $ Port.ResourceKey Port.defaultResourceVar × varMap)
+      # on VizM._geo (\_ → tapResource (Geo.eval r) varMap)
       $ m
   Viz _, _ →
     pure $ Port.ResourceKey Port.defaultResourceVar × varMap
@@ -212,7 +216,6 @@ modelToEval = case _ of
   Model.Table model → Table model
   Model.SetupGeoMarker model → SetupGeoMarker model
   Model.SetupGeoHeatmap model → SetupGeoHeatmap model
-  Model.Geo model → GeoChart
   _ → Pass
 
 -- TODO(Christoph): Get rid of this monstrosity of an error message

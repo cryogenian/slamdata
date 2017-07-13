@@ -62,7 +62,6 @@ import SlamData.Workspace.Card.Setups.FormInput.Text.Component (textSetupCompone
 import SlamData.Workspace.Card.Setups.FormInput.Time.Component (timeSetupComponent)
 import SlamData.Workspace.Card.Setups.Geo.Marker.Component as GeoMarker
 import SlamData.Workspace.Card.Setups.Geo.Heatmap.Component as GeoHeatmap
-import SlamData.Workspace.Card.Geo.Component as Geo
 import SlamData.Workspace.Card.StructureEditor.Component as StructureEditor
 import SlamData.Workspace.Card.Table.Component (tableComponent)
 import SlamData.Workspace.Card.Tabs.Component (tabsComponent)
@@ -113,6 +112,5 @@ cardComponent = case_
   # on CT._structureEditor (const StructureEditor.component)
   # on CT._geoMarker (const GeoMarker.component)
   # on CT._geoHeatmap (const GeoHeatmap.component)
-  # on CT._geo (const Geo.component)
   # on CT._static (const staticSetupComponent)
   # on CT._viz  (const staticSetupComponent)

@@ -111,7 +111,7 @@ data EvalState
 initialEvalState ∷ CM.AnyCardModel → Maybe EvalState
 initialEvalState = case _ of
   CM.Tabs { tabs } → ActiveTab <$> (guard (Array.length tabs > 0) $> 0)
-  CM.Geo _ →
+  CM.Viz _ →
     Just $ Geo { leaflet: Nothing, build: const $ pure $ [ ] × [ ] , layers: [ ], controls: [ ] }
   _ → Nothing
 

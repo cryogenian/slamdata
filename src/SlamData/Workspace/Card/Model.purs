@@ -36,7 +36,6 @@ import SlamData.Workspace.Card.Draftboard.Layout as Layout
 import SlamData.Workspace.Card.Draftboard.Model as DB
 import SlamData.Workspace.Card.Draftboard.Orientation as Orn
 import SlamData.Workspace.Card.Draftboard.Pane as Pane
-import SlamData.Workspace.Card.Geo.Model as Geo
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Open.Model as Open
 import SlamData.Workspace.Card.Port as Port
@@ -125,7 +124,6 @@ data AnyCardModel
   | SetupGeoHeatmap SetupGeoHeatmap.Model
   | Tabs Tabs.Model
   | StructureEditor StructureEditor.Model
-  | Geo Geo.Model
   | Viz Viz.Model
 
 instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
@@ -169,7 +167,6 @@ instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
       , StructureEditor <$> StructureEditor.genModel
       , SetupGeoMarker <$> SetupGeoMarker.genModel
       , SetupGeoHeatmap <$> SetupGeoHeatmap.genModel
-      , Geo <$> Geo.genModel
       , Viz <$> Viz.gen
       ]
 
@@ -226,7 +223,6 @@ instance eqAnyCardModel ∷ Eq AnyCardModel where
     StructureEditor x, StructureEditor y → x == y
     SetupGeoMarker x, SetupGeoMarker y → SetupGeoMarker.eqModel x y
     SetupGeoHeatmap x, SetupGeoHeatmap y → SetupGeoHeatmap.eqModel x y
-    Geo x, Geo y → Geo.eqModel x y
     Viz x, Viz y → Viz.eq_ x y
     _, _ → false
 
@@ -257,7 +253,6 @@ modelCardType = case _ of
   BuildPunchCard _ → CT.punchCard
   BuildCandlestick _ → CT.candlestick
   BuildParallel _ → CT.parallel
-  Geo _ → CT.geo
   Markdown _ → CT.markdown
   Table _ → CT.table
   Download → CT.download
@@ -299,7 +294,6 @@ encodeCardModel ∷ AnyCardModel → J.Json
 encodeCardModel = case _ of
   Ace mode model → Ace.encode model
   Search txt → J.encodeJson txt
-  Geo model → Geo.encode model
   Markdown model → MD.encode model
   Table model → CA.encode JT.codec model
   Download → J.jsonEmptyObject
@@ -388,7 +382,6 @@ decodeCardModel js = case_
   # on CT._structureEditor (const $ map StructureEditor $ StructureEditor.decode js)
   # on CT._geoMarker (const $ map SetupGeoMarker $ SetupGeoMarker.decode js)
   # on CT._geoHeatmap (const $ map SetupGeoHeatmap $ SetupGeoHeatmap.decode js)
-  # on CT._geo (const $ map Geo $ Geo.decode js)
   # on CT._viz (const $ map Viz $ decodec Viz.codec js)
 
   where
@@ -442,7 +435,6 @@ cardModelOfType (port × varMap) = case_
   # on CT._structureEditor (const $ StructureEditor StructureEditor.initialModel)
   # on CT._geoMarker (const $ SetupGeoMarker SetupGeoMarker.initialModel)
   # on CT._geoHeatmap (const $ SetupGeoHeatmap SetupGeoHeatmap.initialModel)
-  # on CT._geo (const $ Geo Geo.initialModel)
   # on CT._viz (const $ Viz Viz.initial)
 
 
