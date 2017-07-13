@@ -18,16 +18,18 @@ module SlamData.Workspace.PickerUtils
   ( datePickerFormat
   , dateTimePickerFormat
   , timePickerFormat
+  , config
   ) where
 
 import SlamData.Prelude
 
-import Data.DateTime as DT
-import Data.Either (hush)
-import Data.Formatter.DateTime as FD
+import Data.Newtype (over)
+import Halogen.Datepicker.Config as PickerConfig
 import Halogen.Datepicker.Format.Date as DatePickerF
 import Halogen.Datepicker.Format.DateTime as DateTimePickerF
 import Halogen.Datepicker.Format.Time as TimePickerF
+import Halogen.HTML.Core (ClassName(..))
+import SlamData.Render.ClassName (formControl)
 
 dateTimePickerFormat ∷ DateTimePickerF.Format
 dateTimePickerFormat = unsafePartial fromRight
@@ -40,3 +42,10 @@ datePickerFormat = unsafePartial fromRight
 timePickerFormat ∷ TimePickerF.Format
 timePickerFormat = unsafePartial fromRight
   $ TimePickerF.fromString "HH:mm:ss"
+
+config :: PickerConfig.Config
+config = PickerConfig.defaultConfig
+  <> over PickerConfig.Config
+    (_{ input = [ClassName "Picker-input--large", formControl]
+      , choice = [ClassName "Picker-input--large"]
+      }) mempty

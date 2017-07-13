@@ -50,7 +50,7 @@ import SlamData.Wiring as Wiring
 import SlamData.Workspace.FormBuilder.Item.Component.State (FieldName(..), Model, State, getModel, putModel)
 import SlamData.Workspace.FormBuilder.Item.Component.State as State
 import SlamData.Workspace.FormBuilder.Item.FieldType (FieldType(..), _FieldTypeDisplayName, allFieldTypes, fieldTypeToInputType)
-import SlamData.Workspace.PickerUtils (datePickerFormat, dateTimePickerFormat, timePickerFormat)
+import SlamData.Workspace.PickerUtils (config, datePickerFormat, dateTimePickerFormat, timePickerFormat)
 
 
 data Query a
@@ -142,7 +142,7 @@ render state =
         HH.slot'
           cpDateTimePicker
           unit
-          (DateTimePicker.picker dateTimePickerFormat)
+          (DateTimePicker.pickerWithConfig config dateTimePickerFormat)
           unit
           $ HE.input
           $ \(NotifyChange n) →
@@ -151,7 +151,7 @@ render state =
         HH.slot'
           cpDatePicker
           unit
-          (DatePicker.picker datePickerFormat)
+          (DatePicker.pickerWithConfig config datePickerFormat)
           unit
           $ HE.input
           $ \(NotifyChange n) →
@@ -160,7 +160,7 @@ render state =
         HH.slot'
           cpTimePicker
           unit
-          (TimePicker.picker timePickerFormat)
+          (TimePicker.pickerWithConfig config timePickerFormat)
           unit
           $ HE.input
           $ \(NotifyChange n) →

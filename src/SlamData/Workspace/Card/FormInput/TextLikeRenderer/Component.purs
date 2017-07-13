@@ -45,8 +45,9 @@ import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
 import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Model as M
 import SlamData.Workspace.Card.Port (SetupTextLikeFormInputPort)
-import SlamData.Workspace.PickerUtils (datePickerFormat, dateTimePickerFormat, timePickerFormat)
+import SlamData.Workspace.PickerUtils (config, datePickerFormat, dateTimePickerFormat, timePickerFormat)
 import Text.Markdown.SlamDown.Halogen.Component (defaultBrowserFeatures)
+
 
 type State =
   { label ∷ Maybe String
@@ -116,7 +117,7 @@ render state =
           HH.slot'
             cpDateTimePicker
             unit
-            (DateTimePicker.picker dateTimePickerFormat)
+            (DateTimePicker.pickerWithConfig config dateTimePickerFormat)
             unit
             $ HE.input
             $ \(NotifyChange n) →
@@ -125,7 +126,7 @@ render state =
           HH.slot'
             cpDatePicker
             unit
-            (DatePicker.picker datePickerFormat)
+            (DatePicker.pickerWithConfig config datePickerFormat)
             unit
             $ HE.input
             $ \(NotifyChange n) →
@@ -134,7 +135,7 @@ render state =
           HH.slot'
             cpTimePicker
             unit
-            (TimePicker.picker timePickerFormat)
+            (TimePicker.pickerWithConfig config timePickerFormat)
             unit
             $ HE.input
             $ \(NotifyChange n) →

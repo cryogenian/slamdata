@@ -22,18 +22,23 @@
 // .foo.foo.foo is same as .foo but with specifisity 3 instead of 1
 // for more see: https://csswizardry.com/2014/07/hacks-for-dealing-with-specificity/#safely-increasing-specificity
 .Picker-input.Picker-input.Picker-input
-  border: 1px solid hsl(0, 0%, 85%)
   margin: 0
   box-sizing: content-box
   width: auto
 
   &.Picker-input--invalid
     color: red
-    outline-color: red
 
   .Picker--invalid &
     border: 1px solid red
+
+  &.Picker-input--invalid:focus,
+  .Picker--invalid &:focus
     outline-color: red
+    outline-style: auto
+    outline-width: 5px
+    outline-offset: -2px
+
 
   &.Picker-input--length-2[placeholder="MM"]
     width: 2.7em
@@ -41,3 +46,8 @@
   @for $i from 1 through 7
     &.Picker-input--length-#{$i}
       width: 1.2em * $i
+
+  &.Picker-input--large
+    height: 3.2rem;
+    line-height: 3.2rem;
+    padding: 0 .75rem;
