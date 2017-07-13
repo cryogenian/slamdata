@@ -22,19 +22,15 @@ module SlamData.Workspace.Card.Open.Component
 import SlamData.Prelude
 
 import Control.Monad.State as CMS
-
 import Data.Array as A
 import Data.Lens (view)
 import Data.List as L
 import Data.Path.Pathy as Path
 import Data.String as S
-import Data.Unfoldable (unfoldr)
-
 import Halogen as H
 import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-
 import SlamData.FileSystem.Resource as R
 import SlamData.GlobalError as GE
 import SlamData.GlobalMenu.Bus as GMB
@@ -59,8 +55,7 @@ import SlamData.Workspace.MillerColumns.Column.BasicFilter as MCF
 import SlamData.Workspace.MillerColumns.Column.Component as MCC
 import SlamData.Workspace.MillerColumns.Column.Component.Request as MCR
 import SlamData.Workspace.MillerColumns.Component as MC
-
-import Utils.Path (AnyPath)
+import Utils.Path (toPathList)
 
 type ColumnsQuery = MC.Query AnyItem' AnyPath' Void
 type DSL = CC.InnerCardParentDSL State Query ColumnsQuery Unit
@@ -93,24 +88,15 @@ handleMessage = either handleSelection absurd
 
 renderItem ∷ AnyItem' → MCI.BasicItemHTML
 renderItem r =
-  let
-    leaf ∷ Boolean
-    leaf = isLeaf (isRight ∘ R.getPath) r
-  in
-    HH.div
-      [ HP.classes
-          [ HH.ClassName "sd-miller-column-item-inner"
-          , HH.ClassName $ if leaf
-              then "sd-miller-column-item-leaf"
-              else "sd-miller-column-item-node"
-          ]
-      ] $ join
-      [ pure $ HH.span_
-          [ itemGlyph r
-          , HH.text (itemName r)
-          ]
-      , guard (not leaf) $> I.chevronRightSm
-      ]
+  HH.div
+    [ HP.class_ (HH.ClassName "sd-miller-column-item-inner") ]
+    $ join
+        [ pure $ HH.span_
+            [ itemGlyph r
+            , HH.text (itemName r)
+            ]
+        , guard (not isActionable r) $> I.chevronRightSm
+        ]
 
 isLeaf ∷ ∀ a. (a → Boolean) → AnyItem a → Boolean
 isLeaf f = case _ of
@@ -118,6 +104,9 @@ isLeaf f = case _ of
   Variables → false
   Variable _ → true
   Resource r → f r
+
+isActionable ∷ AnyItem' → Boolean
+isActionable = isLeaf (isRight ∘ R.getPath)
 
 itemName ∷ AnyItem' → String
 itemName = case _ of
@@ -208,7 +197,12 @@ columnsComponent ∷ MC.MillerColumnsComponent AnyItem' AnyPath' Void
 columnsComponent =
   MC.component $ MC.ColumnOptions
     { renderColumn: MCC.component
-    , renderItem: MCI.component { label: itemName, render: renderItem }
+    , renderItem:
+        MCI.component
+          { label: itemName
+          , render: renderItem
+          , isActionable
+          }
     , label: itemName
     , isLeaf: isLeaf isRight
     , id: map R.getPath
@@ -279,10 +273,3 @@ pathToColumnData = case _ of
 
 rootDirectory ∷ AnyItem'
 rootDirectory = Resource (R.Directory Path.rootDir)
-
-toPathList ∷ AnyPath → L.List AnyPath
-toPathList res =
-  (unfoldr \r → Tuple r <$> either go go r) res `L.snoc` Left Path.rootDir
-  where
-  go ∷ ∀ b. Path.Path Path.Abs b Path.Sandboxed → Maybe AnyPath
-  go = map (Left ∘ fst) ∘ Path.peel

@@ -29,14 +29,13 @@ import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Eff.Exception (Error)
 import Control.Monad.Fork (class MonadFork, fork)
 import Control.Monad.Free (Free, liftF, foldFree)
-import Control.Monad.Rec.Class (class MonadRec, tailRecM, Step(..))
+import Control.Monad.Rec.Class (tailRecM, Step(..))
 import Control.Parallel (parallel, sequential)
 import Control.UI.Browser (locationObject, newTab)
 
 import DOM (DOM)
 import DOM.HTML.Location (setHash)
 
-import Data.Argonaut as Argonaut
 import Data.Array as Array
 import Data.Exists as Exists
 import Data.Path.Pathy ((</>))
@@ -65,8 +64,6 @@ import SlamData.Wiring as Wiring
 import SlamData.Workspace.Class (class WorkspaceDSL)
 import SlamData.Workspace.Deck.DeckId as DeckId
 import SlamData.Workspace.Routing as Routing
-
-import Utils (hush)
 
 type Slam = SlamM SlamDataEffects
 
@@ -134,14 +131,14 @@ instance workspaceDSLSlamM ∷ WorkspaceDSL (SlamM eff) where
   navigate = SlamM ∘ liftF ∘ flip Navigate unit
 
 instance localStorageDSLSlamM :: LocalStorageDSL (SlamM eff) where
-  persist key value =
-    SlamM $ liftF $ LocalStorage $ Exists.mkExists $ LS.Persist Argonaut.encodeJson key value unit
-  retrieve key =
-    SlamM $ liftF $ LocalStorage $ Exists.mkExists $ LS.Retrieve Argonaut.decodeJson key id
+  persist encode key value =
+    SlamM $ liftF $ LocalStorage $ Exists.mkExists $ LS.Persist encode key value unit
+  retrieve decode key =
+    SlamM $ liftF $ LocalStorage $ Exists.mkExists $ LS.Retrieve decode key id
   remove key =
     SlamM $ liftF $ LocalStorage $ Exists.mkExists $ LS.Remove key unit
-  awaitChange key =
-    SlamM $ liftF $ LocalStorage $ Exists.mkExists $ LS.AwaitChange Argonaut.decodeJson key id
+  awaitChange decode key =
+    SlamM $ liftF $ LocalStorage $ Exists.mkExists $ LS.AwaitChange decode key id
 
 newtype SlamA eff a = SlamA (FreeAp (SlamM eff) a)
 

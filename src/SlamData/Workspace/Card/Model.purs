@@ -17,9 +17,11 @@ limitations under the License.
 module SlamData.Workspace.Card.Model where
 
 import SlamData.Prelude
+
 import Data.Argonaut ((:=), (~>), (.?))
 import Data.Argonaut as J
 import Data.Array as Array
+import Data.Codec.Argonaut as CA
 import Data.Lens (Traversal', wander, Prism', prism')
 import Data.List as L
 import Data.Path.Pathy (fileName, runFileName)
@@ -79,6 +81,7 @@ import SlamData.Workspace.Card.Variables.Model as Variables
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
+import Utils (decodec)
 
 data AnyCardModel
   = Ace (CT.Ace ()) Ace.Model
@@ -305,13 +308,13 @@ encodeCardModel = case _ of
   Chart model → Chart.encode model
   Geo model → Geo.encode model
   Markdown model → MD.encode model
-  Table model → JT.encode model
+  Table model → CA.encode JT.codec model
   Download → J.jsonEmptyObject
   Variables model → Variables.encode model
   Troubleshoot → J.jsonEmptyObject
   Cache model → J.encodeJson model
   Open res → Open.encode res
-  DownloadOptions model → DLO.encode model
+  DownloadOptions model → CA.encode DLO.codec model
   Draftboard model → DB.encode model
   BuildMetric model → BuildMetric.encode model
   BuildSankey model → BuildSankey.encode model
@@ -340,7 +343,7 @@ encodeCardModel = case _ of
   SetupDatetime model → SetupDatetime.encode model
   SetupStatic model → SetupStatic.encode model
   FormInput model → FormInput.encode model
-  Tabs model → Tabs.encode model
+  Tabs model → CA.encode Tabs.codec model
   StructureEditor model → StructureEditor.encode model
   SetupGeoMarker model → SetupGeoMarker.encode model
   SetupGeoHeatmap model → SetupGeoHeatmap.encode model
@@ -382,15 +385,15 @@ decodeCardModel js = case_
   # on CT._form (const $ map FormInput $ FormInput.decode js)
   # on CT._chart (const $ map Chart $ Chart.decode js)
   # on CT._markdown (const $ map Markdown $ MD.decode js)
-  # on CT._table (const $ map Table $ JT.decode js)
+  # on CT._table (const $ map Table $ decodec JT.codec js)
   # on CT._download (const $ pure Download)
   # on CT._variables (const $ map Variables $ Variables.decode js)
   # on CT._troubleshoot (const $ pure Troubleshoot)
   # on CT._cache (const $ map Cache $ J.decodeJson js)
   # on CT._open (const $ map Open $ decodeOpen js)
-  # on CT._downloadOptions (const $ map DownloadOptions $ DLO.decode js)
+  # on CT._downloadOptions (const $ map DownloadOptions $ decodec DLO.codec js)
   # on CT._draftboard (const $ map Draftboard $ DB.decode js)
-  # on CT._tabs (const $ map Tabs $ Tabs.decode js)
+  # on CT._tabs (const $ map Tabs $ decodec Tabs.codec js)
   # on CT._structureEditor (const $ map StructureEditor $ StructureEditor.decode js)
   # on CT._geoMarker (const $ map SetupGeoMarker $ SetupGeoMarker.decode js)
   # on CT._geoHeatmap (const $ map SetupGeoHeatmap $ SetupGeoHeatmap.decode js)

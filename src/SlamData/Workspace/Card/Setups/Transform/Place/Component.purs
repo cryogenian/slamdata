@@ -21,7 +21,6 @@ import Control.Monad.Eff.Random (randomInt)
 import Data.Array as Array
 import Data.Foldable as F
 import Data.Lens as Lens
-import Data.Profunctor (dimap)
 import Halogen as H
 import Halogen.Component.Profunctor (ProComponent(..))
 import Halogen.HTML as HH

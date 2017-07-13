@@ -16,16 +16,15 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Table.Model
   ( Model
-  , encode
-  , decode
   , emptyModel
   , genModel
   , eqModel
+  , codec
   ) where
 
 import SlamData.Prelude
 
-import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
+import Data.Codec.Argonaut.Compat as CA
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
 
@@ -51,14 +50,7 @@ emptyModel =
   , pageSize: Nothing
   }
 
-encode ∷ Model → Json
-encode r
-   = "page" := r.page
-  ~> "pageSize" := r.pageSize
-  ~> jsonEmptyObject
-
-decode ∷ Json → Either String Model
-decode = decodeJson >=> \obj →
-  { page: _, pageSize: _ }
-    <$> obj .? "page"
-    <*> obj .? "pageSize"
+codec ∷ CA.JsonCodec Model
+codec = CA.object "Table model" $ CA.record
+  # CA.recordProp (SProxy ∷ SProxy "page") (CA.maybe CA.int)
+  # CA.recordProp (SProxy ∷ SProxy "pageSize") (CA.maybe CA.int)

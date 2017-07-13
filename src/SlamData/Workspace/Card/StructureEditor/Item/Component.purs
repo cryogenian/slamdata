@@ -64,9 +64,12 @@ component' path item =
     in
       HH.li
         [ HP.title label
+        , HP.classes $ join
+            [ pure (HH.ClassName "sd-miller-column-item")
+            , guard selected $> HH.ClassName "selected"
+            ]
         , HE.onClick $ HE.input_ Selected
         , ARIA.label ("Select " <> label)
-        , HP.classes $ (guard selected $> HH.ClassName "selected")
         ]
         [ renderItem item ]
 
@@ -94,10 +97,9 @@ renderItem ci =
         , HCSS.style $ CSS.width (CSS.pct (unwrap (columnItemWeight ci) * 100.0))
         ]
         []
-    , HH.div_
-        [ HH.span_
-            [ columnItemIcon ci
-            , HH.text (columnItemLabel ci)
-            ]
+    , HH.div
+        [ HP.class_ (H.ClassName "sd-structure-editor-item-label") ]
+        [ columnItemIcon ci
+        , HH.text (columnItemLabel ci)
         ]
     ]
