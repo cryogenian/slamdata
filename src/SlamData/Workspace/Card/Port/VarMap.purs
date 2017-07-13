@@ -93,8 +93,7 @@ newtype VarMap = VarMap
   , scope ∷ Map.Map Var VarMapPtr
   }
 
-instance eqVarMap ∷ Eq VarMap where
-  eq (VarMap v1) (VarMap v2) = v1.heap ≡ v2.heap
+derive instance eqVarMap ∷ Eq VarMap
 
 -- | A VarMap passed through the URL - the VarMapValues are left unparsed until
 -- | they are unified with the Variables card for the deck so that values can
@@ -192,7 +191,7 @@ fromFoldable ∷ ∀ f. Foldable f ⇒ f (CID.CardId × Var × VarMapValue) → 
 fromFoldable = foldl (\vm (cid × var × val) → insert cid var val vm) empty
 
 union ∷ CID.CardId → String → VarMap → VarMap → VarMap
-union source namespace (VarMap child) (VarMap into) =
+union source namespace childVarMap@(VarMap child) intoVarMap@(VarMap into) =
   let
     -- If we have a namespace, we should rename all the variables in the scope.
     -- They still point to the same references though.
@@ -203,34 +202,37 @@ union source namespace (VarMap child) (VarMap into) =
           # Map.toUnfoldable
           # asArray
           # map (\(Var k × v) → Var (namespace <> "." <> k) × v)
+
+    intoHeap =
+      Map.unionWith Map.union child.heap into.heap
+
+    initVarMap =
+      VarMap { heap: intoHeap, scope: into.scope }
   in
     -- When we go to union two VarMapsValues, we need to create a fresh binding
     -- for the card in the value map. Otherwise it can just point to the old
     -- value.
     foldl
       case _, _ of
-        VarMap vm, var × ptr
-          | Just ptr' ← lookupPtr var (VarMap into)
-          , ptr ≠ ptr'
-          , Just val ← lookupValue ptr (VarMap child)
-          , Just val' ← lookupValue ptr' (VarMap into)
+        accVarMap, childVar × childPtr
+          | Just intoPtr ← lookupPtr childVar intoVarMap
+          , childPtr ≠ intoPtr
+          , Just childVal ← lookupValue childPtr childVarMap
+          , Just intoVal ← lookupValue intoPtr intoVarMap
           →
             let
-              val'' = case val, val' of
+              newVal = case childVal, intoVal of
                 Union a1, Union a2 → Union (a1 <> a2)
-                Union a1, _ → Union (A.snoc a1 ptr')
-                _, Union a2 → Union (A.cons ptr a2)
-                _, _ → Union [ ptr, ptr' ]
+                Union a1, _ → Union (A.snoc a1 intoPtr)
+                _, Union a2 → Union (A.cons childPtr a2)
+                _, _ → Union [ childPtr, intoPtr ]
             in
-              insert source var val'' (VarMap vm)
-        vm, var × ptr
-          | Just val ← lookupValue ptr (VarMap child)
-          → insert (snd ptr) var val vm
-        vm, _ → vm
-    (VarMap
-      { heap: Map.unionWith Map.union child.heap into.heap
-      , scope: into.scope
-      })
+              insert source childVar newVal accVarMap
+        accVarMap, childVar × childPtr
+          | Just childVal ← lookupValue childPtr childVarMap
+          → insert (snd childPtr) childVar childVal accVarMap
+        accVarMap, _ → accVarMap
+    initVarMap
     childScope
 
 downloadUrl ∷ Maybe String → Path.AbsDir Path.Sandboxed → Resource → URI.AbsoluteURI
