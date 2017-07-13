@@ -63,7 +63,7 @@ eq_ r1 = V.default false
   # V.on _static (V.on _static tt ff r1)
   # V.on _metric (V.on _metric tt ff r1)
   # V.on _chart (V.on _chart tt ff r1)
-  # V.on _geo (V.on _geo tt ff r1)
+  # V.on _geo (\r2 → V.on _geo (GM.eq_ r2) ff r1)
 
 gen ∷ Gen.Gen Model
 gen = Gen.oneOf (pure $ V.inj _static unit)
