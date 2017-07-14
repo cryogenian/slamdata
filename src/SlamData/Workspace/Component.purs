@@ -58,7 +58,7 @@ import SlamData.Notification.Component as NC
 import SlamData.Quasar as Quasar
 import SlamData.Quasar.Auth.Authentication as Authentication
 import SlamData.Quasar.Error as QE
-import SlamData.Render.Icon as I
+import SlamData.Render.Common as RC
 import SlamData.Wiring as Wiring
 import SlamData.Wiring.Cache as Cache
 import SlamData.Workspace.AccessType as AT
@@ -165,7 +165,7 @@ render accessType state =
         HH.div
           [ HP.class_ $ HH.ClassName "sd-pending-overlay" ]
           [ HH.div_
-              [ I.spinner
+              [ RC.spinner
               , HH.span_ [ HH.text "Please wait while the workspace loads" ]
               ]
           ]
