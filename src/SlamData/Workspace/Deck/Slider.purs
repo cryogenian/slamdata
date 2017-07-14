@@ -23,34 +23,31 @@ module SlamData.Workspace.Deck.Slider
 
 import SlamData.Prelude
 
+import CSS (CSS)
 import Data.Array as Array
 import Data.Int as Int
 import Data.Lens ((.~), (?~))
 import Data.Lens as Lens
 import Data.List ((:))
-
 import DOM.Event.MouseEvent as ME
-
-import CSS (CSS)
-
 import Halogen as H
-import Halogen.HTML.CSS (style)
-import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
+import Halogen.HTML.CSS (style)
+import Halogen.HTML.Elements.Keyed as HK
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties (IProp())
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-
 import SlamData.Hint as Hint
 import SlamData.Render.ClassName as CN
 import SlamData.Render.Icon as I
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId as CardId
 import SlamData.Workspace.Card.Component.CSS as CardCSS
-import SlamData.Workspace.Card.InsertableCardType as ICT
-import SlamData.Workspace.Card.Factory as Factory
-import SlamData.Workspace.Card.Next.Component as Next
 import SlamData.Workspace.Card.Error.Component as Error
+import SlamData.Workspace.Card.Factory as Factory
+import SlamData.Workspace.Card.InsertableCardType as ICT
+import SlamData.Workspace.Card.Next.Component as Next
 import SlamData.Workspace.Card.Pending.Component as Pending
 import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML, DeckDSL)
 import SlamData.Workspace.Deck.Component.ChildSlot as ChildSlot
@@ -61,22 +58,21 @@ import SlamData.Workspace.Deck.Component.State (State)
 import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.Gripper as Gripper
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef(..))
-
-import Utils as Utils
 import Utils.CSS as CSSUtils
 import Utils.DOM as DOM
 
 render ∷ DeckOptions → (DeckOptions → DeckComponent) → State → Boolean → DeckHTML
 render opts deckComponent st visible =
-  HH.div
+  HH.div sliderProps (Array.mapWithIndex maybeRenderCard st.displayCards)
+
+  where
+  sliderProps =
     [ HP.classes ([ CN.cardSlider ] ⊕ (guard (not visible) $> CN.invisible))
-    , HE.onTransitionEnd $ HE.input_ DCQ.StopSliderTransition
     , style do
         cardSliderTransformCSS (DCS.activeCardIndex st) st.sliderTranslateX
         cardSliderTransitionCSS st.sliderTransition
-    ]
-    (Array.mapWithIndex maybeRenderCard st.displayCards)
-  where
+    ] <> (guard st.sliderTransition $> HE.onTransitionEnd (HE.input_ DCQ.StopSliderTransition))
+
   activeIndex =
     DCS.activeCardIndex st
 
@@ -255,27 +251,30 @@ renderCard
   → DCS.DisplayCard
   → DeckHTML
 renderCard opts deckComponent st activeIndex index card =
-  HH.div
+  -- We need to key these elements, as DOM reinsertion can cause the
+  -- the Card component measurements to report 0x0 in certain cases
+  -- when initializing.
+  HK.div
     [ HP.classes classes
     , style $ cardPositionCSS index
     ]
     if opts.accessType == AT.ReadOnly
     then
-      [ HH.div (cardProperties st card) [ cardComponent ]
-      , loadingPanel
+      [ "card" × HH.div (cardProperties st card) [ cardComponent ]
+      , "loading" × loadingPanel
       ]
     else
       Gripper.renderGrippers
         (cardSelected st card)
         (isJust st.initialSliderX)
         (Gripper.gripperDefsForCard st.displayCards card)
-        ⊕ [ HH.div
+        ⊕ [ "card" × HH.div
               (cardProperties st card)
-              $ fold
+              (fold
                  [ pure cardComponent
                  , guard (st.presentAccessNextActionCardHint && isLastCard) $> renderHint
-                 ]
-          , loadingPanel
+                 ])
+          , "loading" × loadingPanel
           ]
   where
   cardComponent = case card of
@@ -301,7 +300,7 @@ renderCard opts deckComponent st activeIndex index card =
       hintText
 
   insertableCardType ∷ Maybe ICT.InsertableCardType
-  insertableCardType = ICT.fromCardType ∘ _.cardType <$> Utils.hush card
+  insertableCardType = ICT.fromCardType ∘ _.cardType <$> hush card
 
   outputTypes ∷ Array ICT.InsertableCardIOType
   outputTypes = fold $ ICT.outputsFor <$> insertableCardType
@@ -361,11 +360,15 @@ renderDef opts deckComponent st active { cardType, cardId } =
       , displayCursor: opts.deckId : opts.displayCursor
       , cardId
       }
+    cardInput =
+      { active
+      , width: st.cardDimensions.width
+      , height: st.cardDimensions.height
+      }
     component =
       Factory.cardComponent cardType cardOpts
   in
-    HH.slot' ChildSlot.cpCard cardId component { active } absurd
-
+    HH.slot' ChildSlot.cpCard cardId component cardInput absurd
 
 loadingPanel ∷ DeckHTML
 loadingPanel =

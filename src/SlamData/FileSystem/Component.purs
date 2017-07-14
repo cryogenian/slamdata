@@ -22,7 +22,7 @@ module SlamData.FileSystem.Component
   ) where
 
 import SlamData.Prelude
-import CSS as CSS
+
 import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Fork (fork)
 import Control.Monad.Rec.Class (tailRecM, Step(Done, Loop))
@@ -30,8 +30,8 @@ import Control.UI.Browser (setLocation, locationString, clearValue)
 import Control.UI.Browser as Browser
 import Control.UI.Browser.Event as Be
 import Control.UI.File as Cf
-import DOM.Event.Event as DEE
-import Data.Argonaut (jsonParser, jsonEmptyObject)
+import CSS as CSS
+import Data.Argonaut as J
 import Data.Array as Array
 import Data.Coyoneda (liftCoyoneda)
 import Data.Foldable as F
@@ -42,6 +42,7 @@ import Data.Path.Pathy (rootDir, (</>), dir, file, parentDir, printPath)
 import Data.String as S
 import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
+import DOM.Event.Event as DEE
 import Halogen as H
 import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML as HH
@@ -53,13 +54,15 @@ import Quasar.Advanced.QuasarAF as QA
 import Quasar.Advanced.Types as QAT
 import Quasar.Data (QData(..))
 import Quasar.Mount as QM
+import SlamData.AdminUI.Component as AdminUI
+import SlamData.AdminUI.Types as AdminUI.Types
 import SlamData.Common.Sort (notSort)
 import SlamData.Config as Config
 import SlamData.Dialog.Render as RenderDialog
 import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
-import SlamData.FileSystem.Component.CSS as FileSystemClassNames
 import SlamData.FileSystem.Component.ChildSlot (ChildQuery, ChildSlot)
 import SlamData.FileSystem.Component.ChildSlot as CS
+import SlamData.FileSystem.Component.CSS as FileSystemClassNames
 import SlamData.FileSystem.Component.Query (Query(..))
 import SlamData.FileSystem.Component.Render (sorting, toolbar)
 import SlamData.FileSystem.Component.State (State, initialState)
@@ -71,10 +74,10 @@ import SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State as Couchbase
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component.State as MarkLogic
 import SlamData.FileSystem.Dialog.Mount.Module.Component.State as Module
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MongoDB
-import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
 import SlamData.FileSystem.Dialog.Mount.SparkFTP.Component.State as SparkFTP
 import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State as SparkHDFS
 import SlamData.FileSystem.Dialog.Mount.SparkLocal.Component.State as SparkLocal
+import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Listing.Item (Item(..), itemResource, sortItem)
 import SlamData.FileSystem.Listing.Item.Component as Item
@@ -98,12 +101,11 @@ import SlamData.Quasar.Class (liftQuasar)
 import SlamData.Quasar.Data (makeFile, save) as API
 import SlamData.Quasar.FS (children, delete, getNewName) as API
 import SlamData.Quasar.Mount (mountInfo) as API
-import SlamData.Render.Common (content, row)
 import SlamData.Render.ClassName as CN
+import SlamData.Render.Common (content, row)
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Action (Action(..), AccessType(..))
 import SlamData.Workspace.Routing (mkWorkspaceURL)
-
 import Utils (finally)
 import Utils.DOM as DOM
 import Utils.Path (DirPath, getNameStr)
@@ -128,7 +130,7 @@ render state@{ version, sort, salt, path } =
     [ HP.classes [ FileSystemClassNames.filesystem ]
     , HE.onClick (HE.input_ DismissSignInSubmenu)
     ]
-    $ [ HH.slot' CS.cpHeader unit Header.component unit absurd
+    $ [ HH.slot' CS.cpHeader unit Header.component unit $ HE.input HandleHeader
       , content
           [ HH.slot' CS.cpSearch unit Search.component unit $ HE.input HandleSearch
           , HH.div_
@@ -141,6 +143,7 @@ render state@{ version, sort, salt, path } =
       , HH.slot' CS.cpDialog unit Dialog.component unit $ HE.input HandleDialog
       , HH.slot' CS.cpNotify unit (NC.component NC.Hidden) unit
           $ HE.input HandleNotifications
+      , HH.slot' CS.cpAdminUI unit AdminUI.component unit $ HE.input HandleAdminUI
       ]
     <> (guard state.presentIntroVideo $> renderIntroVideo)
 
@@ -272,7 +275,7 @@ eval = case _ of
         hiddenFile = dirPath </> file (Config.folderMark)
         cleanupItem = void $ H.lift $ H.query' CS.cpListing unit $ H.action $ Listing.Filter (_ ≠ dirItem)
       _ ← H.lift $ H.query' CS.cpListing unit $ H.action $ Listing.Add dirItem
-      finally cleanupItem $ ExceptT $ API.save hiddenFile jsonEmptyObject
+      finally cleanupItem $ ExceptT $ API.save hiddenFile J.jsonEmptyObject
       pure dirRes
     case result of
       Left err → case GE.fromQError err of
@@ -346,6 +349,10 @@ eval = case _ of
         presentMountHint items path
         resort
         pure next
+  HandleDialog (DialogMessage.ResourceDelete res) next → do
+    remove res
+    hideDialog
+    pure next
   HandleDialog DialogMessage.Dismiss next →
     pure next
   HandleDialog (DialogMessage.MountSave originalMount) next → do
@@ -381,6 +388,11 @@ eval = case _ of
     mount ← R.Mount ∘ R.Database <$> H.gets _.path
     remove mount
     H.liftEff Browser.reload
+    pure next
+  HandleHeader (Header.GlobalMenuMessage GlobalMenu.OpenAdminUI) next → do
+    _ ← H.query' CS.cpAdminUI unit (H.action AdminUI.Types.Open)
+    pure next
+  HandleHeader _ next →
     pure next
   HandleNotifications NC.ExpandGlobalMenu next → do
     gripperState ← queryHeaderGripper $ H.request Gripper.GetState
@@ -421,6 +433,10 @@ eval = case _ of
   HandleSignInMessage message next → do
     when (message ≡ GlobalMenu.SignInSuccess) (H.liftEff Browser.reload)
     pure next
+  HandleAdminUI message next → case message of
+    AdminUI.Types.Closed → do
+      _ ← queryHeaderGripper $ H.action $ Gripper.Close
+      pure next
 
 handleItemMessage ∷ Item.Message → DSL Unit
 handleItemMessage = case _ of
@@ -449,7 +465,7 @@ handleItemMessage = case _ of
     flip getDirectories rootDir \x →
       void $ H.query' CS.cpDialog unit $ H.action $ Dialog.AddDirsToRename x
   Item.Remove res →
-    remove res
+    showDialog $ Dialog.Remove res
   Item.Share res → do
     path ← H.gets _.path
     loc ← map (_ ⊕ "/") $ H.liftEff locationString
@@ -520,18 +536,18 @@ remove res = do
 
 dismissMountHint ∷ DSL Unit
 dismissMountHint = do
-  LS.persist LSK.dismissedMountHintKey true
+  LS.persist J.encodeJson LSK.dismissedMountHintKey true
   H.modify $ State._presentMountHint .~ false
 
 dismissIntroVideo ∷ DSL Unit
 dismissIntroVideo = do
-  LS.persist LSK.dismissedIntroVideoKey true
+  LS.persist J.encodeJson LSK.dismissedIntroVideoKey true
   H.modify $ State._presentIntroVideo .~ false
   void $ H.query' CS.cpNotify unit $ H.action $ NC.UpdateRenderMode NC.Notifications
 
 dismissedIntroVideoBefore ∷ DSL Boolean
 dismissedIntroVideoBefore =
-  either (const false) id <$> LS.retrieve LSK.dismissedIntroVideoKey
+  either (const false) id <$> LS.retrieve J.decodeJson LSK.dismissedIntroVideoKey
 
 uploadFileSelected ∷ Cf.File → DSL Unit
 uploadFileSelected f = do
@@ -568,7 +584,7 @@ uploadFileSelected f = do
   isApplicationJSON ∷ String → Boolean
   isApplicationJSON content'
     -- Parse if content is small enough
-    | S.length content' < 1048576 = isRight $ jsonParser content'
+    | S.length content' < 1048576 = isRight $ J.jsonParser content'
     -- Or check if its first/last characters are [/]
     | otherwise =
         let trimmed = S.trim content'
@@ -598,7 +614,7 @@ presentMountHint xs path = do
   where
   dismissedBefore ∷ DSL (Either String Boolean)
   dismissedBefore =
-    LS.retrieve LSK.dismissedMountHintKey
+    LS.retrieve J.decodeJson LSK.dismissedMountHintKey
 
 dismissSignInSubmenu ∷ DSL Unit
 dismissSignInSubmenu =

@@ -23,7 +23,7 @@ type CardEvalStep =
 
 card1 ∷ CardEvalStep
 card1 =
-  { source: CID.legacyFromInt 1
+  { source: CID.unsafeFromInt 1
   , query: query """
       SELECT * FROM :resource
       WHERE country = :country AND type = :type
@@ -32,7 +32,7 @@ card1 =
 
 card2 ∷ CardEvalStep
 card2 =
-  { source: CID.legacyFromInt 2
+  { source: CID.unsafeFromInt 2
   , query: query """
       SELECT row.country AS country, row.type AS type FROM :resource AS row
       WHERE foo = :country
@@ -43,7 +43,7 @@ card2 =
 
 card3 ∷ CardEvalStep
 card3 =
-  { source: CID.legacyFromInt 3
+  { source: CID.unsafeFromInt 3
   , query: query """
       SELECT DISTINCT(gender) FROM :resource
     """
@@ -65,9 +65,9 @@ main ∷ Eff (console ∷ Console.CONSOLE) Unit
 main = do
   let
     vm1 = VM.fromFoldable
-      [ CID.legacyFromInt 0 × VM.Var "country" × VM.Expr (sql "\"USA\"")
-      , CID.legacyFromInt 0 × VM.Var "type" × VM.Expr (sql "\"Gold\"")
-      , CID.legacyFromInt 0 × VM.Var "resource" × VM.Expr (sql "`/mongodb/olympics`")
+      [ CID.unsafeFromInt 0 × VM.Var "country" × VM.Expr (sql "\"USA\"")
+      , CID.unsafeFromInt 0 × VM.Var "type" × VM.Expr (sql "\"Gold\"")
+      , CID.unsafeFromInt 0 × VM.Var "resource" × VM.Expr (sql "`/mongodb/olympics`")
       ]
     q1 × vm2 = runCard vm1 card1
     q2 × vm3 = runCard vm2 card2

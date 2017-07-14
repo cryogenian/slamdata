@@ -18,12 +18,14 @@ module SlamData.Workspace.Card.DownloadOptions.Component.State where
 
 import SlamData.Prelude
 
-import Control.Monad.Throw (note)
-import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
+import Data.Argonaut as J
+import Data.Codec ((<~<), (>~>))
+import Data.Codec as C
+import Data.Codec.Argonaut.Compat as CA
+import Data.Codec.Argonaut.Migration as CAM
 import Data.Lens (Lens', lens)
-
+import Data.Path.Pathy as Pathy
 import SlamData.Download.Model as D
-
 import Utils.Path as PU
 
 type State =
@@ -51,22 +53,23 @@ initialState =
 _options ∷ ∀ a r. Lens' {options ∷ a|r} a
 _options = lens (_.options) (_{options = _})
 
-encode :: State -> Json
-encode s
-   = "compress" := s.compress
-  ~> "options" := s.options
-  ~> "targetName" := s.targetName
-  ~> "source" := (PU.printAnyFilePath <$> s.source)
-  ~> jsonEmptyObject
+codec ∷ CA.JsonCodec State
+codec = migrationCodec >~> CA.object "Download options model"
+  (CA.record
+    # CA.recordProp (SProxy ∷ SProxy "compress") CA.boolean
+    # CA.recordProp (SProxy ∷ SProxy "options") (CA.either D.codecCSVOptions D.codecJSONOptions)
+    # CA.recordProp (SProxy ∷ SProxy "targetName") (CA.maybe CA.string)
+    # CA.recordProp (SProxy ∷ SProxy "source") (CA.maybe codecFilePath))
+  where
+    -- added in 4.something
+    migrationCodec ∷ CA.JsonCodec J.Json
+    migrationCodec = CAM.addDefaultField "targetName" nothingJson
+      where
+      nothingJson ∷ J.Json
+      nothingJson = CA.encode (CA.maybe CA.json) Nothing
 
-decode :: Json → Either String State
-decode = decodeJson >=> \obj → do
-  compress ← obj .? "compress"
-  options ← obj .? "options"
-  targetName ← obj .? "targetName" <|> pure Nothing
-  source ← traverse (note "Invalid file path" ∘ PU.parseAnyFilePath) =<< obj .? "source"
-  pure { compress, options, targetName, source }
-
-parsePath ∷ String → Either String PU.FilePath
-parsePath =
-  maybe (Left "could not parse source file path") Right ∘ PU.parseFilePath
+codecFilePath ∷ CA.JsonCodec PU.AnyFilePath
+codecFilePath = C.basicCodec dec enc <~< CA.string
+  where
+  dec s = note (CA.UnexpectedValue (J.fromString s)) (PU.parseAnyFilePath s)
+  enc = PU.printAnyFilePath

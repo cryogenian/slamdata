@@ -79,8 +79,6 @@ import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
 
-import Utils (hush)
-
 data DisplayMode
   = FrontSide
   | FlipSide
@@ -139,6 +137,7 @@ type State =
   , focused ∷ Boolean
   , finalized ∷ Boolean
   , responsiveSize ∷ ResponsiveSize
+  , cardDimensions ∷ { width ∷ Number, height ∷ Number }
   , fadeTransition ∷ Fade
   , providers ∷ Array ProviderR
   , focusDeckHintDismissed ∷ Boolean
@@ -163,6 +162,7 @@ initialState =
   , focused: false
   , finalized: false
   , responsiveSize: XLarge
+  , cardDimensions: { width: 0.0, height: 0.0 }
   , fadeTransition: FadeNone
   , providers: mempty
   , focusDeckHintDismissed: true

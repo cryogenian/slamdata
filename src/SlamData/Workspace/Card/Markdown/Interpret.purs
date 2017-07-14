@@ -34,8 +34,6 @@ import SlamData.Workspace.Card.Port.VarMap as VM
 import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Halogen.Component.State as SDS
 
-import Utils (hush)
-
 -- The use of this function in formFieldValueToVarMapValue is suspicious, and
 -- lead me to think that we have not arranged our data structures properly. In
 -- particular, we need to decide what it means to have a collection of SQL^2

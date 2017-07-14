@@ -17,9 +17,10 @@ limitations under the License.
 module SlamData.FileSystem.Dialog.Component.Message where
 
 import Data.Maybe (Maybe)
-import SlamData.FileSystem.Resource as Resource
+import SlamData.FileSystem.Resource as R
 
 data Message
   = Dismiss
-  | MountSave (Maybe Resource.Mount)
+  | MountSave (Maybe R.Mount)
   | MountDelete
+  | ResourceDelete R.Resource

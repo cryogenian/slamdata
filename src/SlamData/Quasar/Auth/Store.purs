@@ -17,6 +17,8 @@ limitations under the License.
 module SlamData.Quasar.Auth.Store where
 
 import SlamData.Prelude
+
+import Data.Argonaut as J
 import OIDC.Crypt.Types as OIDCT
 import Quasar.Advanced.Types as QAT
 import SlamData.LocalStorage.Class as LS
@@ -24,11 +26,11 @@ import SlamData.LocalStorage.Keys as LSK
 
 storeIdToken ∷ ∀ m. (LS.LocalStorageDSL m) ⇒ String → Either String OIDCT.IdToken → m Unit
 storeIdToken keySuffix idToken =
-  LS.persist (LSK.idTokenLocalStorageKey keySuffix) idToken
+  LS.persist J.encodeJson (LSK.idTokenLocalStorageKey keySuffix) idToken
 
 storeProvider ∷ ∀ m. (LS.LocalStorageDSL m) ⇒ String → QAT.Provider → m Unit
 storeProvider =
-  LS.persist ∘ LSK.providerLocalStorageKey
+  LS.persist J.encodeJson ∘ LSK.providerLocalStorageKey
 
 removeProvider ∷ ∀ m. (LS.LocalStorageDSL m) ⇒ String → m Unit
 removeProvider =
@@ -36,15 +38,15 @@ removeProvider =
 
 storeKeyString ∷ ∀ m. (LS.LocalStorageDSL m) ⇒ String → OIDCT.KeyString → m Unit
 storeKeyString keySuffix =
-  LS.persist (LSK.keyStringLocalStorageKey keySuffix)
+  LS.persist J.encodeJson (LSK.keyStringLocalStorageKey keySuffix)
 
 storeSignedOutBefore ∷ ∀ m. (LS.LocalStorageDSL m) ⇒ m Unit
 storeSignedOutBefore =
-  LS.persist LSK.signedOutBefore true
+  LS.persist J.encodeJson LSK.signedOutBefore true
 
 storeUnhashedNonce ∷ ∀ m. (LS.LocalStorageDSL m) ⇒ String → OIDCT.UnhashedNonce → m Unit
 storeUnhashedNonce keySuffix =
-  LS.persist (LSK.nonceLocalStorageKey keySuffix)
+  LS.persist J.encodeJson (LSK.nonceLocalStorageKey keySuffix)
 
 removeIdToken ∷ ∀ m. (LS.LocalStorageDSL m) ⇒ String → m Unit
 removeIdToken =

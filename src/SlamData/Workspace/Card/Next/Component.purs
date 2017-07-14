@@ -25,13 +25,11 @@ module SlamData.Workspace.Card.Next.Component
 import SlamData.Prelude
 
 import CSS as CSS
-
+import Data.Argonaut as J
 import Data.Lens ((.~))
-
 import Halogen as H
-import Halogen.HTML.CSS as HCSS
 import Halogen.HTML as HH
-
+import Halogen.HTML.CSS as HCSS
 import SlamData.ActionList.Component as ActionList
 import SlamData.ActionList.Filter.Component as ActionFilter
 import SlamData.Hint as Hint
@@ -111,11 +109,11 @@ possibleToGetTo input =
 
 getDismissedAddCardHintBefore ∷ DSL Boolean
 getDismissedAddCardHintBefore =
-  either (const $ false) id <$> LS.retrieve LSK.dismissedAddCardHintKey
+  either (const $ false) id <$> LS.retrieve J.decodeJson LSK.dismissedAddCardHintKey
 
 storeDismissedAddCardHint ∷ DSL Unit
 storeDismissedAddCardHint =
-  LS.persist LSK.dismissedAddCardHintKey true
+  LS.persist J.encodeJson LSK.dismissedAddCardHintKey true
 
 dismissAddCardHint ∷ DSL Unit
 dismissAddCardHint =
