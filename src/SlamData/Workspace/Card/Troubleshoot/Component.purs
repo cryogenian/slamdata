@@ -17,23 +17,22 @@ limitations under the License.
 module SlamData.Workspace.Card.Troubleshoot.Component where
 
 import SlamData.Prelude
-
+import Data.Array as Array
 import Data.Map as Map
-
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-
 import SlamData.Render.ClassName as CN
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
+import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port.VarMap as VM
 import SlamData.Workspace.Card.Troubleshoot.Component.Query (Query)
 import SlamData.Workspace.Card.Troubleshoot.Component.State (State, initialState)
 import SlamData.Workspace.LevelOfDetails as LOD
-
 import SqlSquared as Sql
+import Utils.Path as PU
 
 type DSL = CC.InnerCardDSL State Query
 type HTML = CC.InnerCardHTML Query
@@ -70,12 +69,15 @@ render { varMap } =
     renderItem (VM.Var name) val =
       [ HH.tr_
           [ HH.td_ [ HH.text name ]
-          , HH.td_ case val of
-              VM.Expr expr → [ HH.code_ [ HH.text $ Sql.print expr ] ]
-              -- TODO
-              _ → []
+          , HH.td_ $ renderCell val
           ]
       ]
+
+    renderCell ∷ VM.VarMapValue → Array HTML
+    renderCell = case _ of
+      VM.Expr expr → [ HH.code_ [ HH.text $ Sql.print expr ] ]
+      VM.Resource res → [ HH.text $ PU.printAnyFilePath $ Port.filePath res ]
+      VM.Union ptrs → HH.div_ ∘ renderCell <$> Array.mapMaybe (flip VM.lookupValue varMap) ptrs
 
 evalCard ∷ CC.CardEvalQuery ~> DSL
 evalCard = case _ of
