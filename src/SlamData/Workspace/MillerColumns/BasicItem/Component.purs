@@ -38,6 +38,7 @@ type DSL a m = H.ComponentDSL Boolean Query (MCI.Message' a Void) m
 type ItemSpec a =
   { label ∷ a → String
   , render ∷ a → BasicItemHTML
+  , isActionable ∷ a → Boolean
   }
 
 type BasicItemHTML = H.ComponentHTML (Const Void)
@@ -77,7 +78,11 @@ component' ispec path item =
         [ HP.title label
         , HE.onClick $ HE.input_ Selected
         , ARIA.label ("Select " <> label)
-        , HP.classes $ (guard selected $> HH.ClassName "selected")
+        , HP.classes $ join
+            [ pure (HH.ClassName "sd-miller-column-item")
+            , guard (ispec.isActionable item) $> HH.ClassName "sd-miller-column-item-actionable"
+            , guard selected $> HH.ClassName "selected"
+            ]
         ]
         [ absurd ∘ unwrap <$> ispec.render item ]
 

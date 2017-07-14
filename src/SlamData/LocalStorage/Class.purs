@@ -21,40 +21,39 @@ module SlamData.LocalStorage.Class
 
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar (AVAR)
+import Data.Argonaut as J
 import DOM (DOM)
-import Data.Argonaut (class DecodeJson, class EncodeJson, encodeJson, decodeJson)
 import Halogen (HalogenM)
 import SlamData.LocalStorage (Key(..), LocalStorageF(..), run)
 import SlamData.Prelude
 import Type.Row.Effect.Equality (class EffectRowEquals, effFrom)
 
 class LocalStorageDSL m where
-  retrieve ∷ forall a. DecodeJson a ⇒ Key a → m (Either String a)
-  persist ∷ forall a. EncodeJson a ⇒ Key a → a → m Unit
-  remove ∷ forall a. EncodeJson a ⇒ Key a → m Unit
-  awaitChange ∷ forall a. DecodeJson a ⇒ Key a → m a
+  retrieve ∷ forall a. (J.Json → Either String a) → Key a → m (Either String a)
+  persist ∷ forall a. (a → J.Json) → Key a → a → m Unit
+  remove ∷ forall a. Key a → m Unit
+  awaitChange ∷ forall a. (J.Json → Either String a) → Key a → m a
 
 instance localStorageDSLMaybeT ∷ (Monad m, LocalStorageDSL m) ⇒ LocalStorageDSL (MaybeT m) where
-  retrieve = lift ∘ retrieve
-  persist k = lift ∘ persist k
+  retrieve decode = lift ∘ retrieve decode
+  persist encode k = lift ∘ persist encode k
   remove = lift ∘ remove
-  awaitChange = lift ∘ awaitChange
+  awaitChange decode = lift ∘ awaitChange decode
 
 instance localStorageDSLExceptT ∷ (Monad m, LocalStorageDSL m) ⇒ LocalStorageDSL (ExceptT e m) where
-  retrieve = lift ∘ retrieve
-  persist k = lift ∘ persist k
+  retrieve decode = lift ∘ retrieve decode
+  persist encode k = lift ∘ persist encode k
   remove = lift ∘ remove
-  awaitChange = lift ∘ awaitChange
+  awaitChange decode = lift ∘ awaitChange decode
 
 instance localStorageDSLHalogenM ∷ (Monad m, LocalStorageDSL m) ⇒ LocalStorageDSL (HalogenM s f g p o m) where
-  retrieve = lift ∘ retrieve
-  persist k = lift ∘ persist k
+  retrieve decode = lift ∘ retrieve decode
+  persist encode k = lift ∘ persist encode k
   remove = lift ∘ remove
-  awaitChange = lift ∘ awaitChange
+  awaitChange decode = lift ∘ awaitChange decode
 
 instance localStorageDSLAff ∷ EffectRowEquals eff (dom ∷ DOM, avar ∷ AVAR | eff') ⇒ LocalStorageDSL (Aff eff) where
-  retrieve k = effFrom $ run $ Retrieve decodeJson k id
-  persist k x = effFrom $ run $ Persist encodeJson k x unit
+  retrieve decode k = effFrom $ run $ Retrieve decode k id
+  persist encode k x = effFrom $ run $ Persist encode k x unit
   remove k = effFrom $ run $ Remove k unit
-  awaitChange k = effFrom $ run $ AwaitChange decodeJson k id
-
+  awaitChange decode k = effFrom $ run $ AwaitChange decode k id

@@ -26,7 +26,6 @@ import SlamData.Prelude
 import Data.Array as A
 import Data.Json.Extended as EJSON
 import Data.List as L
-import Data.Lens.Iso.Newtype (_Newtype)
 import Data.Lens.Types (Iso')
 import Data.String as S
 import Data.StrMap as SM

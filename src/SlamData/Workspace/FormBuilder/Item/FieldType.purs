@@ -48,7 +48,7 @@ data FieldType
   | SqlExprFieldType
   | SqlIdentifierFieldType
 
-derive instance genericFieldType ∷ Generic FieldType
+derive instance genericFieldType ∷ Generic FieldType _
 derive instance eqFieldType ∷ Eq FieldType
 derive instance ordFieldType ∷ Ord FieldType
 
