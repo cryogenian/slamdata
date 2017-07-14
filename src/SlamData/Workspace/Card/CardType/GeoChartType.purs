@@ -49,7 +49,7 @@ name = case _ of
   Marker → "Marker"
   Heatmap → "Heatmap"
 
-derive instance genericGeoChartType ∷ Generic GeoChartType
+derive instance genericGeoChartType ∷ Generic GeoChartType _
 derive instance eqGeoChartType ∷ Eq GeoChartType
 derive instance ordGeoChartType ∷ Ord GeoChartType
 

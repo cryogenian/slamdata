@@ -51,7 +51,17 @@ loadFromTree
   → Tree a
   → a × LoadRequest
   → a × LoadResponse a
-loadFromTree label tree (path × { requestId, filter }) =
+loadFromTree = loadFromTree' id
+
+loadFromTree'
+  ∷ ∀ a i
+  . Eq i
+  ⇒ (a → i)
+  → (a → String)
+  → Tree a
+  → i × LoadRequest
+  → i × LoadResponse a
+loadFromTree' getId label tree (path × { requestId, filter }) =
   let
     labelFilter = mkFilter filter ∘ label
     items = L.filter labelFilter $ go $ pure tree
@@ -60,7 +70,7 @@ loadFromTree label tree (path × { requestId, filter }) =
   where
   go ∷ L.List (Tree a) → L.List a
   go branches =
-    case find (\node → CF.head node == path) branches of
+    case find (\node → getId (CF.head node) == path) branches of
       Just subtree → extract <$> CF.tail subtree
       Nothing → CF.tail <$> branches >>= go
 

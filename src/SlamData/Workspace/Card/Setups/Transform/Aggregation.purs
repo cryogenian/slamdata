@@ -96,7 +96,7 @@ nonMaybeAggregationSelect =
     , options: allAggregations
     }
 
-derive instance genericAggregation ∷ Generic Aggregation
+derive instance genericAggregation ∷ Generic Aggregation _
 derive instance eqAggregation ∷ Eq Aggregation
 derive instance ordAggregation ∷ Ord Aggregation
 

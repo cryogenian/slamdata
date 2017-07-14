@@ -22,26 +22,22 @@ module Utils.Path
 import Prelude
 
 import Control.Alt ((<|>))
-
 import Data.Array (intersect, null, (:))
 import Data.Char as Ch
 import Data.Either (Either(..), either, fromRight)
+import Data.List as L
 import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.Path.Pathy (Sandboxed, Unsandboxed, Abs, Path, File, Rel, Dir, DirName(..), FileName(..), peel, rootDir, (</>), file, canonicalize, printPath, parseAbsDir, parseAbsFile, dir, relativeTo, renameDir)
 import Data.Path.Pathy as P
 import Data.String as S
 import Data.String.Regex as Rgx
 import Data.String.Regex.Flags as RXF
-import Data.Tuple (snd, fst)
-
+import Data.Tuple (Tuple(..), fst, snd)
+import Data.Unfoldable (unfoldr)
 import Global as Global
-
-import Quasar.Types (AnyPath, DirPath, FilePath)
-
 import Partial.Unsafe (unsafePartial)
-
+import Quasar.Types (AnyPath, DirPath, FilePath)
 import SlamData.Config as Config
-
 import Text.SlamSearch.Parser.Tokens (keyChars)
 
 infixl 6 renameDirExt as <./>
@@ -156,5 +152,11 @@ getDir ap = either getDir' getDir' ap
   getDir' :: forall b. Path Abs b Sandboxed -> DirPath
   getDir' = maybe rootDir fst <<< peel
 
-rootFile ∷ FilePath
-rootFile = rootDir </> file ""
+toPathList ∷ AnyPath → L.List AnyPath
+toPathList res
+  | Left P.rootDir == res = L.singleton (Left rootDir)
+  | otherwise =
+    (unfoldr \r → Tuple r <$> either go go r) res `L.snoc` Left rootDir
+    where
+    go ∷ ∀ b. Path Abs b Sandboxed → Maybe AnyPath
+    go = map (Left <<< fst) <<< peel
