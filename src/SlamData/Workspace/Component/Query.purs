@@ -16,15 +16,17 @@ limitations under the License.
 
 module SlamData.Workspace.Component.Query where
 
-import Data.List (List)
 import DOM.Event.Types (MouseEvent)
+import Data.List (List)
 import Halogen as H
 import Quasar.Advanced.Types (ProviderR)
+import SlamData.AdminUI.Types as AdminUI
 import SlamData.GlobalMenu.Bus (SignInMessage)
 import SlamData.Guide.StepByStep.Component as Guide
+import SlamData.Header.Component as Header
+import SlamData.License (LicenseProblem)
 import SlamData.Notification as N
 import SlamData.Wiring as Wiring
-import SlamData.License (LicenseProblem)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Dialog.Component as Dialog
 import SlamData.Workspace.Guide (GuideType)
@@ -39,10 +41,12 @@ data Query a
   | PresentStepByStepGuide GuideType (H.SubscribeStatus → a)
   | Resize (H.SubscribeStatus → a)
   | SignIn ProviderR a
+  | HandleDialog Dialog.Message a
   | HandleGuideMessage GuideType Guide.Message a
+  | HandleHeader Header.Message a
+  | HandleAdminUI AdminUI.Message a
   | HandleNotification N.Action a
   | HandleSignInMessage SignInMessage a
   | HandleWorkspace Wiring.WorkspaceMessage a
-  | HandleDialog Dialog.Message a
   | HandleLicenseProblem LicenseProblem a
   | HandleDeck Wiring.DeckMessage a

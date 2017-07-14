@@ -18,183 +18,179 @@ module SlamData.Download.Model where
 
 import SlamData.Prelude
 
-import Data.Argonaut (class EncodeJson, class DecodeJson, encodeJson, decodeJson, (:=), (~>), (.?), jsonEmptyObject)
+import Data.Argonaut as J
+import Data.Codec ((<~<), (>~>))
+import Data.Codec as C
+import Data.Codec.Argonaut.Compat as CA
+import Data.Codec.Argonaut.Migration as CAM
+import Data.Codec.Argonaut.Variant as CAV
 import Data.Lens (Lens', lens)
 import Data.MediaType (MediaType(..))
 import Data.String as Str
 import Data.String.Regex as Rx
 import Data.String.Regex.Flags as RXF
-import SlamData.FileSystem.Resource (Resource, isFile)
-
+import Data.Variant as V
 import Global as Global
-
 import Network.HTTP.RequestHeader (RequestHeader(..))
+import SlamData.FileSystem.Resource (Resource, isFile)
 
 type DownloadOptions = Either CSVOptions JSONOptions
 
 type CSVOptionsRec =
-  { colDelimiter :: String
-  , rowDelimiter :: String
-  , quoteChar :: String
-  , escapeChar :: String
-  , arrays :: ArrayMode
+  { colDelimiter ∷ String
+  , rowDelimiter ∷ String
+  , quoteChar ∷ String
+  , escapeChar ∷ String
+  , arrays ∷ ArrayMode
   }
+
 newtype CSVOptions = CSVOptions CSVOptionsRec
 
-derive instance eqCSVOptions :: Eq CSVOptions
+derive instance newtypeCSVOptions ∷ Newtype CSVOptions _
+derive instance eqCSVOptions ∷ Eq CSVOptions
+derive instance genericCSVOptions ∷ Generic CSVOptions _
+instance showCSVOptions ∷ Show CSVOptions where show = genericShow
 
-instance encodeJsonCSVOptions :: EncodeJson CSVOptions where
-  encodeJson (CSVOptions r) =
-       "colDelimiter" := r.colDelimiter
-    ~> "rowDelimiter" := r.rowDelimiter
-    ~> "quoteChar" := r.quoteChar
-    ~> "escapeChar" := r.escapeChar
-    ~> "arrays" := r.arrays
-    ~> jsonEmptyObject
+codecCSVOptions ∷ CA.JsonCodec CSVOptions
+codecCSVOptions =
+  _Newtype $ CA.object "CSVOptions" $ CA.record
+    # CA.recordProp (SProxy ∷ SProxy "colDelimiter") CA.string
+    # CA.recordProp (SProxy ∷ SProxy "rowDelimiter") CA.string
+    # CA.recordProp (SProxy ∷ SProxy "quoteChar") CA.string
+    # CA.recordProp (SProxy ∷ SProxy "escapeChar") CA.string
+    # CA.recordProp (SProxy ∷ SProxy "arrays") codecArrayMode
 
-instance decodeJsonCSVOptions :: DecodeJson CSVOptions where
-  decodeJson json = do
-    obj <- decodeJson json
-    r <- { colDelimiter: _
-         , rowDelimiter: _
-         , quoteChar: _
-         , escapeChar: _
-         , arrays: _
-         }
-         <$> (obj .? "colDelimiter")
-         <*> (obj .? "rowDelimiter")
-         <*> (obj .? "quoteChar")
-         <*> (obj .? "escapeChar")
-         <*> (obj .? "arrays")
-    pure $ CSVOptions r
-
-initialCSVOptions :: CSVOptions
+initialCSVOptions ∷ CSVOptions
 initialCSVOptions =
-  CSVOptions { colDelimiter: ","
-             , rowDelimiter: "\\n"
-             , quoteChar: "\""
-             , escapeChar: "\""
-             , arrays: Flatten
-             }
+  CSVOptions
+    { colDelimiter: ","
+    , rowDelimiter: "\\n"
+    , quoteChar: "\""
+    , escapeChar: "\""
+    , arrays: Flatten
+    }
 
-_CSVOptions :: Lens' CSVOptions CSVOptionsRec
-_CSVOptions = lens (\(CSVOptions obj) -> obj) (const CSVOptions)
+_CSVOptions ∷ Lens' CSVOptions CSVOptionsRec
+_CSVOptions = _Newtype
 
-_colDelimiter :: Lens' CSVOptions String
+_colDelimiter ∷ Lens' CSVOptions String
 _colDelimiter = _CSVOptions <<< lens _.colDelimiter (_ { colDelimiter = _ })
 
-_rowDelimiter :: Lens' CSVOptions String
+_rowDelimiter ∷ Lens' CSVOptions String
 _rowDelimiter = _CSVOptions <<< lens _.rowDelimiter (_ { rowDelimiter = _ })
 
-_quoteChar :: Lens' CSVOptions String
+_quoteChar ∷ Lens' CSVOptions String
 _quoteChar = _CSVOptions <<< lens _.quoteChar (_ { quoteChar = _ })
 
-_escapeChar :: Lens' CSVOptions String
+_escapeChar ∷ Lens' CSVOptions String
 _escapeChar = _CSVOptions <<< lens _.escapeChar (_ { escapeChar = _ })
 
-_arrays :: Lens' CSVOptions ArrayMode
+_arrays ∷ Lens' CSVOptions ArrayMode
 _arrays = _CSVOptions <<< lens _.arrays (_ { arrays = _ })
 
 type JSONOptionsRec =
-  { multivalues :: MultiValueMode
-  , precision :: PrecisionMode
+  { multivalues ∷ MultiValueMode
+  , precision ∷ PrecisionMode
   }
+
 newtype JSONOptions = JSONOptions JSONOptionsRec
 
-derive instance eqJsonOptions :: Eq JSONOptions
+derive instance newtypeJSONOptions ∷ Newtype JSONOptions _
+derive instance eqJsonOptions ∷ Eq JSONOptions
+derive instance genericJSONOptions ∷ Generic JSONOptions _
+instance showJSONOptions ∷ Show JSONOptions where show = genericShow
 
-instance encodeJsonJSONOptions :: EncodeJson JSONOptions where
-  encodeJson (JSONOptions r) =
-       "multivalues" := r.multivalues
-    ~> "precision" := r.precision
-    ~> jsonEmptyObject
+codecJSONOptions ∷ CA.JsonCodec JSONOptions
+codecJSONOptions =
+  _Newtype $ CA.object "JSONOptions" $ CA.record
+    # CA.recordProp (SProxy ∷ SProxy "multivalues") codecMultiValueMode
+    # CA.recordProp (SProxy ∷ SProxy "precision") codecPrecisionMode
 
-instance decodeJsonJSONOptions :: DecodeJson JSONOptions where
-  decodeJson json = do
-    obj <- decodeJson json
-    r <- { multivalues: _, precision: _ }
-         <$> (obj .? "multivalues")
-         <*> (obj .? "precision")
-    pure $ JSONOptions r
+initialJSONOptions ∷ JSONOptions
+initialJSONOptions =
+  JSONOptions
+    { multivalues: ArrayWrapped
+    , precision: Readable
+    }
 
-initialJSONOptions :: JSONOptions
-initialJSONOptions = JSONOptions
-  { multivalues: ArrayWrapped
-  , precision: Readable
-  }
+_JSONOptions ∷ Lens' JSONOptions JSONOptionsRec
+_JSONOptions = _Newtype
 
-_JSONOptions :: Lens' JSONOptions JSONOptionsRec
-_JSONOptions = lens (\(JSONOptions obj) -> obj) (const JSONOptions)
-
-_multivalues :: Lens' JSONOptions MultiValueMode
+_multivalues ∷ Lens' JSONOptions MultiValueMode
 _multivalues = _JSONOptions <<< lens _.multivalues (_ { multivalues = _ })
 
-_precision :: Lens' JSONOptions PrecisionMode
+_precision ∷ Lens' JSONOptions PrecisionMode
 _precision = _JSONOptions <<< lens _.precision (_ { precision = _ })
 
 data ArrayMode = Flatten | Separate String
 
-derive instance eqArrayMode :: Eq ArrayMode
+derive instance eqArrayMode ∷ Eq ArrayMode
+derive instance genericArrayMode ∷ Generic ArrayMode _
+instance showArrayMode ∷ Show ArrayMode where show = genericShow
 
-instance encodeJsonArrayMode :: EncodeJson ArrayMode where
-  encodeJson Flatten =
-    "ty" := "flatten"
-    ~> "val" := ""
-    ~> jsonEmptyObject
-  encodeJson (Separate str) =
-    "ty" := "separate"
-    ~> "val" := str
-    ~> jsonEmptyObject
+codecArrayMode ∷ CA.JsonCodec ArrayMode
+codecArrayMode =
+  migrationCodec >~> dimap toVariant fromVariant
+    (CAV.variant
+      # CAV.variantCase _Separate (Right CA.string)
+      # CAV.variantCase _Flatten (Left unit))
+  where
+  toVariant = case _ of
+    Separate a → V.inj _Separate a
+    Flatten → V.inj _Flatten unit
+  fromVariant = V.case_
+    # V.on _Separate Separate
+    # V.on _Flatten (const Flatten)
+  _Separate = SProxy ∷ SProxy "separate"
+  _Flatten = SProxy ∷ SProxy "flatten"
+  -- added in 4.2.3
+  migrationCodec =
+    CAM.renameField "ty" "tag" <~< CAM.renameField "val" "value"
 
-instance decodeJsonArrayMode :: DecodeJson ArrayMode where
-  decodeJson json = do
-    obj <- decodeJson json
-    ty <- obj .? "ty"
-    val <- obj .? "val"
-    case ty of
-      "flatten" -> Right Flatten
-      "separate" -> Right $ Separate val
-      _ -> Left "Incorrect ArrayMode encoding"
-
-separateValue :: ArrayMode -> Maybe String
+separateValue ∷ ArrayMode → Maybe String
 separateValue (Separate s) = Just s
 separateValue _ = Nothing
 
 data MultiValueMode = ArrayWrapped | LineDelimited
+
+derive instance eqMultiValueMode ∷ Eq MultiValueMode
+derive instance genericMultiValueMode ∷ Generic MultiValueMode _
+instance showMultiValueMode ∷ Show MultiValueMode where show = genericShow
+
+-- TODO-codec: replace with generic-based codec?
+codecMultiValueMode ∷ CA.JsonCodec MultiValueMode
+codecMultiValueMode = C.basicCodec dec enc
+  where
+  dec j = case J.toString j of
+    Just "ArrayWrapped" → Right ArrayWrapped
+    Just "LineDelimited" → Right LineDelimited
+    _ → Left (CA.UnexpectedValue j)
+  enc = J.fromString ∘ case _ of
+    ArrayWrapped → "ArrayWrapped"
+    LineDelimited → "LineDelimited"
+
 data PrecisionMode = Readable | Precise
 
-derive instance eqMultiValueMode :: Eq MultiValueMode
+derive instance eqPrecisionMode ∷ Eq PrecisionMode
+derive instance genericPrecisionMode ∷ Generic PrecisionMode _
+instance showPrecisionMode ∷ Show PrecisionMode where show = genericShow
 
-derive instance eqPrecisionMode :: Eq PrecisionMode
-
-instance encodeJsonMultivalueMode :: EncodeJson MultiValueMode where
-  encodeJson ArrayWrapped = encodeJson "ArrayWrapped"
-  encodeJson LineDelimited = encodeJson "LineDelimited"
-
-instance encodeJsonPrecision :: EncodeJson PrecisionMode where
-  encodeJson Readable = encodeJson "Readable"
-  encodeJson Precise = encodeJson "Precise"
-
-instance decodeJsonMultiValueMode :: DecodeJson MultiValueMode where
-  decodeJson json = do
-    str <- decodeJson json
-    case str of
-      "ArrayWrapped" -> pure ArrayWrapped
-      "LineDelimited" -> pure LineDelimited
-      _ -> Left "Incorrect MultiValueMode"
-
-instance decodeJsonPrecision :: DecodeJson PrecisionMode where
-  decodeJson json = do
-    str <- decodeJson json
-    case str of
-      "Readable" -> pure Readable
-      "Precise" -> pure Precise
-      _ -> Left "Incorrect Precision"
+-- TODO-codec: replace with generic-based codec?
+codecPrecisionMode ∷ CA.JsonCodec PrecisionMode
+codecPrecisionMode = C.basicCodec dec enc
+  where
+  dec j = case J.toString j of
+    Just "Readable" → Right Readable
+    Just "Precise" → Right Precise
+    _ → Left (CA.UnexpectedValue j)
+  enc = J.fromString ∘ case _ of
+    Readable → "Readable"
+    Precise → "Precise"
 
 shouldCompress ∷ ∀ r. { source ∷ Resource, compress ∷ Boolean | r } → Boolean
 shouldCompress state = not isFile state.source || state.compress
 
-extension :: Boolean -> Either CSVOptions JSONOptions -> String
+extension ∷ Boolean → Either CSVOptions JSONOptions → String
 extension compress options
   | compress = ".zip"
   | otherwise = case options of
@@ -209,24 +205,24 @@ validFilename s =
     else Right s
 
 toHeaders
-  :: forall r
-   . { compress :: Boolean
-     , options :: Either CSVOptions JSONOptions
-     | r
-     }
-  -> Maybe String
-  -> Array RequestHeader
+  ∷ forall r
+  . { compress ∷ Boolean
+    , options ∷ Either CSVOptions JSONOptions
+    | r
+    }
+  → Maybe String
+  → Array RequestHeader
 toHeaders r filename =
   [ RequestHeader "Accept-Encoding" "gzip"
   , Accept $ MediaType $ mimeType r.options <> ";disposition=\"attachment" <> encFilename <> "\""
   ]
   where
-  encFilename :: String
+  encFilename ∷ String
   encFilename = case filename of
-    Nothing -> ""
-    Just fn -> "; filename*=UTF-8''" <> Global.encodeURIComponent fn
+    Nothing → ""
+    Just fn → "; filename*=UTF-8''" <> Global.encodeURIComponent fn
 
-  mimeType :: Either CSVOptions JSONOptions -> String
+  mimeType ∷ Either CSVOptions JSONOptions → String
   mimeType (Left (CSVOptions opts)) =
     "text/csv"
     <> ";columnDelimiter=" <> esc opts.colDelimiter
@@ -239,15 +235,19 @@ toHeaders r filename =
     let suffix = if opts.precision == Precise then ";mode=precise" else ""
         subtype = if opts.multivalues == ArrayWrapped then "json" else "ldjson"
     in "application/" <> subtype <> suffix
-  esc :: String -> String
+  esc ∷ String → String
   esc s =
-    (\a -> "\"" <> a <> "\"")
+    (\a → "\"" <> a <> "\"")
     $ Rx.replace (grx "\"") "\\\""
     $ Str.replace (Str.Pattern "\\t") (Str.Replacement "\t")
     $ Str.replace (Str.Pattern "\\r") (Str.Replacement "\r")
     s
     where
-    grx :: String -> Rx.Regex
+    grx ∷ String → Rx.Regex
     grx pat = unsafePartial fromRight $ Rx.regex pat RXF.global
 
 data OutputType = CSV | JSON
+
+derive instance eqOutputType ∷ Eq OutputType
+derive instance genericOutputType ∷ Generic OutputType _
+instance showOutputType ∷ Show OutputType where show = genericShow

@@ -20,14 +20,15 @@ module SlamData.Workspace.Deck.DeckId
   , fromString
   , fromString'
   , toString
+  , codec
   ) where
 
 import SlamData.Prelude
 
 import Control.Monad.Eff.Class (class MonadEff)
 import Control.Monad.Eff.Random as Random
+import Data.Codec.Argonaut as CA
 import Data.UUID.Random as UUID
-import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson)
 import Test.StrongCheck.Arbitrary as SC
 
 newtype DeckId = DeckId UUID.UUIDv4
@@ -52,11 +53,8 @@ derive instance ordDeckId ∷ Ord DeckId
 instance showDeckId ∷ Show DeckId where
   show d = "DeckId " <> toString d
 
-instance encodeJsonDeckId ∷ EncodeJson DeckId where
-  encodeJson (DeckId u) = encodeJson u
-
-instance decodeJsonDeckId ∷ DecodeJson DeckId where
-  decodeJson = fromString' <=< decodeJson
+codec ∷ CA.JsonCodec DeckId
+codec = dimap (\(DeckId uuid) → uuid) DeckId UUID.codec
 
 instance arbitraryDeckId ∷ SC.Arbitrary DeckId where
   arbitrary = DeckId <$> SC.arbitrary

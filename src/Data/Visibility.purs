@@ -18,17 +18,15 @@ module Data.Visibility (Visibility(..), isVisible, isInvisible, toggleVisibility
 
 import Prelude
 
-import Data.Generic (class Generic)
+import Data.Generic.Rep (class Generic)
+import Data.Generic.Rep.Show (genericShow)
 
 data Visibility = Visible | Invisible
 
-derive instance genericVisibility ∷ Generic Visibility
 derive instance eqVisibility ∷ Eq Visibility
 derive instance ordVisibility ∷ Ord Visibility
-
-instance showVisibility ∷ Show Visibility where
-  show Visible = "Visible"
-  show Invisible = "Invisible"
+derive instance genericVisibility ∷ Generic Visibility _
+instance showVisibility ∷ Show Visibility where show = genericShow
 
 isVisible ∷ Visibility → Boolean
 isVisible Visible = true
