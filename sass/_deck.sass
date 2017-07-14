@@ -95,7 +95,9 @@
       height: calc(100% - #{$grid-size * 2})
 
 
-// fixes an inverse height thing
+// Chrome at the root is part of the normal dimensions, so the card is
+// offset, but in nested decks the chrome is positioned outside the normal
+// dimensions and the card should be full size
 .sd-deck-level-2
   .sd-card
     height: 100%
