@@ -8,7 +8,6 @@ import Data.Argonaut as J
 import Data.Variant as V
 import Data.Functor.Variant (VariantF, FProxy)
 import Data.Newtype (under)
-import Data.Profunctor (dimap)
 
 import Halogen as H
 import Halogen.HTML as HH

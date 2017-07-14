@@ -46,7 +46,6 @@ import SlamData.Render.ClassName as CN
 import SlamData.Render.Icon as I
 import SlamData.Workspace.Dialog.Share.Model (ShareResume(..), printShareResume)
 import SlamData.Workspace.Dialog.Share.Model as Model
-import Utils (hush)
 import Utils.DOM as DOM
 import Utils.Foldable (chunkedParTraverse, splitList)
 

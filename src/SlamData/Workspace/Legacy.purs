@@ -17,31 +17,38 @@ limitations under the License.
 module SlamData.Workspace.Legacy where
 
 import SlamData.Prelude
+
+import Control.Monad.Aff.Class (class MonadAff)
+import Control.Monad.Aff.Future (defer, wait)
 import Control.Monad.Eff.Exception as Exn
+import Control.Monad.Fork (class MonadFork)
+
+import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array as Array
+import Data.Codec.Argonaut.Compat as CA
 import Data.Map as Map
+import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
+
 import Quasar.Advanced.QuasarAF as QF
 import Quasar.FS as QFS
+
+import SlamData.Effects (SlamDataEffects)
+import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Error as QE
 import SlamData.Wiring.Cache as Cache
-import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.CardId as CID
-import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Deck.DeckId as DID
-import SlamData.Workspace.Model (Workspace, decode) as Current
-import Control.Monad.Aff.Class (class MonadAff)
-import Control.Monad.Aff.Future (defer, wait)
-import Control.Monad.Fork (class MonadFork)
-import Data.Argonaut (Json, decodeJson, (.?))
-import Data.Path.Pathy ((</>))
-import SlamData.Effects (SlamDataEffects)
-import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
 import SlamData.Workspace.Card.CardId (CardId)
+import SlamData.Workspace.Card.CardId as CID
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Model (AnyCardModel)
+import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Deck.DeckId as DID
 import SlamData.Workspace.Deck.Model (Deck, emptyDeck) as Current
+import SlamData.Workspace.Model (Workspace, decode) as Current
+
+import Utils (decodec)
 import Utils.Path (DirPath)
 
 type Workspace =
@@ -67,16 +74,15 @@ isLegacy Legacy = true
 isLegacy _ = false
 
 decodeWorkspace ∷ Json → Either String Workspace
-decodeWorkspace = decodeJson >=> \obj →
-  { root: _
-  } <$> obj .? "root"
+decodeWorkspace = decodeJson >=> \obj → do
+  { root: _ } <$> (decodec (CA.maybe DID.codec) =<< obj .? "root")
 
 decodeDeck ∷ Json → Either String Deck
 decodeDeck = decodeJson >=> \obj → do
   version ← obj .? "version"
   unless (version ≡ 3) $ throwError "Expected deck format v3"
-  parent ← obj .? "parent"
-  mirror ← obj .? "mirror"
+  parent ← decodec (CA.maybe (CA.tuple DID.codec CID.codec)) =<< obj .? "parent"
+  mirror ← decodec (CA.array (CA.tuple DID.codec CID.codec)) =<< obj .? "mirror"
   cards ← traverse decodeCard =<< obj .? "cards"
   name ← obj .? "name" <|> pure ""
   pure { parent, mirror, cards, name }
@@ -84,7 +90,7 @@ decodeDeck = decodeJson >=> \obj → do
 decodeCard ∷ Json → Either String Card
 decodeCard js = do
   obj ← decodeJson js
-  cardId ← obj .? "cardId"
+  cardId ← decodec CID.codec =<< obj .? "cardId"
   cardType ← CT.decode =<< (obj .? "cardType")
   modelJS ← obj .? "model"
   model ← Card.decodeCardModel modelJS cardType

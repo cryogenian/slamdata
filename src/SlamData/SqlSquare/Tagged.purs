@@ -29,7 +29,7 @@ import Data.String.Regex.Unsafe as URX
 import SqlSquared (Sql)
 import SqlSquared as Sql
 
-import Utils (hush, stringToNumber, stringToBoolean)
+import Utils (stringToNumber, stringToBoolean)
 
 newtype ParseError = ParseError String
 

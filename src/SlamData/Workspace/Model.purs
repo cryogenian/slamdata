@@ -22,14 +22,16 @@ module SlamData.Workspace.Model
   ) where
 
 import SlamData.Prelude
+
 import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
+import Data.Codec.Argonaut as CA
 import Data.Foldable as F
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.StrMap as StrMap
-import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardId (CardId)
+import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Model (AnyCardModel)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Deck.DeckId (DeckId)
@@ -47,7 +49,7 @@ decode ∷ Json → Either String Workspace
 decode = decodeJson >=> \obj → do
   version ← obj .? "version"
   unless (version ≡ 2) $ throwError "Expected workspace format v2"
-  rootId ← obj .? "rootId"
+  rootId ← lmap CA.printJsonDecodeError <<< CA.decode DID.codec =<< obj .? "rootId"
   cards ← decodeCards =<< obj .? "cards"
   decks ← decodeDecks =<< obj .? "decks"
   pure { rootId, cards, decks }
@@ -68,7 +70,7 @@ decode = decodeJson >=> \obj → do
           Left _ → ds
           Right ds' → do
             deckId ← DID.fromString' key
-            deck ← Deck.decode val
+            deck ← lmap CA.printJsonDecodeError $ CA.decode Deck.codec val
             pure (Map.insert deckId deck ds')
 
 encode ∷ Workspace → Json
@@ -89,7 +91,7 @@ encode ws =
     decks =
       Map.toUnfoldable ws.decks
         # asList
-        # map (bimap DID.toString Deck.encode)
+        # map (bimap DID.toString (CA.encode Deck.codec))
         # StrMap.fromFoldable
 
 eqWorkspace ∷ Workspace → Workspace → Boolean

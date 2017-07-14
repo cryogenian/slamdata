@@ -16,7 +16,7 @@ limitations under the License.
 
 module SlamData.Workspace.Eval.Persistence where
 
-import SlamData.Prelude
+import SlamData.Prelude hiding (note)
 
 import Control.Monad.Aff.AVar (AVar, modifyVar, killVar, peekVar, putVar)
 import Control.Monad.Aff.Bus as Bus
@@ -26,7 +26,9 @@ import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Fork (class MonadFork, fork)
 import Control.Monad.Throw (note, noteError)
+import Data.Argonaut as J
 import Data.Array as Array
+import Data.Codec.Argonaut.Compat as CA
 import Data.Functor.Compose (Compose(Compose))
 import Data.Lens ((^?))
 import Data.List (List(..), (:))
@@ -146,12 +148,26 @@ getRootDeckId =
 
 saveCardsLocally ∷ ∀ f m. Persist f m (Deck.Id → Map CID.CardId AnyCardModel → m Unit)
 saveCardsLocally =
-  LS.persist ∘ LSK.cardsLocalStorageKey
+  LS.persist (J.encodeJson ∘ cardMapToJson) ∘ LSK.cardsLocalStorageKey
 
 getLocallyStoredCards ∷ ∀ f m. Persist f m (Deck.Id → m (Map CID.CardId AnyCardModel))
 getLocallyStoredCards deckId =
   either (const Map.empty) id
-    <$> (LS.retrieve $ LSK.cardsLocalStorageKey deckId)
+    <$> (LS.retrieve (cardMapFromJson <=< J.decodeJson) $ LSK.cardsLocalStorageKey deckId)
+
+cardMapToJson ∷ Map CID.CardId AnyCardModel → Map J.Json AnyCardModel
+cardMapToJson =
+  Map.fromFoldable
+    ∘ map (lmap (CA.encode CID.codec))
+    ∘ asArray
+    ∘ Map.toUnfoldable
+
+cardMapFromJson ∷ Map J.Json AnyCardModel → Either String (Map CID.CardId AnyCardModel)
+cardMapFromJson =
+  map Map.fromFoldable
+    ∘ traverse (bitraverse (lmap CA.printJsonDecodeError <<< CA.decode CID.codec) pure)
+    ∘ asArray
+    ∘ Map.toUnfoldable
 
 putDeck ∷ ∀ m. PersistEnv m (Deck.Id → Deck.Model → m Unit)
 putDeck deckId deck = do

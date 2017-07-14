@@ -25,6 +25,8 @@ module SlamData.Quasar.Auth.Authentication
   , RequestIdTokenMessage
   ) where
 
+import SlamData.Prelude
+
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff as Aff
 import Control.Monad.Aff.AVar (AVar, AVAR)
@@ -44,6 +46,11 @@ import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Rec.Class (forever)
 import Control.Parallel (parallel, sequential)
 import Control.UI.Browser as Browser
+import Data.Argonaut as J
+import Data.Foldable as F
+import Data.Foreign as Foreign
+import Data.Time.Duration (Seconds(..), Milliseconds(..))
+import Data.Traversable as T
 import DOM (DOM)
 import DOM.HTML as DOMHTML
 import DOM.HTML.Document as DOMHTMLDocument
@@ -54,10 +61,6 @@ import DOM.HTML.Window as DOMHTMLWindow
 import DOM.Node.Document as DOMNodeDocument
 import DOM.Node.Node as DOMNode
 import DOM.Node.Types (Node, Element)
-import Data.Foldable as F
-import Data.Foreign as Foreign
-import Data.Time.Duration (Seconds(..), Milliseconds(..))
-import Data.Traversable as T
 import OIDC.Aff as OIDCAff
 import OIDC.Crypt as OIDCCrypt
 import OIDC.Crypt.JSONWebKey (JSONWebKey)
@@ -65,16 +68,13 @@ import OIDC.Crypt.Types (IdToken, UnhashedNonce)
 import Quasar.Advanced.Types (ProviderR)
 import Quasar.Advanced.Types as QAT
 import SlamData.Config as Config
-import SlamData.Notification (NotificationOptions)
-import SlamData.Notification as Notification
-import SlamData.Prelude
-import SlamData.Quasar.Auth.IdTokenStorageEvents (pullIdTokenFromStorageEvent)
 import SlamData.LocalStorage.Class as LS
 import SlamData.LocalStorage.Keys as LSK
+import SlamData.Notification (NotificationOptions)
+import SlamData.Notification as Notification
+import SlamData.Quasar.Auth.IdTokenStorageEvents (pullIdTokenFromStorageEvent)
 import SlamData.Quasar.Auth.Store as AuthStore
-
 import Text.Parsing.StringParser (ParseError(..))
-
 import Utils (passover)
 import Utils.DOM as DOMUtils
 
@@ -315,11 +315,11 @@ getIdTokenUsingLocalStorage message = do
 
 getUnverifiedIdTokenUsingLocalStorage ∷ ∀ eff. String → Aff (AuthEffects eff) (Either String IdToken)
 getUnverifiedIdTokenUsingLocalStorage =
-  map join ∘ LS.retrieve ∘ LSK.idTokenLocalStorageKey
+  map join ∘ LS.retrieve J.decodeJson ∘ LSK.idTokenLocalStorageKey
 
 getUnhashedNonceUsingLocalStorage ∷ ∀ eff. String → Aff (AuthEffects eff) (Either String UnhashedNonce)
 getUnhashedNonceUsingLocalStorage keySuffix =
-  LS.retrieve (LSK.nonceLocalStorageKey keySuffix)
+  LS.retrieve J.decodeJson (LSK.nonceLocalStorageKey keySuffix)
 
 getIdTokenFromLSOnChange
   ∷ ∀ eff

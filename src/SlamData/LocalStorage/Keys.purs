@@ -82,6 +82,10 @@ signedOutBefore = LS.Key "sd-auth-signed-out-before"
 
 -- Autocomplete
 
-autoCompletePathsKey :: LS.Key (Array String)
+autoCompletePathsKey ∷ LS.Key (Array String)
 autoCompletePathsKey = LS.Key "sd-autocomplete-paths"
 
+-- AdminUI
+
+adminUIDefaultTheme ∷ LS.Key String
+adminUIDefaultTheme = LS.Key "sd-admin-ui-default-theme"

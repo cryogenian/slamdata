@@ -25,7 +25,6 @@ module Utils
   , passover
   , replicate
   , chunksOf
-  , hush
   , hush'
   , rightBool
   , parenthesize
@@ -40,13 +39,15 @@ module Utils
   , prettyJson
   , isFirefox
   , finally
-  )where
+  , decodec
+  ) where
 
 import SlamData.Prelude
 
 import Control.Monad.Except (Except)
 import Data.Argonaut as J
 import Data.Array as Array
+import Data.Codec.Argonaut as CA
 import Data.Formatter.Number as FN
 import Data.Int as Int
 import Data.String as S
@@ -120,9 +121,6 @@ chunksOf = go []
         then go (Array.snoc acc ch) n (Array.drop n as)
         else Array.snoc acc ch
 
-hush ∷ ∀ a b. Either a b → Maybe b
-hush = either (\_ → Nothing) (Just)
-
 hush' ∷ ∀ a b. Except a b → Maybe b
 hush' = hush ∘ runExcept
 
@@ -187,3 +185,7 @@ foreign import isFirefox ∷ Boolean
 
 finally ∷ ∀ m e a. MonadError e m ⇒ m Unit → m a → m a
 finally handler action = catchError (action <* handler) \e → handler *> throwError e
+
+-- Temporary until we use codecs everywhere
+decodec ∷ ∀ a. CA.JsonCodec a → J.Json → Either String a
+decodec codec = lmap CA.printJsonDecodeError ∘ CA.decode codec

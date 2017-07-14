@@ -47,9 +47,12 @@
         transition-duration: 200ms
         transition-timing-function: ease-out
 
-        .sd-icon > svg
-          height: 100%
-          width: 100%
+        .sd-icon
+          display: block
+
+          &, & > svg
+            height: 100%
+            width: 100%
 
         p
           padding: 0

@@ -21,7 +21,7 @@ import SlamData.Prelude
 import Quasar.Advanced.QuasarAF (QError)
 import SlamData.GlobalError as GE
 import Text.Parsing.Parser (ParseError)
-import Utils (throwVariantError, hush)
+import Utils (throwVariantError)
 
 data SearchError
   = SearchQueryParseError { query ∷ String, error ∷ ParseError }

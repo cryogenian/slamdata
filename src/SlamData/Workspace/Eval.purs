@@ -46,8 +46,6 @@ import SlamData.Workspace.Card.Port.VarMap (URLVarMap)
 import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
 import SlamData.Workspace.Eval.Traverse (resolveUrlVarMaps)
-
-import Utils (hush)
 import Utils.Path (DirPath)
 
 type Tick = Int

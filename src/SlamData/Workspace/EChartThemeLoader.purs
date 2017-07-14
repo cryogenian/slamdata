@@ -32,7 +32,6 @@ import Data.URI as URI
 import ECharts.Theme (Theme)
 import ECharts.Theme as T
 import Network.HTTP.Affjax as Ajax
-import Utils (hush)
 
 load ∷ ∀ e. Aff (dom ∷ DOM, ajax ∷ Ajax.AJAX|e) (Maybe Theme)
 load = runMaybeT $ do

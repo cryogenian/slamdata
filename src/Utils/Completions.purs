@@ -18,16 +18,17 @@ module Utils.Completions where
 
 import Prelude
 
-import Ace.Types (Completion)
 import Ace.Halogen.Component (AceEffects)
+import Ace.Types (Completion)
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar (AVAR)
+import Data.Argonaut as J
 import Data.Array as Arr
-import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Either (Either(..), either)
-import Data.Tuple (Tuple(..))
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Path.Pathy as P
 import Data.String as S
+import Data.Tuple (Tuple(..))
 import DOM (DOM)
 import SlamData.FileSystem.Resource as R
 import SlamData.LocalStorage.Class (retrieve, persist)
@@ -37,7 +38,7 @@ import Utils.Path as PU
 
 pathCompletions :: forall e. Aff (AceEffects e) (Array Completion)
 pathCompletions = do
-  paths <- retrieve LSK.autoCompletePathsKey <#> either (const []) id
+  paths <- retrieve J.decodeJson LSK.autoCompletePathsKey <#> either (const []) id
   pure $ paths <#> S.drop 1 >>> mkCompletion "path" mkCaption
   where
   mkCaption :: String -> Maybe String
@@ -59,8 +60,8 @@ mkCompletion meta f val =
 memoizeCompletionStrs
   :: forall e. PU.DirPath -> Array R.Resource -> Aff (dom :: DOM, avar :: AVAR | e) Unit
 memoizeCompletionStrs dir arr = do
-  alreadyMemoized <- retrieve LSK.autoCompletePathsKey <#> either (const []) id
-  persist LSK.autoCompletePathsKey
+  alreadyMemoized <- retrieve J.decodeJson LSK.autoCompletePathsKey <#> either (const []) id
+  persist J.encodeJson LSK.autoCompletePathsKey
     $ Arr.sort $ newSiblings <> filterSiblings alreadyMemoized
   where
   parentPath :: String
