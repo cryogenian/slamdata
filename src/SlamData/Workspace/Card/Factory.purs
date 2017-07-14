@@ -67,6 +67,7 @@ import SlamData.Workspace.Card.Table.Component (tableComponent)
 import SlamData.Workspace.Card.Tabs.Component (tabsComponent)
 import SlamData.Workspace.Card.Troubleshoot.Component (troubleshootComponent)
 import SlamData.Workspace.Card.Variables.Component (variablesComponent)
+import SlamData.Workspace.Card.Viz.Component as Viz
 
 
 cardComponent ∷ CT.CardType → CardOptions → CardComponent
@@ -113,4 +114,4 @@ cardComponent = case_
   # on CT._geoMarker (const GeoMarker.component)
   # on CT._geoHeatmap (const GeoHeatmap.component)
   # on CT._static (const staticSetupComponent)
-  # on CT._viz  (const staticSetupComponent)
+  # on CT._viz  (const Viz.component)

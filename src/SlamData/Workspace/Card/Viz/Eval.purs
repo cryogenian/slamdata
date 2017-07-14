@@ -17,6 +17,7 @@ limitations under the License.
 module SlamData.Workspace.Card.Viz.Eval
   ( evalTextLike
   , evalLabeled
+  , evalChart
   , module SlamData.Workspace.Card.Viz.Model
   ) where
 
@@ -33,6 +34,10 @@ import Data.Path.Pathy as Path
 import Data.Set as Set
 import Data.StrMap as SM
 import Data.Variant (on)
+import Data.Argonaut (Json)
+
+import ECharts.Monad (DSL)
+import ECharts.Types.Phantom (OptionI)
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
@@ -50,6 +55,7 @@ import SlamData.Workspace.Card.Viz.Model (Model)
 import SlamData.Workspace.Card.Viz.Renderer.Input.Model as TLR
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Semantics as Sem
+import SlamData.Workspace.Card.Eval.State as ES
 
 import SqlSquared (Sql)
 import SqlSquared as Sql
@@ -193,3 +199,17 @@ evalTextLike m p r = do
                     $ selection p.formInputType ))
 
   eval sql r
+
+evalChart
+  ∷ ∀ m
+  . MonadState CEM.CardState m
+  ⇒ MonadThrow CE.CardError m
+  ⇒ QuasarDSL m
+  ⇒ (Array Json → DSL OptionI)
+  → Port.Resource
+  → m Port.Port
+evalChart buildOptions resource = do
+  let path = resource ^. Port._filePath
+  results ← CE.liftQ $ QQ.all path
+  put $ Just $ ES.ChartOptions (buildOptions results)
+  pure $ Port.ResourceKey Port.defaultResourceVar

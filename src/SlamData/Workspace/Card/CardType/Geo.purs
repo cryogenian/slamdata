@@ -89,7 +89,7 @@ cardClasses cb = cb
   # on _geoMarker clss
   # on _geoHeatmap clss
   where
-  clss _ = [ H.ClassName "sd-setup-geo-chart" ]
+  clss _ = [ H.ClassName "sd-card-chart-options" ]
 
 upcastToGeo ∷ ∀ r. Upcastable r (GeoR ()) ⇒ Variant r → Maybe (Geo ())
 upcastToGeo = upcast

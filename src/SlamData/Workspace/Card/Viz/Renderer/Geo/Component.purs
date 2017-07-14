@@ -44,6 +44,7 @@ data Query a
   | Load M.Model a
   | Setup Port.GeoChartPort a
   | Update ES.GeoR a
+  | SetDimensions { width ∷ Int, height ∷ Int } a
 
 type Message = Maybe ES.EvalState → Maybe ES.EvalState
 
@@ -92,6 +93,14 @@ render state =
 
 eval ∷ Query ~> DSL
 eval = case _ of
+  SetDimensions {width, height} next → do
+    _ ←
+      H.query unit $ H.action
+        $ HL.SetDimension
+        { height: Just height
+        , width: Just width
+        }
+    pure next
   HandleMessage (HL.Initialized leaf) next → do
     sync
     H.raise $ ( _Just ∘ ES._Leaflet ?~ leaf )

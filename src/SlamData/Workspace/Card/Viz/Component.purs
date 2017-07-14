@@ -222,11 +222,20 @@ evalCard = case _ of
     state ← H.get
     let
       widthPadding = 6
+      geoPadding = 10
       intWidth = floor dims.width - widthPadding
       intHeight = floor dims.height
     H.modify _{ dimensions = { width: intWidth, height: intHeight } }
     map reply $ maybe (pure LOD.High) lodByChartType state.vizType
 
+
+resizeGeo ∷ DSL Unit
+resizeGeo = void do
+  state ← H.get
+  let padding = 16
+      width = state.dimensions.width - padding
+      height = state.dimensions.height - padding
+  H.query' CS.cpGeo unit $ H.action $ GR.SetDimensions { width, height }
 
 lodByChartType ∷ CT.VizType → DSL LOD.LevelOfDetails
 lodByChartType vt
@@ -269,6 +278,7 @@ evalComponent = case _ of
     H.modify _{ theme = Just echarts.theme }
     pure next
   Q.RaiseUpdate em next → do
+    resizeGeo
     for_ em (H.raise ∘ CC.stateAlter)
     H.raise CC.modelUpdate
     pure next
