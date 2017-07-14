@@ -16,9 +16,7 @@ limitations under the License.
 
 module SlamData.Header.Attribution where
 
-
 import SlamData.Prelude
-
 import DOM.Event.Types (MouseEvent)
 import Halogen as H
 import Halogen.HTML as HH
