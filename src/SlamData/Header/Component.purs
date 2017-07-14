@@ -16,12 +16,10 @@ limitations under the License.
 
 module SlamData.Header.Component where
 
+import SlamData.Prelude
 import Data.Coyoneda (Coyoneda)
 import Data.Coyoneda as Coyoneda
-
 import DOM.Event.Types (MouseEvent)
-
-import SlamData.Prelude
 import Halogen as H
 import Halogen.Query.HalogenM as HQ
 import Halogen.Component.ChildPath as CP
@@ -36,7 +34,6 @@ import SlamData.Header.Attribution as Attribution
 import SlamData.Header.Gripper.Component as Gripper
 import SlamData.Render.ClassName as CN
 import SlamData.Monad (Slam)
-
 import Utils.DOM as DOM
 
 type State =
