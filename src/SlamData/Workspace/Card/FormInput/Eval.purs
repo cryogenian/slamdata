@@ -125,7 +125,7 @@ evalLabeled m p = do
              ?~ ( Sql.binop Sql.In
                     ( Sql.binop Sql.FieldDeref
                         ( Sql.ident "res" )
-                        ( QQ.jcursorToSql p.cursor ))
+                        ( QQ.jcursorToSql Nothing p.cursor ))
                     ( Sql.vari defaultSelectionVar)))
 
 
@@ -164,7 +164,7 @@ evalTextLike m p = do
              ?~ ( Sql.binop Sql.Eq
                     ( Sql.binop Sql.FieldDeref
                         ( Sql.ident "res" )
-                        ( QQ.jcursorToSql p.cursor ))
+                        ( QQ.jcursorToSql Nothing p.cursor ))
                     (Sql.vari defaultSelectionVar) ))
 
   eval (Sql.Query mempty sql) selection r

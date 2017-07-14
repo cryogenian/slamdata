@@ -40,7 +40,7 @@ import SlamData.Workspace.Card.Eval.Common as CEC
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port.VarMap as VM
-import SlamData.Workspace.Card.Setups.Axis (buildAxes)
+import SlamData.Workspace.Card.Setups.Common.Eval (analyze)
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Error (PivotTableError(..), throwPivotTableError)
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
 import SlamData.Workspace.Card.Setups.Dimension as D
@@ -53,7 +53,7 @@ eval
   . MonadAsk CEM.CardEnv m
   ⇒ MonadState CEM.CardState m
   ⇒ MonadTell CEM.CardLog m
-  ⇒ MonadThrow (Variant (pivotTable ∷ PivotTableError, resource ∷ CE.ResourceError | v)) m
+  ⇒ MonadThrow (Variant (pivotTable ∷ PivotTableError, qerror ∷ CE.QError, resource ∷ CE.ResourceError | v)) m
   ⇒ MonadAff SlamDataEffects m
   ⇒ ParQuasarDSL m
   ⇒ PTM.Model
@@ -63,14 +63,7 @@ eval options port = do
   CEM.CardEnv { varMap, cardId, path } ← ask
   var × resource ← CEM.extractResourcePair port
   state ← get
-  axes ←
-    case state of
-      Just (CEM.Analysis { axes: ax, resource: resource' })
-        | resource' ≡ resource → pure ax
-      _ →
-        CEC.sampleResource path resource (Just { offset: 0, limit: 300 })
-          >>= pivotTableError PivotTableQuasarError
-          >>> map buildAxes
+  _ × axes ← analyze resource =<< get
   put $ Just $ CEM.Analysis { axes, records: [], resource }
   when (Array.null options.columns) do
     throwPivotTableError PivotTableNoColumnSelectedError
@@ -185,14 +178,14 @@ escapeDimension ∷ ∀ a. D.Dimension a J.JCursor → Maybe T.Transform × Sql.
 escapeDimension = case _ of
   D.Dimension _ (D.Static str) → Nothing × (Sql.projection $ Sql.ident str)
   D.Dimension _ (D.Projection tr cur) →
-    tr × (Sql.projection $ Sql.binop Sql.FieldDeref (Sql.ident "row") $ QQ.jcursorToSql cur)
+    tr × (Sql.projection $ QQ.jcursorToSql (Just (Sql.Ident "row")) cur)
 
 escapeColumn ∷ ∀ a. D.Dimension a PTM.Column → Maybe T.Transform × Sql.Projection Sql
 escapeColumn = case _ of
   D.Dimension _ (D.Static str) → Nothing × (Sql.projection $ Sql.ident str)
   D.Dimension _ (D.Projection tr PTM.All) → tr × (Sql.projection $ Sql.ident "row")
   D.Dimension _ (D.Projection tr (PTM.Column cur)) →
-    tr × (Sql.projection $ Sql.binop Sql.FieldDeref (Sql.ident "row") $ QQ.jcursorToSql cur)
+    tr × (Sql.projection $ QQ.jcursorToSql (Just (Sql.Ident "row")) cur)
 
 pivotTableError ∷ ∀ e a m v. MonadThrow (Variant (pivotTable ∷ PivotTableError | v)) m ⇒ (e → PivotTableError) → Either e a → m a
 pivotTableError f = either (throwPivotTableError ∘ f) pure

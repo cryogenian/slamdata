@@ -52,7 +52,7 @@ applyTransform dim p = case dim of
 jcursorSql ∷ ∀ a. D.Dimension a J.JCursor → Sql.Sql
 jcursorSql (D.Dimension _ cat) = case cat of
   D.Static str → Sql.string str
-  D.Projection _ pr → QQ.jcursorToSql pr
+  D.Projection _ pr → QQ.jcursorToSql Nothing pr
 
 jcursorPrj ∷ ∀ a. D.Dimension a J.JCursor → Sql.Projection Sql.Sql
 jcursorPrj = Sql.projection ∘ jcursorSql

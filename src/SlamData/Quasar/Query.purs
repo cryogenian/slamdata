@@ -216,12 +216,12 @@ count file = runExceptT do
 
 data UnfoldableJC = JC JS.JCursor | S String | I Int
 
-jcCoalgebra ∷ Coalgebra (Sql.SqlF EJS.EJsonF) UnfoldableJC
-jcCoalgebra = case _ of
+jcCoalgebra ∷ (∀ a. Maybe (Sql.SqlF EJS.EJsonF a)) → Coalgebra (Sql.SqlF EJS.EJsonF) UnfoldableJC
+jcCoalgebra root = case _ of
   S s → Sql.Ident s
   I i → Sql.Literal (EJS.Integer (HI.fromInt i))
   JC cursor → case cursor of
-    JS.JCursorTop → Sql.Splice Nothing
+    JS.JCursorTop → fromMaybe (Sql.Splice Nothing) root
     JS.JIndex i c → Sql.Binop { op: Sql.IndexDeref, lhs: JC c, rhs: I i }
     JS.JField f c → Sql.Binop { op: Sql.FieldDeref, lhs: JC c, rhs: S f }
 
@@ -232,12 +232,12 @@ removeTopSplice = project ⋙ case _ of
     _ → embed op
   a → embed a
 
-jcursorToSql ∷ JS.JCursor → Sql
-jcursorToSql = removeTopSplice ∘ ana jcCoalgebra ∘ JC ∘ JS.insideOut
+jcursorToSql ∷ (∀ a. Maybe (Sql.SqlF EJS.EJsonF a))  → JS.JCursor → Sql
+jcursorToSql root = removeTopSplice ∘ ana (jcCoalgebra root) ∘ JC ∘ JS.insideOut
 
 allFields ∷ JS.JArray → L.List Sql
 allFields =
-  map jcursorToSql
+  map (jcursorToSql Nothing)
   ∘ L.fromFoldable
   ∘ foldMap (Set.fromFoldable ∘ map fst)
   ∘ map JS.toPrims
