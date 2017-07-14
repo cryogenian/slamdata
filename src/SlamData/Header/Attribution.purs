@@ -20,12 +20,10 @@ module SlamData.Header.Attribution where
 import SlamData.Prelude
 
 import DOM.Event.Types (MouseEvent)
-
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-
 import SlamData.Render.Icon as I
 import SlamData.Render.ClassName as CN
 
