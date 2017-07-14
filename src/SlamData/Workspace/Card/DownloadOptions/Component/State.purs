@@ -24,7 +24,6 @@ import Data.Codec as C
 import Data.Codec.Argonaut.Compat as CA
 import Data.Codec.Argonaut.Migration as CAM
 import Data.Lens (Lens', lens)
-import Data.Path.Pathy as Pathy
 import SlamData.Download.Model as D
 import Utils.Path as PU
 
