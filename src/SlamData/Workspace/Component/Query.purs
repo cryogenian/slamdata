@@ -45,3 +45,4 @@ data Query a
   | HandleWorkspace Wiring.WorkspaceMessage a
   | HandleDialog Dialog.Message a
   | HandleLicenseProblem LicenseProblem a
+  | HandleDeck Wiring.DeckMessage a

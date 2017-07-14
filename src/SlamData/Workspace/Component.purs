@@ -103,8 +103,9 @@ render ∷ AT.AccessType → State → WorkspaceHTML
 render accessType state =
   HH.div
     [ HP.classes
-        $ (guard (AT.isReadOnly accessType) $> HH.ClassName "sd-published")
-        ⊕ [ HH.ClassName "sd-workspace" ]
+        $ [ HH.ClassName "sd-workspace" ]
+        <> (guard (AT.isReadOnly accessType) $> HH.ClassName "sd-published")
+        <> (guard state.rootDeckFocused $> HH.ClassName "root-deck-focused")
     , HE.onClick (HE.input DismissAll)
     ]
     [ header
@@ -179,8 +180,8 @@ eval = case _ of
     H.subscribe $ busEventSource (flip HandleSignInMessage ES.Listening) auth.signIn
     H.subscribe $ busEventSource (flip HandleWorkspace ES.Listening) bus.workspace
     H.subscribe $ busEventSource (flip HandleLicenseProblem ES.Listening) bus.licenseProblems
+    H.subscribe $ busEventSource (flip HandleDeck ES.Listening) bus.decks
     H.subscribe $ throttledEventSource_ (Milliseconds 100.0) onResize (H.request Resize)
-    H.subscribe $ busEventSource (flip HandleLicenseProblem ES.Listening) bus.licenseProblems
     notifyDaysRemainingIfNeeded
     pure next
   PresentStepByStepGuide guideType reply → do
@@ -257,6 +258,13 @@ eval = case _ of
     H.query' cpDialog unit (H.action (Dialog.Show dlg)) $> next
   HandleLicenseProblem problem next →
     H.query' cpDialog unit (H.action (Dialog.Show $ Dialog.LicenseProblem problem)) $> next
+  HandleDeck msg next → case msg of
+    Wiring.DeckFocused deckId → do
+      cursor ← H.gets _.cursor
+      H.modify _{ rootDeckFocused = List.head cursor == Just deckId }
+      pure next
+    _ →
+      pure next
   HandleDialog msg next →
     handleDialog msg $> next
 

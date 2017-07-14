@@ -126,15 +126,19 @@
   line-height: 0
   text-align: center
   transition-property: box-shadow, background-color, color
-  transition-duration: 300ms, 300ms, 200ms
+  transition-duration: 300ms, 200ms, 200ms
   transition-timing-function: ease-out
   cursor: pointer
 
   .sd-icon > svg
     vertical-align: middle
 
-  &:hover
-    color: $gripper-hover-color
+  .sd-workspace:not(.root-deck-focused) &
+    background-color: $body-bg
+    color: $gripper-color
+
+    &:hover
+      color: $gripper-hover-color
 
 
 .sd-header-gripper-opening,
@@ -142,8 +146,8 @@
 .sd-header-gripper-dragging-down,
 .sd-header-gripper-dragging-up,
 .sd-header-gripper-closing
-  color: $global-menu-color
-  background-color: $global-menu-bg
+  color: $global-menu-color !important
+  background-color: $global-menu-bg !important
   box-shadow: 0 0.2rem $padding-base-vertical rgba(0, 0, 0, 0.35)
 
   &:hover
