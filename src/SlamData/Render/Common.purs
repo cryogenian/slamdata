@@ -23,6 +23,7 @@ module SlamData.Render.Common
   , clearFieldIcon
   , busyFieldIcon
   , svgElem
+  , spinner
   ) where
 
 import SlamData.Prelude
@@ -83,3 +84,45 @@ busyFieldIcon label =
 svgElem ∷ ∀ r p i. HH.ElemName → Array (HP.IProp r i) → Array (HTML p i) → HTML p i
 svgElem =
   HH.elementNS (HH.Namespace "http://www.w3.org/2000/svg")
+
+spinner ∷  ∀ p i. H.HTML p i
+spinner =
+  let
+    circles = Array.range 0 7
+    lcircles = toNumber $ Array.length circles
+    animDur = 1.0  -- second
+    deg x = show $ toNumber x * (360.0 / lcircles)
+
+    anStyle i =
+      String.joinWith ";"
+        [ "-webkit-animation-duration:" <> d <> "s"
+        , "animation-duration:" <> d <> "s"
+        , "-webkit-animation-delay:" <> t <> "s"
+        , "animation-delay:" <> t <> "s"
+        ]
+      where
+      t = show $ (toNumber i - (lcircles - 1.0)) / lcircles * animDur
+      d = show animDur
+
+    circle i =
+      svgElem (HH.ElemName "g")
+        [ HP.attr (HH.AttrName "transform") $ "rotate(" <> deg i <> ") translate(34 0)" ]
+        [ svgElem (HH.ElemName "circle")
+            [ HP.attr (HH.AttrName "cx") "0"
+            , HP.attr (HH.AttrName "cy") "0"
+            , HP.attr (HH.AttrName "r") "6"
+            , HP.attr (HH.AttrName "style") $ anStyle i
+            ]
+            [ ]
+        ]
+  in
+    HH.div
+      [ HP.class_ $ HH.ClassName "sd-spinner" ]
+      [ svgElem (HH.ElemName "svg")
+          [ HP.attr (HH.AttrName "viewBox") "0 0 100 100"
+          , HP.attr (HH.AttrName "preserveAspectRatio") "xMidYMid"
+          ]
+          [ svgElem (HH.ElemName "g")
+              [ HP.attr (HH.AttrName "transform") "translate(50 50)" ]
+              $ map circle circles
+          ]
