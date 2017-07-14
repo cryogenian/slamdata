@@ -4,6 +4,8 @@ import SlamData.Prelude
 
 import CSS as CSS
 
+import Data.Equivalence (Equivalence(..))
+
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.Component.ChildPath as CP
@@ -109,7 +111,7 @@ render state =
   ]
   [ HH.slot' cpFilter unit ALF.component "Filter visualizations"
       $ HE.input HandleFilter
-  , HH.slot' cpList unit (AL.actionListComp' eq_ AL.defaultConf [ ]) unit
+  , HH.slot' cpList unit (AL.actionListComp' (Equivalence eq_)  AL.defaultConf [ ]) unit
       $ HE.input HandleAction
   ]
   where
