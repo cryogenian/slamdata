@@ -29,6 +29,7 @@ import Control.Monad.Fork (fork)
 import Control.UI.Browser as Browser
 import DOM.Classy.Event (currentTarget, target) as DOM
 import DOM.Classy.Node (toNode) as DOM
+import Data.Argonaut as J
 import Data.Coyoneda (liftCoyoneda)
 import Data.List as List
 import Data.Time.Duration (Milliseconds(..))
@@ -39,6 +40,8 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
+import SlamData.AdminUI.Component as AdminUI
+import SlamData.AdminUI.Types as AdminUI.Types
 import SlamData.AuthenticationMode as AuthenticationMode
 import SlamData.FileSystem.Resource as R
 import SlamData.GlobalError as GE
@@ -64,7 +67,7 @@ import SlamData.Workspace.Card.Model as CM
 import SlamData.Workspace.Card.Open.Model as Open
 import SlamData.Workspace.Card.Table.Model as JT
 import SlamData.Workspace.Class (navigate, Routes(..))
-import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, cpDeck, cpGuide, cpHeader, cpNotify, cpDialog)
+import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, cpAdminUI, cpDeck, cpDialog, cpGuide, cpHeader, cpNotify)
 import SlamData.Workspace.Component.Query (Query(..))
 import SlamData.Workspace.Component.State (State, initialState)
 import SlamData.Workspace.Deck.Common as DeckCommon
@@ -78,7 +81,7 @@ import SlamData.Workspace.Guide as GuideData
 import SlamData.Workspace.StateMode (StateMode(..))
 import SlamData.Workspace.StateMode as StateMode
 import Utils (endSentence)
-import Utils.DOM (onResize, nodeEq)
+import Utils.DOM (nodeEq, onResize)
 
 type WorkspaceHTML = H.ParentHTML Query ChildQuery ChildSlot Slam
 type WorkspaceDSL = H.ParentDSL State Query ChildQuery ChildSlot Void Slam
@@ -108,6 +111,7 @@ render accessType state =
     , cardGuide
     , flipGuide
     , dialogSlot
+    , adminUISlot
     ]
   where
   renderError err =
@@ -143,12 +147,15 @@ render accessType state =
   dialogSlot =
     HH.slot' cpDialog unit Dialog.component unit (HE.input HandleDialog)
 
+  adminUISlot =
+    HH.slot' cpAdminUI unit AdminUI.component unit (HE.input HandleAdminUI)
+
   notifications =
     HH.slot' cpNotify unit (NC.component (NC.renderModeFromAccessType accessType)) unit (HE.input HandleNotification)
 
   header =
     if AT.isEditable accessType
-      then HH.slot' cpHeader unit Header.component unit absurd
+      then HH.slot' cpHeader unit Header.component unit (HE.input HandleHeader)
       else HH.text ""
 
   deck =
@@ -231,13 +238,19 @@ eval = case _ of
     H.liftAff $ Bus.write { providerR, idToken, prompt: true, keySuffix } auth.requestToken
     either signInFailure (const $ signInSuccess) =<< (H.liftAff $ takeVar idToken)
     pure next
+  HandleHeader (Header.GlobalMenuMessage GlobalMenu.OpenAdminUI) next →
+    H.query' cpAdminUI unit (H.action AdminUI.Types.Open) $> next
+  HandleHeader _ next → pure next
+  HandleAdminUI msg next → case msg of
+    AdminUI.Types.Closed →
+      queryHeaderGripper (H.action Gripper.Close) $> next
   HandleGuideMessage slot Guide.Dismissed next → do
     case slot of
       CardGuide → do
-        LS.persist LSK.dismissedCardGuideKey true
+        LS.persist J.encodeJson LSK.dismissedCardGuideKey true
         void $ queryDeck $ H.action Deck.DismissedCardGuide
       FlipGuide → do
-        LS.persist LSK.dismissedFlipGuideKey true
+        LS.persist J.encodeJson LSK.dismissedFlipGuideKey true
     H.modify (_ { guide = Nothing })
     pure next
   HandleNotification msg next →
@@ -362,4 +375,4 @@ queryHeaderGripper =
 initialCardGuideStep ∷ WorkspaceDSL (Maybe Int)
 initialCardGuideStep =
   either (const $ Just 0) (if _ then Nothing else Just 0)
-    <$> LS.retrieve LSK.dismissedCardGuideKey
+    <$> LS.retrieve J.decodeJson LSK.dismissedCardGuideKey

@@ -17,22 +17,24 @@ limitations under the License.
 module SlamData.Monad.Auth where
 
 import SlamData.Prelude
+
+import Control.Monad.Aff (Aff)
 import Control.Monad.Aff as Aff
+import Control.Monad.Aff.AVar (AVar)
 import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Aff.Bus as Bus
+import Data.Argonaut as J
 import Quasar.Advanced.QuasarAF as QA
 import Quasar.Advanced.Types as QAT
-import SlamData.AuthenticationMode as AuthenticationMode
-import SlamData.LocalStorage.Class as LS
-import SlamData.LocalStorage.Keys as LSK
-import SlamData.Quasar.Auth.Authentication as Auth
-import SlamData.Quasar.Error as QError
-import Control.Monad.Aff (Aff)
-import Control.Monad.Aff.AVar (AVar)
 import Quasar.Error (QError(..), UnauthorizedDetails(..))
 import SlamData.AuthenticationMode (AuthenticationMode, AllowedAuthenticationModes)
+import SlamData.AuthenticationMode as AuthenticationMode
 import SlamData.Effects (SlamDataEffects)
+import SlamData.LocalStorage.Class as LS
+import SlamData.LocalStorage.Keys as LSK
 import SlamData.Quasar.Aff (runQuasarF)
+import SlamData.Quasar.Auth.Authentication as Auth
+import SlamData.Quasar.Error as QError
 import Utils (passover, singletonValue)
 
 getIdTokenSilently ∷ AllowedAuthenticationModes → Auth.RequestIdTokenBus → Aff SlamDataEffects (Either QError Auth.EIdToken)
@@ -56,12 +58,12 @@ getIdTokenSilently interactionlessSignIn idTokenRequestBus =
 
   signedOutBefore ∷ Aff SlamDataEffects Boolean
   signedOutBefore =
-    isRight <$> LS.retrieve LSK.signedOutBefore
+    isRight <$> LS.retrieve J.decodeJson LSK.signedOutBefore
 
   authModeSignedOutBefore ∷ AuthenticationMode.AuthenticationMode → Aff SlamDataEffects Boolean
   authModeSignedOutBefore =
     map isRight
-      ∘ LS.retrieve
+      ∘ LS.retrieve J.decodeJson
       ∘ LSK.nonceLocalStorageKey
       ∘ AuthenticationMode.toKeySuffix
 
@@ -103,7 +105,7 @@ getIdTokenSilently interactionlessSignIn idTokenRequestBus =
   getProviderFromLocalStorage ∷ Aff SlamDataEffects (Either QError QAT.ProviderR)
   getProviderFromLocalStorage =
     lmap (unauthorizedError ∘ Just) ∘ map QAT.runProvider
-      <$> LS.retrieve
+      <$> LS.retrieve J.decodeJson
             (LSK.providerLocalStorageKey
                $ AuthenticationMode.toKeySuffix AuthenticationMode.ChosenProvider)
 

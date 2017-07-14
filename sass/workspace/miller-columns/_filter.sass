@@ -1,0 +1,35 @@
+.sd-miller-column-filter
+  position: relative
+
+  .sd-action-filter-icon
+    position: absolute
+    z-index: 2
+    left: $padding-base-vertical
+    top: 0
+    opacity: 0.5
+    bottom: 0
+    margin: auto
+    height: 1em
+    line-height: 0
+
+  .sd-form-input
+    margin: 0
+    border: none
+    border-bottom: 0.1rem solid $miller-column-border-color
+    width: 100%
+    padding: 0 2.6rem 0 2.4rem
+
+  button
+    position: absolute
+    top: 0
+    bottom: 0
+    right: 0
+    border: none
+    margin: auto
+    padding: 0 $padding-base-vertical
+    background: 0
+    line-height: 0
+    transition: opacity 0.25s ease-out
+
+    &:disabled
+      opacity: 0

@@ -45,10 +45,7 @@ isReadOnly ∷ AccessType → Boolean
 isReadOnly ReadOnly = true
 isReadOnly _ = false
 
-derive instance genericAccessType ∷ Generic AccessType
 derive instance eqAccessType ∷ Eq AccessType
 derive instance ordAccessType ∷ Ord AccessType
-
-instance showAccessType ∷ Show AccessType where
-  show Editable = "Editable"
-  show ReadOnly = "ReadOnly"
+derive instance genericAccessType ∷ Generic AccessType _
+instance showAccessType ∷ Show AccessType where show = genericShow

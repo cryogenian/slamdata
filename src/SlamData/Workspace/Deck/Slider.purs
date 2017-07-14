@@ -23,35 +23,31 @@ module SlamData.Workspace.Deck.Slider
 
 import SlamData.Prelude
 
+import CSS (CSS)
 import Data.Array as Array
 import Data.Int as Int
 import Data.Lens ((.~), (?~))
 import Data.Lens as Lens
 import Data.List ((:))
-
 import DOM.Event.MouseEvent as ME
-
-import CSS (CSS)
-
 import Halogen as H
-import Halogen.HTML.CSS (style)
-import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
+import Halogen.HTML.CSS (style)
 import Halogen.HTML.Elements.Keyed as HK
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties (IProp())
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-
 import SlamData.Hint as Hint
 import SlamData.Render.ClassName as CN
 import SlamData.Render.Common as RC
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId as CardId
 import SlamData.Workspace.Card.Component.CSS as CardCSS
-import SlamData.Workspace.Card.InsertableCardType as ICT
-import SlamData.Workspace.Card.Factory as Factory
-import SlamData.Workspace.Card.Next.Component as Next
 import SlamData.Workspace.Card.Error.Component as Error
+import SlamData.Workspace.Card.Factory as Factory
+import SlamData.Workspace.Card.InsertableCardType as ICT
+import SlamData.Workspace.Card.Next.Component as Next
 import SlamData.Workspace.Card.Pending.Component as Pending
 import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML, DeckDSL)
 import SlamData.Workspace.Deck.Component.ChildSlot as ChildSlot
@@ -62,8 +58,6 @@ import SlamData.Workspace.Deck.Component.State (State)
 import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.Gripper as Gripper
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef(..))
-
-import Utils as Utils
 import Utils.CSS as CSSUtils
 import Utils.DOM as DOM
 
@@ -306,7 +300,7 @@ renderCard opts deckComponent st activeIndex index card =
       hintText
 
   insertableCardType ∷ Maybe ICT.InsertableCardType
-  insertableCardType = ICT.fromCardType ∘ _.cardType <$> Utils.hush card
+  insertableCardType = ICT.fromCardType ∘ _.cardType <$> hush card
 
   outputType ∷ Maybe ICT.InsertableCardIOType
   outputType = ICT.outputFor =<< insertableCardType

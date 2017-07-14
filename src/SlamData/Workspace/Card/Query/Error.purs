@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Quasar.Advanced.QuasarAF (QError)
 import SlamData.GlobalError as GE
-import Utils (throwVariantError, hush)
+import Utils (throwVariantError)
 
 data QueryError
   = QueryCompileError QError
