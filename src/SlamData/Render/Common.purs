@@ -27,12 +27,14 @@ module SlamData.Render.Common
 
 import SlamData.Prelude
 
+import Data.Array as Array
+import Data.Int (toNumber)
+import Data.String as String
 import Halogen as H
 import Halogen.HTML.Core (HTML, ClassName)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-
 import SlamData.Render.ClassName as CN
 import SlamData.Render.Icon as I
 
@@ -72,7 +74,7 @@ busyFieldIcon label =
     , HP.title label
     , ARIA.label label
     ]
-    [ I.spinner
+    [ spinner
     , HH.span
         [ HP.class_ CN.srOnly ]
         [ HH.text label ]
