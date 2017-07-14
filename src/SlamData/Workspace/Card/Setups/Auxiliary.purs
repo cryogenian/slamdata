@@ -44,18 +44,18 @@ type State = Variant
   )
 
 eq_ ∷ State → State → Boolean
-eq_ r = V.default false
-  # V.on CT._area (\rr → V.on CT._area (Area.eq_ rr) ff r)
-  # V.on CT._bar (\rr → V.on CT._bar (Bar.eq_ rr) ff r)
-  # V.on CT._funnel (\rr → V.on CT._funnel (Funnel.eq_ rr) ff r)
-  # V.on CT._graph (\rr → V.on CT._graph (Graph.eq_ rr) ff r)
-  # V.on CT._heatmap (\rr → V.on CT._heatmap (Heatmap.eq_ rr) ff r)
-  # V.on CT._line (\rr → V.on CT._line (Line.eq_ rr) ff r)
-  # V.on CT._metric (\rr → V.on CT._metric (Metric.eq_ rr) ff r)
-  # V.on CT._punchCard (\rr → V.on CT._punchCard (PunchCard.eq_ rr) ff r)
-  # V.on CT._scatter (\rr → V.on CT._scatter (Scatter.eq_ rr) ff r)
-  # V.on CT._geoHeatmap (\rr → V.on CT._geoHeatmap (GeoHeatmap.eq_ rr) ff r)
-  # V.on CT._geoMarker (\rr → V.on CT._geoMarker (GeoMarker.eq_ rr) ff r)
+eq_ = V.case_
+  # V.on CT._area (\r → V.on CT._area (Area.eq_ r) ff)
+  # V.on CT._bar (\r → V.on CT._bar (Bar.eq_ r) ff)
+  # V.on CT._funnel (\r → V.on CT._funnel (Funnel.eq_ r) ff)
+  # V.on CT._graph (\r → V.on CT._graph (Graph.eq_ r) ff)
+  # V.on CT._heatmap (\r → V.on CT._heatmap (Heatmap.eq_ r) ff)
+  # V.on CT._line (\r → V.on CT._line (Line.eq_ r) ff)
+  # V.on CT._metric (\r → V.on CT._metric (Metric.eq_ r) ff)
+  # V.on CT._punchCard (\r → V.on CT._punchCard (PunchCard.eq_ r) ff)
+  # V.on CT._scatter (\r → V.on CT._scatter (Scatter.eq_ r) ff)
+  # V.on CT._geoHeatmap (\r → V.on CT._geoHeatmap (GeoHeatmap.eq_ r) ff)
+  # V.on CT._geoMarker (\r → V.on CT._geoMarker (GeoMarker.eq_ r) ff)
 
 encode ∷ State → J.Json
 encode = V.case_
