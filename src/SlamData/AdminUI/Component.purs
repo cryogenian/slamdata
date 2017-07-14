@@ -32,6 +32,7 @@ import Halogen.HTML.Properties as HP
 import Quasar.Advanced.Types as QA
 import SlamData.AdminUI.Dialog.Component as Dialog
 import SlamData.AdminUI.Group as Group
+import SlamData.AdminUI.Users as Users
 import SlamData.AdminUI.Types as AT
 import SlamData.LocalStorage.Class as LS
 import SlamData.LocalStorage.Keys as LK
@@ -125,8 +126,7 @@ tabBody state =
       AT.Users →
         pure $ HH.div
           [ HP.class_ (HH.ClassName "users") ]
-          (renderUsersForm state.formState.users)
-      AT.Groups →
+          (Users.renderForm state.formState.users)
         pure $ HH.div
           [ HP.class_ (HH.ClassName "groups") ]
           (Group.renderGroupsForm state.formState.groups)
@@ -319,26 +319,6 @@ renderServerForm (AT.ServerState state) =
                 ]
             ]
       , HH.textarea [HP.class_ (HH.ClassName "form-control"), HP.disabled (not state.enableCustomSSL)]
-      ]
-  ]
-
-renderUsersForm ∷ AT.UsersState → Array AT.HTML
-renderUsersForm (AT.UsersState state) =
-  [ HH.fieldset_
-      [ HH.label_
-          [ HH.text "Search"
-          , HH.input
-              [ HP.class_ (HH.ClassName "form-control")
-              , HP.type_ HP.InputText
-              , HP.placeholder "Search string"
-              , HE.onValueInput $ HE.input \str → AT.SetUsers (AT.UsersState (state {search = str}))
-              , HP.value state.search
-              ]
-          , HH.button
-              [ HE.onClick $ HE.input_ (AT.SetUsers (AT.UsersState (state {search = ""})))
-              ]
-              [ R.clearFieldIcon "Clear search string" ]
-          ]
       ]
   ]
 
