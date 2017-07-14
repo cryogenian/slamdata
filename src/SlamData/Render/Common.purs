@@ -126,3 +126,4 @@ spinner =
               [ HP.attr (HH.AttrName "transform") "translate(50 50)" ]
               $ map circle circles
           ]
+      ]
