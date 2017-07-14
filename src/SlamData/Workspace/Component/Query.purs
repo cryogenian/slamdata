@@ -49,3 +49,4 @@ data Query a
   | HandleSignInMessage SignInMessage a
   | HandleWorkspace Wiring.WorkspaceMessage a
   | HandleLicenseProblem LicenseProblem a
+  | HandleDeck Wiring.DeckMessage a

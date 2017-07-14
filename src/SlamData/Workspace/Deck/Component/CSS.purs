@@ -27,6 +27,12 @@ deck = ClassName "sd-deck"
 deckFrame ∷ ClassName
 deckFrame = ClassName "sd-deck-frame"
 
+deckFrameControls ∷ ClassName
+deckFrameControls = ClassName "sd-deck-frame-controls"
+
+deckFrameActions ∷ ClassName
+deckFrameActions = ClassName "sd-deck-frame-actions"
+
 deckShadow ∷ ClassName
 deckShadow = ClassName "sd-deck-shadow"
 
