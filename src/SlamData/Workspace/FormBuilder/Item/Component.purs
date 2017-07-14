@@ -27,7 +27,6 @@ import DOM.HTML.Indexed as DI
 import DOM.HTML.Indexed.StepValue (StepValue(..))
 import Data.BrowserFeatures.InputType as IT
 import Data.DateTime as DT
-import Data.Either (hush)
 import Data.Either.Nested (Either3)
 import Data.Formatter.DateTime as FD
 import Data.Functor.Coproduct.Nested (Coproduct3)

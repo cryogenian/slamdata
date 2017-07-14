@@ -24,7 +24,6 @@ import Data.Argonaut (JCursor(..))
 import Data.BrowserFeatures.InputType (InputType)
 import Data.BrowserFeatures.InputType as IT
 import Data.DateTime as DT
-import Data.Either (hush)
 import Data.Either.Nested (Either3)
 import Data.Formatter.DateTime as FD
 import Data.Functor.Coproduct.Nested (Coproduct3)
