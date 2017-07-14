@@ -2,31 +2,31 @@ module Data.ListMap where
 
 import SlamData.Prelude hiding (empty)
 
-import Data.Array as A
+import Data.List as L
 import Data.Unfoldable (class Unfoldable)
 
-newtype ListMap k v = ListMap (Array (k × v))
+newtype ListMap k v = ListMap (L.List (k × v))
 
 derive instance functorListMap ∷ Functor (ListMap k)
 
 empty ∷ ∀ k v. ListMap k v
-empty = ListMap [ ]
+empty = ListMap L.Nil
 
 lookup ∷ ∀ k v. (k → k → Boolean) → k → ListMap k v → Maybe v
-lookup eq_ k (ListMap a) = map snd $ A.find (eq_ k ∘ fst) a
+lookup eq_ k (ListMap a) = map snd $ L.find (eq_ k ∘ fst) a
 
 member ∷ ∀ k v. (k → k → Boolean) → k → ListMap k v → Boolean
 member eq_ k lm = isJust $ lookup eq_ k lm
 
 insert ∷ ∀ k v. (k → k → Boolean) → k → v → ListMap k v → ListMap k v
 insert eq_ k v (ListMap lm) =
-  ListMap $ A.cons (k × v) $ A.filter (eq_ k ∘ fst) lm
+  ListMap $ L.Cons (k × v) $ L.filter (eq_ k ∘ fst) lm
 
 fromFoldable ∷ ∀ f k v. Foldable f ⇒ f (k × v) → ListMap k v
-fromFoldable = ListMap ∘ A.fromFoldable
+fromFoldable = ListMap ∘ L.fromFoldable
 
 toUnfoldable ∷ ∀ u k v. Unfoldable u ⇒ ListMap k v → u (k × v)
-toUnfoldable (ListMap lm) = A.toUnfoldable lm
+toUnfoldable (ListMap lm) = L.toUnfoldable lm
 
 union ∷ ∀ k v. (k → k → Boolean) → ListMap k v → ListMap k v → ListMap k v
 union eq_  (ListMap l) r =

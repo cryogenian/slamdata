@@ -11,7 +11,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.DimMap.Component where
+module SlamData.Workspace.Card.Setups.DimensionMap.Component where
 
 import SlamData.Prelude
 
@@ -24,11 +24,11 @@ import Halogen.HTML.Properties as HP
 
 import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.Setups.ActionSelect.Component as AS
-import SlamData.Workspace.Card.Setups.DimMap.Component.ChildSlot as CS
-import SlamData.Workspace.Card.Setups.DimMap.Component.Query as Q
-import SlamData.Workspace.Card.Setups.DimMap.Component.State as ST
-import SlamData.Workspace.Card.Setups.DimMap.Package as DP
-import SlamData.Workspace.Card.Setups.DimMap.Projection as Pr
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.ChildSlot as CS
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as Q
+import SlamData.Workspace.Card.Setups.DimensionMap.Component.State as ST
+import SlamData.Workspace.Card.Setups.DimensionMap.Package as DP
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as Pr
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC
 import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor as DJ
 import SlamData.Workspace.Card.Setups.Inputs as I
@@ -128,11 +128,11 @@ eval = case _ of
       pure next
     Q.Dismiss next → do
       H.modify $ ST.clear fld
-      sendUpdatedDimMap
+      sendUpdatedDimensionMap
       pure next
     Q.LabelChanged str next → do
       H.modify $ ST.setLabel fld str
-      sendUpdatedDimMap
+      sendUpdatedDimensionMap
       pure next
     Q.HandleDPMessage m next → case m of
       DPC.Dismiss → do
@@ -142,7 +142,7 @@ eval = case _ of
         H.modify
           $ ( ST.setValue fld $ DJ.flattenJCursors value )
           ∘ ( ST.deselect )
-        sendUpdatedDimMap
+        sendUpdatedDimensionMap
         pure next
     Q.HandleTransformPicker msg next → do
       case msg of
@@ -152,10 +152,10 @@ eval = case _ of
           H.modify
             $ ST.deselect
             ∘ ST.setTransform fld mbt
-          sendUpdatedDimMap
+          sendUpdatedDimensionMap
       pure next
 
-sendUpdatedDimMap ∷ DSL Unit
-sendUpdatedDimMap = do
+sendUpdatedDimensionMap ∷ DSL Unit
+sendUpdatedDimensionMap = do
   st ← H.get
   H.raise $ Q.Update st.dimMap

@@ -11,15 +11,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.DimMap.Component.Query where
+module SlamData.Workspace.Card.Setups.DimensionMap.Component.Query where
 
 import SlamData.Workspace.Card.Setups.ActionSelect.Component as AS
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component.Message as DM
 import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (JCursorNode)
 
-import SlamData.Workspace.Card.Setups.DimMap.Projection as Pr
-import SlamData.Workspace.Card.Setups.DimMap.Package as DP
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as Pr
+import SlamData.Workspace.Card.Setups.DimensionMap.Package as DP
 import SlamData.Workspace.Card.Setups.Transform as Tr
 
 data FieldQuery a

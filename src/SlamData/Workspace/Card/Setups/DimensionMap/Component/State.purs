@@ -11,7 +11,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.DimMap.Component.State where
+module SlamData.Workspace.Card.Setups.DimensionMap.Component.State where
 
 import SlamData.Prelude
 
@@ -22,8 +22,8 @@ import Data.List as L
 import Data.Set as Set
 
 import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Workspace.Card.Setups.DimMap.Package as DP
-import SlamData.Workspace.Card.Setups.DimMap.Projection as Pr
+import SlamData.Workspace.Card.Setups.DimensionMap.Package as DP
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as Pr
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Transform as Tr
 

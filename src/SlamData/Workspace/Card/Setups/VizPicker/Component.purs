@@ -19,8 +19,8 @@ import SlamData.Monad (Slam)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.VizType as VT
 import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Workspace.Card.Setups.DimMap.Package as DP
-import SlamData.Workspace.Card.Setups.DimMap.DSL as DSL
+import SlamData.Workspace.Card.Setups.DimensionMap.Package as DP
+import SlamData.Workspace.Card.Setups.DimensionMap.DSL as DSL
 
 type ChildSlot = Unit ⊹ Unit ⊹ Void
 

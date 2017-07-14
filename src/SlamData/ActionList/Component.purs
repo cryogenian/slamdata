@@ -30,6 +30,7 @@ import SlamData.Prelude
 import CSS as CSS
 
 import Data.Array as Arr
+import Data.Equivalence (Equivalence(..))
 import Data.Foldable as F
 import Data.String as Str
 
@@ -61,17 +62,17 @@ type MkConf a =
 
 actionListComp'
   ∷ ∀ a
-  . ( a → a → Boolean )
+  . Equivalence a
   → MkConf a
   → Array ( A.Action a )
   → H.Component HH.HTML ( Q.Query a ) Unit ( M.Message a ) Slam
-actionListComp' eq_ mkConf actions =
+actionListComp' equiv mkConf actions =
   H.lifecycleComponent
     { initialState: const $ ST.initialState actions
     , render: render mkConf
     , initializer: Just $ H.action Q.CalculateBoundingRect
     , finalizer: Nothing
-    , eval: eval eq_
+    , eval: eval equiv
     , receiver: const Nothing
     }
 
@@ -81,13 +82,13 @@ actionListComp
   ⇒ MkConf a
   → Array (A.Action a)
   → H.Component HH.HTML (Q.Query a) Unit (M.Message a) Slam
-actionListComp = actionListComp' eq
+actionListComp = actionListComp' $ Equivalence eq
 
 elementRef ∷ H.RefLabel
 elementRef = H.RefLabel "bounding-element"
 
 component ∷ ∀ a. Eq a ⇒ H.Component HH.HTML (Q.Query a) Unit (M.Message a) Slam
-component = actionListComp' eq A.defaultConf []
+component = actionListComp' (Equivalence eq) A.defaultConf []
 
 render ∷ ∀ a. MkConf a → ST.State a → HTML a
 render mkConf state =
@@ -221,8 +222,8 @@ renderButton filterString { presentation, metrics, action, lines } =
         , HH.ClassName "sd-button-warning"
         ]
 
-updateActions ∷ ∀ a. (a → a → Boolean) → Array (A.Action a) → ST.State a → ST.State a
-updateActions eq_ newActions state =
+updateActions ∷ ∀ a. Equivalence a → Array (A.Action a) → ST.State a → ST.State a
+updateActions (Equivalence eq_) newActions state =
   case state.activeDrill of
     Nothing →
       state
@@ -253,8 +254,8 @@ getBoundingDOMRect =
   traverse (H.liftEff ∘ DOMUtils.getOffsetClientRect)
     =<< H.getHTMLElementRef elementRef
 
-eval ∷ ∀ a. ( a → a → Boolean ) → Q.Query a ~> DSL a
-eval eq_ =
+eval ∷ ∀ a. Equivalence a → Q.Query a ~> DSL a
+eval equiv =
   case _ of
     Q.UpdateFilter str next → do
       H.modify _{ filterString = str }
@@ -278,7 +279,7 @@ eval eq_ =
             }
       pure next
     Q.UpdateActions actions next →
-      H.modify (updateActions eq_ actions)
+      H.modify (updateActions equiv actions)
         $> next
     Q.CalculateBoundingRect next → do
       H.modify

@@ -1,4 +1,4 @@
-module SlamData.Workspace.Card.Setups.DimMap.Projection where
+module SlamData.Workspace.Card.Setups.DimensionMap.Projection where
 
 import SlamData.Prelude
 
@@ -48,7 +48,7 @@ derive instance newtypeProjectionMap ∷ Newtype (ProjectionMap a) _
 toStrMap ∷ ∀ a. ProjectionMap a → SM.StrMap a
 toStrMap (ProjectionMap sm) = sm
 
-type DimensionMap = ProjectionMap D.LabeledJCursor
+type DimMap = ProjectionMap D.LabeledJCursor
 
 empty ∷ ∀ a. ProjectionMap a
 empty = ProjectionMap SM.empty
@@ -69,8 +69,8 @@ filter ∷ ∀ a. (a → Boolean) → ProjectionMap a → ProjectionMap a
 filter f (ProjectionMap sm) = ProjectionMap $ SM.filter f sm
 
 type AxesComposer s =
-  { guard ∷ Projection → DimensionMap → s → s
-  , filter ∷ Projection → DimensionMap → s → s
+  { guard ∷ Projection → DimMap → s → s
+  , filter ∷ Projection → DimMap → s → s
   }
 
 print ∷ Projection → String

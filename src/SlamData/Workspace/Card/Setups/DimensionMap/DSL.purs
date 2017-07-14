@@ -1,4 +1,4 @@
-module SlamData.Workspace.Card.Setups.DimMap.DSL where
+module SlamData.Workspace.Card.Setups.DimensionMap.DSL where
 
 import SlamData.Prelude
 
@@ -10,7 +10,7 @@ import Data.List as L
 import Data.Lens.Iso (Iso', iso, withIso)
 
 import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Workspace.Card.Setups.DimMap.Projection as Pr
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as Pr
 
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -183,8 +183,8 @@ requirement lenses =
 
 
 type Package s r =
-  { allFields ∷ Pr.DimensionMap → Ax.AxisTypeAnnotated s r → L.List Pr.Projection
-  , cursorMap ∷ Pr.DimensionMap → Ax.AxisTypeAnnotated s r → Pr.ProjectionMap s
+  { allFields ∷ Pr.DimMap → Ax.AxisTypeAnnotated s r → L.List Pr.Projection
+  , cursorMap ∷ Pr.DimMap → Ax.AxisTypeAnnotated s r → Pr.ProjectionMap s
   , requiredFields ∷ L.List Pr.Projection
   , axesRequirements ∷ AxesRequirements
   }
@@ -270,7 +270,7 @@ interpret axc cmds =
   requiredFields ∷ L.List Field
   requiredFields = L.filter (not ∘ _.optional) fields
 
-  allFields ∷ Pr.DimensionMap → Ax.AxisTypeAnnotated s r → L.List Pr.Projection
+  allFields ∷ Pr.DimMap → Ax.AxisTypeAnnotated s r → L.List Pr.Projection
   allFields =
     const $ const $ L.reverse $ map (view _projection) fields
 
@@ -301,7 +301,7 @@ interpret axc cmds =
     applyRequirements add req $ requirement f.axesLenses
 
   cursorMap
-    ∷ Pr.DimensionMap
+    ∷ Pr.DimMap
     → Ax.AxisTypeAnnotated s r
     → Pr.ProjectionMap s
   cursorMap dimMap axes =

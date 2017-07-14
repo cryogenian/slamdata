@@ -1,4 +1,4 @@
-module SlamData.Workspace.Card.Setups.DimMap.Package where
+module SlamData.Workspace.Card.Setups.DimensionMap.Package where
 
 import SlamData.Prelude
 
@@ -13,9 +13,9 @@ import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.VizType as VT
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Setups.DimMap.DSL (field, addSource, isFilteredBy, isActiveWhen, optional)
-import SlamData.Workspace.Card.Setups.DimMap.DSL as DSL
-import SlamData.Workspace.Card.Setups.DimMap.Projection as Pr
+import SlamData.Workspace.Card.Setups.DimensionMap.DSL (field, addSource, isFilteredBy, isActiveWhen, optional)
+import SlamData.Workspace.Card.Setups.DimensionMap.DSL as DSL
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as Pr
 
 lm ∷ ∀ v. LM.Module VT.VizType v
 lm = LM.openModule \a b → CT.eq_ (expandVariant a) (expandVariant b)
