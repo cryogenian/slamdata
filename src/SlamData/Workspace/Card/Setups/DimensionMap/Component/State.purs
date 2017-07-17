@@ -98,7 +98,7 @@ isConfigurable prj pack state
   | otherwise =
     let
       axis = state.dimMap ^? T.unpackProjection prj ∘ _Just ∘ D._value ∘ D._projection
-    in maybe false (eq Ax.Measure) $ Ax.axisType <$> axis <*> pure state.axes
+    in isJust $ Ax.axisType <$> axis <*> pure state.axes
 
 getTransform ∷ T.Projection → State → Maybe Tr.Transform
 getTransform tp state =
@@ -108,11 +108,11 @@ transforms ∷ T.Projection → State → Array Tr.Transform
 transforms prj state =
   let
     mbTr = join $ state.dimMap ^? T.unpackProjection prj ∘ _Just ∘ D._value ∘ D._transform
-    axis = state.dimMap ^? T.unpackProjection prj ∘ _Just ∘ D._value ∘ D._projection
-    axisType = Ax.axisType <$> axis <*> pure state.axes
+    axis = spy $ state.dimMap ^? T.unpackProjection prj ∘ _Just ∘ D._value ∘ D._projection
+    axisType = spy $ Ax.axisType <$> axis <*> pure state.axes
   in fromMaybe [] do
     at ← axisType
-    let options = Tr.axisTransforms at mbTr
+    let options = spy $ Tr.axisTransforms at mbTr
     pure $ if fromMaybe false $ F.elem <$> mbTr <*> pure options
       then options
       else A.fromFoldable mbTr <> options

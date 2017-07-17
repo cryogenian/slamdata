@@ -48,6 +48,8 @@ import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 
+import SlamData.Workspace.Card.Setups.Transform as Tr
+
 import SqlSquared as Sql
 
 type BarSeries =
@@ -180,8 +182,11 @@ barOptions axes r barData = do
   where
   xAxisType ∷ Ax.AxisType
   xAxisType =
-    fromMaybe Ax.Category
-    $ Ax.axisType <$> (r.category ^? D._value ∘ D._projection) <*> pure axes
+    case r.category ^? D._value ∘ D._transform of
+      Just _ → Ax.Category
+      Nothing →
+        fromMaybe Ax.Category
+        $ Ax.axisType <$> (r.category ^? D._value ∘ D._projection) <*> pure axes
 
 
   xAxisConfig ∷ Ax.EChartsAxisConfiguration
@@ -206,7 +211,6 @@ barOptions axes r barData = do
       $ flip foldMap barData
       $ foldMap (Set.fromFoldable ∘ M.keys ∘ _.items)
       ∘ _.series
-
 
   xSortFn ∷ String → String → Ordering
   xSortFn = Ax.compareWithAxisType xAxisType

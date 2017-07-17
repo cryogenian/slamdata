@@ -50,6 +50,7 @@ dateParts =
   , Century
   , Decade
   , Quarter
+  , Year
   , Month
   , DayOfYear
   , DayOfYearISO
@@ -89,6 +90,18 @@ printTime = case _ of
   Second → "second"
   Minute → "minute"
   Hour → "hour"
+
+transformDateSql ∷ DatePart → Sql.Sql → Sql.Sql
+transformDateSql dp expr =
+  Sql.invokeFunction "DATE_PART"
+  $ L.fromFoldable
+  [ Sql.string $ printDate dp, expr ]
+
+transformTimeSql ∷ TimePart → Sql.Sql → Sql.Sql
+transformTimeSql tp expr =
+  Sql.invokeFunction "DATE_PART"
+  $ L.fromFoldable
+  [ Sql.string $ printTime tp, expr ]
 
 applyDateTransform ∷ DatePart → Sql.Projection Sql.Sql → Sql.Projection Sql.Sql
 applyDateTransform dp (Sql.Projection { alias, expr }) =

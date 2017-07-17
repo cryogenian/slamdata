@@ -103,6 +103,18 @@ applyTransform =
     in Sql.Projection { alias, expr: Sql.invokeFunction funcName $ L.singleton expr }
 
 
+transformSql ∷ Transform → Sql.Sql → Sql.Sql
+transformSql = foldTransform
+  DP.transformDateSql
+  DP.transformTimeSql
+  (\_ p → p)
+  S.transformStringSql
+  (\_ p → p)
+  (\_ p → p)
+
+
+
+
 dateTransforms ∷ Array Transform
 dateTransforms = DatePart <$> DP.dateParts
 
