@@ -37,11 +37,12 @@ import ECharts.Types.Phantom as ETP
 
 import SlamData.Workspace.Card.CardType.ChartType (ChartType(Graph))
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Chart.Common as SCC
+import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Chart.Graph.Model (Model, ModelR)
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 
@@ -157,11 +158,8 @@ buildGraphData r jarr =
 
 graphOptions ∷ Axes → ModelR → GraphData → DSL OptionI
 graphOptions axes r (links × nodes) = do
-  E.tooltip do
+  CCT.tooltip do
     E.triggerItem
-    E.textStyle do
-      E.fontFamily "Ubuntu, sans"
-      E.fontSize 12
     E.formatterItem \{name, value, "data": item, dataType} →
       if dataType ≡ "edge" then ""
       else

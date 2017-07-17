@@ -17,16 +17,26 @@ limitations under the License.
 module SlamData.Workspace.Card.Setups.Chart.Common.Tooltip where
 
 import SlamData.Prelude
+
 import Color as Color
+
 import CSS as CSS
+
 import Data.Foreign (F, Foreign, readNumber, typeOf, toForeign) as Frn
 import Data.Foreign.Index (readIndex, readProp) as Frn
+
+import ECharts.Commands as E
+import ECharts.Monad (DSLMonad)
 import ECharts.Types as ET
+import ECharts.Types.Phantom as ETP
+
 import Halogen.HTML as HH
 import Halogen.HTML.CSS as HC
 import Halogen.HTML.Properties as HP
 import Halogen.VDom.DOM.StringRenderer as VDS
+
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
+
 import Unsafe.Coerce (unsafeCoerce)
 
 import Utils (showFormattedNumber, hush')
@@ -37,6 +47,15 @@ type ColumnFormatter a =
   }
 
 type Color = String
+
+tooltip ∷ ∀ i. DSLMonad ETP.TooltipI Unit  → DSLMonad (tooltip ∷ ETP.I|i) Unit
+tooltip a = E.tooltip do
+  E.textStyle do
+    E.fontFamily "Ubuntu, sans"
+    E.fontSize 12
+    traverse_ E.color $ Color.fromHexString "#000000"
+  a
+
 
 tableFormatter ∷ ∀ a. (a → Maybe String) → Array (ColumnFormatter a) → Array a → String
 tableFormatter getColor cols as = VDS.render absurd (unwrap table)
