@@ -124,15 +124,14 @@ buildOptions r series = do
       , r.multiple <#> \dim → { label: D.jcursorLabel dim, value: _.name }
       ]
 
-  E.tooltip do
+  CCT.tooltip do
     E.formatterItem (CCT.tableFormatter (const Nothing) (cols <> opts) ∘ pure)
-    E.textStyle do
-      E.fontFamily "Ubuntu, sans"
-      E.fontSize 12
 
   E.colors colors
 
   E.series $ for_ series \serie → E.gauge do
+    E.min r.minValue
+    E.max r.maxValue
     for_ serie.name E.name
     E.axisLine $ E.lineStyle $ E.setWidth $ E.pixels 10
     E.splitLine $ E.length 20

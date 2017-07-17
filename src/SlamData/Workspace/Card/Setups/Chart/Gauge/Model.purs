@@ -32,6 +32,8 @@ type ModelR =
   { value ∷ D.LabeledJCursor
   , parallel ∷ Maybe D.LabeledJCursor
   , multiple ∷ Maybe D.LabeledJCursor
+  , minValue ∷ Number
+  , maxValue ∷ Number
   }
 
 type Model = Maybe ModelR
@@ -44,6 +46,8 @@ eqR r1 r2 =
   r1.value ≡ r2.value
   ∧ r1.parallel ≡ r2.parallel
   ∧ r1.multiple ≡ r2.multiple
+  ∧ r1.minValue ≡ r2.minValue
+  ∧ r1.maxValue ≡ r2.maxValue
 
 eqModel ∷ Model → Model → Boolean
 eqModel Nothing Nothing = true
@@ -59,9 +63,13 @@ genModel = do
     value ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) arbitrary
     parallel ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) <$> arbitrary
     multiple ← map (map (un ArbJCursor) ∘ un D.DimensionWithStaticCategory) <$> arbitrary
+    minValue ← arbitrary
+    maxValue ← arbitrary
     pure { value
          , parallel
          , multiple
+         , minValue
+         , maxValue
          }
 
 encode ∷ Model → J.Json
@@ -71,6 +79,8 @@ encode (Just r) =
   ~> "value" := r.value
   ~> "parallel" := r.parallel
   ~> "multiple" := r.multiple
+  ~> "minValue" := r.minValue
+  ~> "maxValue" := r.maxValue
   ~> J.jsonEmptyObject
 
 decode ∷ J.Json → String ⊹ Model
@@ -91,9 +101,13 @@ decode js
     value ← obj .? "value"
     parallel ← obj .? "parallel"
     multiple ← obj .? "multiple"
+    minValue ← (obj .? "minValue") <|> pure 0.0
+    maxValue ← (obj .? "maxValue") <|> pure 100.0
     pure { value
          , parallel
          , multiple
+         , minValue
+         , maxValue
          }
 
   decodeLegacyR ∷ J.JObject → String ⊹ ModelR
@@ -107,4 +121,6 @@ decode js
     pure { value
          , multiple
          , parallel
+         , minValue: 0.0
+         , maxValue: 100.0
          }
