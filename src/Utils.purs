@@ -51,7 +51,6 @@ import Data.Codec.Argonaut as CA
 import Data.Formatter.Number as FN
 import Data.Int as Int
 import Data.String as S
-import Data.Symbol (class IsSymbol)
 import Data.Variant (inj)
 import Global (readFloat, isNaN, isFinite)
 import SqlSquared.Signature.Ident (printIdent)

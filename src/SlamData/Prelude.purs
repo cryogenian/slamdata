@@ -51,6 +51,7 @@ module SlamData.Prelude
   , module Data.Lens.Iso.Newtype
   , module Data.Maybe
   , module Data.Monoid
+  , module Data.Symbol
   , module Data.Newtype
   , module Data.Profunctor
   , module Data.Traversable
@@ -98,6 +99,7 @@ import Data.Profunctor (class Profunctor, dimap)
 import Data.Traversable (class Traversable, traverse, sequence, for)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Data.Variant (SProxy(..), Variant, case_)
+import Data.Symbol (class IsSymbol)
 import Data.Void (Void, absurd)
 import Debug.Trace (spy, trace, traceA, traceAny, traceAnyA, traceAnyM, traceShow, traceShowA, traceShowM)
 import Partial.Unsafe (unsafePartial)
