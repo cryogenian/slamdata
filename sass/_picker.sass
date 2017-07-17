@@ -1,4 +1,6 @@
 
+$picker-error-color: $brand-danger !default
+
 .Picker
   list-style: none
   padding: 0
@@ -31,17 +33,17 @@
   padding: 0 .75rem
 
   &.Picker-input--invalid
-    color: red
+    color: $picker-error-color
 
   .Picker--invalid &
-    border: 1px solid red
+    border: 0.1rem solid $picker-error-color
 
   &.Picker-input--invalid:focus,
   .Picker--invalid &:focus
-    outline-color: red
+    outline-color: $picker-error-color
     outline-style: auto
-    outline-width: 5px
-    outline-offset: -2px
+    outline-width: 0.5rem
+    outline-offset: -0.2rem
 
 
   &.Picker-input--length-2[placeholder="MM"]
