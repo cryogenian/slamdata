@@ -4,8 +4,8 @@ import Prelude
 
 import Control.Alternative (class Alternative, empty)
 
-import Data.Array as Ar
 import Data.Foldable as F
+import Data.List as L
 import Data.Symbol (SProxy(..), class IsSymbol, reflectSymbol)
 import Data.Tuple (Tuple, fst)
 import Data.Variant (Variant, case_)
@@ -28,16 +28,16 @@ data RWProxy (lt ∷ # Type) (gt ∷ # Type) = RWProxy
 data RProxy (rl ∷ RowList) = RProxy
 
 class LabelList (rl ∷ RowList) where
-  list ∷ RProxy rl → Array String
+  list ∷ RProxy rl → L.List String
 
 instance nilList ∷ LabelList Nil where
-  list _ = [ ]
+  list _ = L.Nil
 
 instance consList ∷ (IsSymbol s, LabelList tail) ⇒ LabelList (Cons s a tail) where
-  list _ = Ar.cons (reflectSymbol (SProxy ∷ SProxy s)) $ list (RProxy ∷ RProxy tail)
+  list _ = L.Cons (reflectSymbol (SProxy ∷ SProxy s)) $ list (RProxy ∷ RProxy tail)
 
 class Upcastable (gt ∷ # Type) (lt ∷ # Type) where
-  labels ∷ RWProxy lt gt → Array String
+  labels ∷ RWProxy lt gt → L.List String
 
 instance upcastable ∷ (RowToList lt ltl, LabelList ltl, Union lt a gt) ⇒ Upcastable gt lt where
   labels _ = list (RProxy ∷ RProxy ltl)

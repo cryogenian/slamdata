@@ -25,6 +25,9 @@ module SlamData.Workspace.Card.CardType
   , consumerInteractable
   , eq_
   , all
+  , upcastToPivot
+  , upcastToMetric
+  , upcastToMetricRenderer
   , module SlamData.Workspace.Card.CardType.Ace
   , module SlamData.Workspace.Card.CardType.Chart
   , module SlamData.Workspace.Card.CardType.Geo
@@ -169,3 +172,24 @@ cardClasses = case_
   # Sta.cardClasses
   # Geo.cardClasses
   # Ace.cardClasses
+
+upcastToPivot
+  ∷ ∀ r a
+  . Upcastable r (pivot ∷ a)
+  ⇒ Variant r
+  → Maybe (Variant (pivot ∷ a))
+upcastToPivot = upcast
+
+upcastToMetric
+  ∷ ∀ r a
+  . Upcastable r (metric ∷ a)
+  ⇒ Variant r
+  → Maybe (Variant (metric ∷ a))
+upcastToMetric = upcast
+
+upcastToMetricRenderer
+  ∷ ∀ r a b
+  . Upcastable r (metric ∷ a, static ∷ b)
+  ⇒ Variant r
+  → Maybe (Variant (metric ∷ a, static ∷ b))
+upcastToMetricRenderer = upcast

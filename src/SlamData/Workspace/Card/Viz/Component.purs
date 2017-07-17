@@ -68,8 +68,8 @@ render state =
     | isJust $ CT.upcastToStatic vt = renderMetric
     | isJust $ CT.upcastToSelect vt = renderSelect
     | isJust $ CT.upcastToGeo vt = renderGeo
-    | isJust (upcast vt ∷ Maybe (Variant (pivot ∷ Unit))) = renderPivot
-    | isJust (upcast vt ∷ Maybe (Variant (metric ∷ Unit))) = renderMetric
+    | isJust $ CT.upcastToPivot vt = renderPivot
+    | isJust $ CT.upcastToMetric vt = renderMetric
     | otherwise = renderEChart
 
   renderEChart ∷ Array HTML
@@ -132,12 +132,12 @@ evalCard = case _ of
     case mvt of
       Nothing → pure $ k $ Card.Viz $ M.chart unit
       Just vt → do
-        mm ← for (upcast vt ∷ Maybe (Variant (metric ∷ Unit, static ∷ Unit))) \_ →
+        mm ← for (CT.upcastToMetricRenderer vt) \_ →
           pure $ M.metric unit
         im ← for (CT.upcastToInput vt) \_ → do
           res ← H.query' CS.cpInput unit $ H.request IR.Save
           pure $ map M.input res
-        pm ← for (upcast vt ∷ Maybe (Variant (pivot ∷ Unit))) \_ → do
+        pm ← for (CT.upcastToPivot vt) \_ → do
           res ← H.query' CS.cpPivotTable unit $ H.request PR.Save
           pure $ map M.pivot res
         sm ← for (CT.upcastToSelect vt) \_ → do
@@ -239,9 +239,9 @@ resizeGeo = void do
 
 lodByChartType ∷ CT.VizType → DSL LOD.LevelOfDetails
 lodByChartType vt
-  | isJust (upcast vt ∷ Maybe (Variant (pivot ∷ Unit))) =
+  | isJust $ CT.upcastToPivot vt =
       pure LOD.High
-  | isJust (upcast vt ∷ Maybe (Variant (static ∷ Unit, metric ∷ Unit))) = do
+  | isJust $ CT.upcastToMetricRenderer vt = do
       mblod ← H.query' CS.cpMetric unit $ H.request MR.GetLOD
       pure $ fromMaybe LOD.Low mblod
   | (isJust (CT.upcastToSelect vt) ∨ isJust (CT.upcastToInput vt)) = do
