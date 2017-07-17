@@ -61,7 +61,7 @@ renderSelection pack state = case state ^. ST._selected of
   Nothing → HH.text ""
   Just (Right tp) →
     HH.slot' CS.cpTransform unit AS.component
-      { options: ST.transforms state
+      { options: ST.transforms tp state
       , selection: (\a → a × a) <$> ST.getTransform tp state
       , title: "Choose transformation"
       , toLabel: \t -> { text: Tr.prettyPrintTransform t, icon: Nothing }
