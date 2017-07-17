@@ -105,7 +105,7 @@
 
 .sd-deck-frame-controls
   display: flex
-  flex-flow: row nowrap
+  flex-flow: row-reverse nowrap
   justify-content: space-between
   align-items: center
   position: absolute
@@ -137,6 +137,7 @@
   .sd-deck-frame-actions
     display: flex
     flex: 0 0 auto
+    order: -1
     pointer-events: none
 
     > button
@@ -168,7 +169,7 @@
         font-size: 1.3rem
 
   .sd-deck-name
-    flex: 0 0 auto
+    flex: 0 1 auto
     overflow: hidden
     line-height: 1.8
     font-size: 1.1rem
