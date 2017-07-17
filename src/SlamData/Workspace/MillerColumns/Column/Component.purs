@@ -187,7 +187,6 @@ component' (ColumnOptions colSpec) colPath =
     UpdateFilter text next → do
       trigger ← H.gets _.filterTrigger
       lift $ cancelDebounceTrigger trigger
-      currentText ← H.gets _.filterText
       H.modify (_ { filterText = text, items = L.Nil, lastLoadRequest = Nothing })
       load
       pure next
