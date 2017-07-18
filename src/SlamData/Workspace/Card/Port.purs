@@ -24,7 +24,7 @@ module SlamData.Workspace.Card.Port
   , ChartInstructionsPort
   , PivotTablePort
   , SetupLabeledFormInputPort
-  , SetupTextLikeFormInputPort
+  , SetupInputPort
   , GeoChartPort
   , tagPort
   , emptyOut
@@ -124,7 +124,7 @@ type SetupLabeledFormInputPort =
   , formInputType ∷ CT.Select ()
   }
 
-type SetupTextLikeFormInputPort =
+type SetupInputPort =
   { name ∷ String
   , cursor ∷ JCursor
   , formInputType ∷ CT.Input ()
@@ -142,7 +142,7 @@ data Port
   | CardError CE.CardError
   | ResourceKey String
   | SetupLabeledFormInput SetupLabeledFormInputPort
-  | SetupTextLikeFormInput SetupTextLikeFormInputPort
+  | SetupInput SetupInputPort
   | SlamDown (SD.SlamDownP VarMapValue)
   | ChartInstructions ChartInstructionsPort
   | DownloadOptions DownloadPort
@@ -159,7 +159,7 @@ tagPort  = case _ of
   CardError err → "CardError: " ⊕ CE.showCardError err
   ResourceKey str → "ResourceKey: " ⊕ show str
   SetupLabeledFormInput _ → "SetupLabeledFormInput"
-  SetupTextLikeFormInput _ → "SetupTextLikeFormInput"
+  SetupInput _ → "SetupInput"
   SlamDown sd → "SlamDown: " ⊕ show sd
   ChartInstructions _ → "ChartInstructions"
   DownloadOptions _ → "DownloadOptions"

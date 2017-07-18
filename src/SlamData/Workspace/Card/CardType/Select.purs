@@ -115,3 +115,6 @@ maximumCountOfSelectedValues = case_
   # on _dropdown (const 1)
   # on _radio (const 1)
   # on _checkbox (const top)
+
+contractToSelect ∷ ∀ r. Contractable r (SelectR ()) ⇒ Variant r → Maybe (Select ())
+contractToSelect = contract

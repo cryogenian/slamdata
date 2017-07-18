@@ -26,13 +26,11 @@ import Data.Variant (on)
 import SlamData.Workspace.Card.Ace.Component (aceComponent)
 import SlamData.Workspace.Card.Cache.Component (cacheCardComponent)
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Chart.Component (chartComponent)
 import SlamData.Workspace.Card.Common (CardOptions)
 import SlamData.Workspace.Card.Component (CardComponent)
 import SlamData.Workspace.Card.Download.Component (downloadComponent)
 import SlamData.Workspace.Card.DownloadOptions.Component as DOpts
 import SlamData.Workspace.Card.Draftboard.Component (draftboardComponent)
-import SlamData.Workspace.Card.FormInput.Component (formInputComponent)
 import SlamData.Workspace.Card.Markdown.Component (markdownComponent)
 import SlamData.Workspace.Card.Open.Component (openComponent)
 import SlamData.Workspace.Card.Search.Component (searchComponent)
@@ -64,12 +62,12 @@ import SlamData.Workspace.Card.Setups.FormInput.Text.Component (textSetupCompone
 import SlamData.Workspace.Card.Setups.FormInput.Time.Component (timeSetupComponent)
 import SlamData.Workspace.Card.Setups.Geo.Marker.Component as GeoMarker
 import SlamData.Workspace.Card.Setups.Geo.Heatmap.Component as GeoHeatmap
-import SlamData.Workspace.Card.Geo.Component as Geo
 import SlamData.Workspace.Card.StructureEditor.Component as StructureEditor
 import SlamData.Workspace.Card.Table.Component (tableComponent)
 import SlamData.Workspace.Card.Tabs.Component (tabsComponent)
 import SlamData.Workspace.Card.Troubleshoot.Component (troubleshootComponent)
 import SlamData.Workspace.Card.Variables.Component (variablesComponent)
+import SlamData.Workspace.Card.Viz.Component as Viz
 
 
 cardComponent ∷ CT.CardType → CardOptions → CardComponent
@@ -77,7 +75,6 @@ cardComponent = case_
   # on CT._aceSql (const $ aceComponent CT.aceSql)
   # on CT._aceMarkdown (const $ aceComponent CT.aceMarkdown)
   # on CT._search (const searchComponent)
-  # on CT._chart (const chartComponent)
   # on CT._markdown (const markdownComponent)
   # on CT._table (const tableComponent)
   # on CT._download (const downloadComponent)
@@ -112,10 +109,9 @@ cardComponent = case_
   # on CT._time (const timeSetupComponent)
   # on CT._datetime (const datetimeSetupComponent)
   # on CT._text (const textSetupComponent)
-  # on CT._form (const formInputComponent)
   # on CT._tabs (const tabsComponent)
   # on CT._structureEditor (const StructureEditor.component)
   # on CT._geoMarker (const GeoMarker.component)
   # on CT._geoHeatmap (const GeoHeatmap.component)
-  # on CT._geo (const Geo.component)
   # on CT._static (const staticSetupComponent)
+  # on CT._viz  (const Viz.component)

@@ -29,7 +29,7 @@ import Data.URI (URIRef)
 import Global (encodeURIComponent, decodeURIComponent)
 
 import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Geo.Model (onURIRef)
+import SlamData.Workspace.Card.Viz.Renderer.Geo.Model (onURIRef)
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen

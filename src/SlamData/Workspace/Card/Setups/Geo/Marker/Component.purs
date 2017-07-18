@@ -42,7 +42,7 @@ import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Render.Common (row)
-import SlamData.Workspace.Card.Geo.Model (onURIRef)
+import SlamData.Workspace.Card.Viz.Renderer.Geo.Model (onURIRef)
 import SlamData.Render.ClassName as CN
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.CardType as CT

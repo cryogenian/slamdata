@@ -49,7 +49,7 @@ eval valueProjection formInputType m =
   where
   -- We need to store axes to display selects
   buildFn axes conf records =
-    Port.SetupTextLikeFormInput
+    Port.SetupInput
       { name: conf.name
       , formInputType
       , cursor: conf.value

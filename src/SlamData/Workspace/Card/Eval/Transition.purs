@@ -20,10 +20,10 @@ import SlamData.Prelude
 
 import Quasar.Types (SQL)
 
-import SlamData.Workspace.Card.Chart.PivotTableRenderer.Model as PivotTable
+import SlamData.Workspace.Card.Viz.Renderer.PivotTable.Model as PivotTable
 import SlamData.Workspace.Card.DownloadOptions.Component.State as Download
-import SlamData.Workspace.Card.FormInput.Model as FormInput
 import SlamData.Workspace.Card.Markdown.Model as Markdown
+import SlamData.Workspace.Card.Viz.Model as Viz
 import SlamData.Workspace.Card.Open.Model as Open
 import SlamData.Workspace.Card.Setups.Chart.Area.Model as BuildArea
 import SlamData.Workspace.Card.Setups.Chart.Bar.Model as BuildBar
@@ -54,8 +54,6 @@ data Eval
   = Pass
   | Composite
   | Terminal
-  | Chart
-  | GeoChart
   | Query SQL
   | Search String
   | Cache (Maybe String)
@@ -93,17 +91,16 @@ data Eval
   | SetupStatic SetupStatic.Model
   | SetupGeoMarker SetupGeoMarker.Model
   | SetupGeoHeatmap SetupGeoHeatmap.Model
-  | FormInput FormInput.Model
   | Table Table.Model
   | PivotTable PivotTable.Model
+  | Viz Viz.Model
+
 
 tagEval ∷ Eval → String
 tagEval = case _ of
   Pass → "Pass"
   Composite → "Composite"
   Terminal → "Terminal"
-  Chart → "Chart"
-  GeoChart → "GeoChart"
   Query str → "Query " <> show str
   Search str → "Search " <> show str
   Cache str → "Cache " <> show str
@@ -141,6 +138,6 @@ tagEval = case _ of
   SetupStatic _ → "SetupStatic"
   SetupGeoMarker _ → "SetupGeoMarker"
   SetupGeoHeatmap _ → "SetupGeoHeatmap"
-  FormInput _ → "FormInput"
   Table _ → "Table"
   PivotTable _ → "PivotTable"
+  Viz _ → "Viz"

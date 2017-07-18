@@ -27,8 +27,6 @@ import SlamData.Render.Icon as I
 import Unsafe.Coerce (unsafeCoerce)
 
 _search = SProxy ∷ SProxy "search"
-_chart = SProxy ∷ SProxy "chart"
-_form = SProxy ∷ SProxy "form"
 _markdown = SProxy ∷ SProxy "markdown"
 _table = SProxy ∷ SProxy "table"
 _download = SProxy ∷ SProxy "download"
@@ -40,16 +38,13 @@ _downloadOptions = SProxy ∷ SProxy "downloadOptions"
 _draftboard = SProxy ∷ SProxy "draftboard"
 _tabs = SProxy ∷ SProxy "tabs"
 _structureEditor = SProxy ∷ SProxy "structureEditor"
-_geo = SProxy ∷ SProxy "geo"
+_viz = SProxy ∷ SProxy "viz"
+
+viz ∷ ∀ r. Variant (viz ∷ Unit|r)
+viz = inj _viz unit
 
 search ∷ ∀ r. Variant (search ∷ Unit|r)
 search = inj _search unit
-
-chart ∷ ∀ r. Variant (chart ∷ Unit|r)
-chart = inj _chart unit
-
-form ∷ ∀ r. Variant (form ∷ Unit|r)
-form = inj _form unit
 
 markdown ∷ ∀ r. Variant (markdown ∷ Unit|r)
 markdown = inj _markdown unit
@@ -84,14 +79,8 @@ tabs = inj _tabs unit
 structureEditor ∷ ∀ r. Variant (structureEditor ∷ Unit|r)
 structureEditor = inj _structureEditor unit
 
-geo ∷ ∀ r. Variant (geo ∷ Unit|r)
-geo = inj _geo unit
-
-
 type SimpleR r =
   ( search ∷ Unit
-  , chart ∷ Unit
-  , form ∷ Unit
   , markdown ∷ Unit
   , table ∷ Unit
   , download ∷ Unit
@@ -103,7 +92,7 @@ type SimpleR r =
   , draftboard ∷ Unit
   , tabs ∷ Unit
   , structureEditor ∷ Unit
-  , geo ∷ Unit
+  , viz ∷ Unit
   | r)
 
 type Simple r = Variant (SimpleR r)
@@ -111,8 +100,6 @@ type Simple r = Variant (SimpleR r)
 all ∷ ∀ r. Array (Simple r)
 all =
   [ search
-  , chart
-  , form
   , markdown
   , table
   , download
@@ -124,14 +111,13 @@ all =
   , draftboard
   , tabs
   , structureEditor
-  , geo
+  , viz
   ]
 
 eq_ ∷ ∀ r rr b. HeytingAlgebra b ⇒ (Variant r → Variant rr → b) → Simple r → Simple rr → b
 eq_ cb r = cb (contractSimple r)
+  # on _viz (on _viz tt ff r)
   # on _search (on _search tt ff r)
-  # on _chart (on _chart tt ff r)
-  # on _form (on _form tt ff r)
   # on _markdown (on _markdown tt ff r)
   # on _table (on _table tt ff r)
   # on _download (on _download tt ff r)
@@ -143,7 +129,6 @@ eq_ cb r = cb (contractSimple r)
   # on _draftboard (on _draftboard tt ff r)
   # on _tabs (on _tabs tt ff r)
   # on _structureEditor (on _structureEditor tt ff r)
-  # on _geo (on _geo tt ff r)
   where
   contractSimple ∷ ∀ ω. Simple ω → Variant ω
   contractSimple = unsafeCoerce
@@ -151,9 +136,8 @@ eq_ cb r = cb (contractSimple r)
 
 print ∷ ∀ r. (Variant r → String) → Simple r → String
 print cb = cb
+  # on _viz (const "viz")
   # on _search (const "search")
-  # on _chart (const "chart")
-  # on _form (const "form-input")
   # on _markdown (const "markdown")
   # on _table (const "table")
   # on _structureEditor (const "structure-editor")
@@ -165,13 +149,11 @@ print cb = cb
   # on _cache (const "cache")
   # on _open (const "open")
   # on _tabs (const "tabs")
-  # on _geo (const "geo-chart")
 
 parse ∷ ∀ r. String → String ⊹ Simple r
 parse = case _ of
+  "viz" → pure viz
   "search" → pure search
-  "chart" → pure chart
-  "form-input" → pure form
   "markdown" → pure markdown
   "table" → pure table
   "download" → pure download
@@ -183,15 +165,15 @@ parse = case _ of
   "draftboard" → pure draftboard
   "tabs" → pure tabs
   "structure-editor" → pure structureEditor
-  "geo-chart" → pure geo
+  "chart" → pure viz
+  "form-input" → pure viz
+  "geo-chart" → pure viz
   ty → Left $ ty ⊕ " is unknown basic card type"
 
 name ∷ ∀ r. (Variant r → String) → Simple r → String
 name cb = cb
+  # on _viz (const "Show Visualization")
   # on _search (const "Search")
-  # on _chart (const "Show Chart")
-  # on _geo (const "Show Geo Chart")
-  # on _form (const "Show Form")
   # on _markdown (const "Show Markdown")
   # on _table (const "Preview Table")
   # on _download (const "Show Download")
@@ -206,12 +188,11 @@ name cb = cb
 
 icon ∷ ∀ r. (Variant r → I.IconHTML) → Simple r → I.IconHTML
 icon cb = cb
+  # on _viz (const $ I.IconHTML I.cardsShowChart)
   # on _search (const $ I.IconHTML I.cardsSearch)
   # on _download (const $ I.IconHTML I.cardsShowDownload)
   # on _variables (const $ I.IconHTML I.cardsSetupVariables)
   # on _troubleshoot (const $ I.IconHTML I.cardsTroubleshoot)
-  # on _chart (const $ I.IconHTML I.cardsShowChart)
-  # on _form (const $ I.IconHTML I.cardsShowFormInput)
   # on _markdown (const $ I.IconHTML I.cardsShowMarkdown)
   # on _table (const $ I.IconHTML I.cardsTable)
   # on _cache (const $ I.IconHTML I.cardsCache)
@@ -220,14 +201,11 @@ icon cb = cb
   # on _draftboard (const $ I.IconHTML I.cardsDashboard)
   # on _tabs (const $ I.IconHTML I.cardsTabs)
   # on _structureEditor (const $ I.IconHTML I.cardsStructureEditor)
-  # on _geo (const $ I.IconHTML I.cardsGeoChart)
 
 cardClasses ∷ ∀ r. (Variant r → Array H.ClassName) → Simple r → Array H.ClassName
 cardClasses cb = cb
+  # on _viz (\_ → [ H.ClassName "sd-card-chart" ] )
   # on _search (\_ → [ H.ClassName "sd-card-search" ])
-  # on _chart (\_ → [ H.ClassName "sd-card-chart" ] )
-  # on _geo (\_ → [ H.ClassName "sd-card-geo-chart" ])
-  # on _form (\_ → [ H.ClassName "sd-card-form-input" ])
   # on _markdown (\_ → [ H.ClassName "sd-card-markdown" ])
   # on _table (\_ → [ H.ClassName "sd-card-table" ])
   # on _download (\_ → [ H.ClassName "sd-card-download" ])
@@ -242,10 +220,8 @@ cardClasses cb = cb
 
 consumerInteractable ∷ ∀ r. (Variant r → Boolean) → Simple r → Boolean
 consumerInteractable cb = cb
+  # on _viz tt
   # on _search tt
-  # on _geo tt
-  # on _chart tt
-  # on _form tt
   # on _markdown tt
   # on _table tt
   # on _download tt
@@ -257,3 +233,6 @@ consumerInteractable cb = cb
   # on _draftboard tt
   # on _tabs tt
   # on _structureEditor ff
+
+contractToSimple ∷ ∀ r. Contractable r (SimpleR ()) ⇒ Variant r → Maybe (Simple ())
+contractToSimple = contract

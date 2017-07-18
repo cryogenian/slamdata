@@ -63,7 +63,7 @@
     "purescript-type-equality": "^2.1.0",
     "purescript-uri": "^3.0.1",
     "purescript-leafletjs-halogen": "^0.1.0",
-    "purescript-variant": "^1.1.0",
+    "purescript-variant": "^3.0.0",
     "purescript-codec-argonaut": "^3.0.0"
   },
   "devDependencies": {
@@ -77,5 +77,8 @@
     "purescript-quasar-test-starter": "quasar-test-starter#^0.4.0",
     "purescript-strongcheck": "^3.1.0",
     "purescript-webdriver": "^4.0.0"
+  },
+  "resolutions": {
+    "purescript-variant": "^3.0.0"
   }
 }

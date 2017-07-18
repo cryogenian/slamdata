@@ -304,3 +304,6 @@ cardClasses cb = cb
   # on _parallel clss
   where
   clss _ = [ H.ClassName "sd-card-chart-options" ]
+
+contractToChart ∷ ∀ r. Contractable r (ChartR ()) ⇒ Variant r → Maybe (Chart ())
+contractToChart = contract

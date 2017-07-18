@@ -89,3 +89,6 @@ consumerInteractable ∷ ∀ r. (Variant r → Boolean) → Ace r → Boolean
 consumerInteractable cb = cb
   # on _aceMarkdown ff
   # on _aceSql ff
+
+contractToAce ∷ ∀ r. Contractable r (AceR ()) ⇒ Variant r → Maybe (Ace ())
+contractToAce = contract

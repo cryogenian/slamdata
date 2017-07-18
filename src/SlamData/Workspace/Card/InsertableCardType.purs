@@ -41,9 +41,6 @@ data InsertableCardType
   | SetupDownloadCard
   | SetupMarkdownCard
   | SetupVariablesCard
-  | ShowChartCard
-  | ShowFormCard
-  | ShowGeoChartCard
   | ShowDownloadCard
   | ShowMarkdownCard
   | TableCard
@@ -51,6 +48,7 @@ data InsertableCardType
   | TabsCard
   | StructureEditorCard
   | SetupGeoChartCard
+  | ShowVizCard
 
 data InsertableCardIOType
   = Chart
@@ -80,15 +78,13 @@ inputs =
   , SetupFormCard × [ Data ]
   , SetupMarkdownCard × [ None, Variables ]
   , SetupVariablesCard × [ None ]
-  , ShowGeoChartCard × [ GeoChart ]
-  , ShowChartCard × [ Chart ]
-  , ShowFormCard × [ Form ]
   , ShowDownloadCard × [ Download ]
   , ShowMarkdownCard × [ Markdown ]
   , TableCard × [ Data ]
   , TroubleshootCard × [ Chart, Form, Data, Download, Markdown, Variables ]
   , TabsCard × [ None ]
   , StructureEditorCard × [ Data ]
+  , ShowVizCard × [ GeoChart, Chart, Form ]
   ]
 
 -- Cards only have one output type, treat this as a Map or turn it into one.
@@ -104,13 +100,12 @@ outputs =
   , SetupDownloadCard × Download
   , SetupMarkdownCard × Markdown
   , SetupVariablesCard × Variables
-  , ShowChartCard × Data
-  , ShowFormCard × Data
   , ShowDownloadCard × Download
   , ShowMarkdownCard × Variables
   , TableCard × Data
   , TroubleshootCard × Variables
   , StructureEditorCard × Data
+  , ShowVizCard × Data
   ]
 
 cardsToExcludeFromPaths ∷ Array InsertableCardType
@@ -267,7 +262,7 @@ fromPort = case _ of
   Port.ChartInstructions _ → Chart
   Port.PivotTable _ → Chart
   Port.SetupLabeledFormInput _ → Form
-  Port.SetupTextLikeFormInput _ → Form
+  Port.SetupInput _ → Form
   Port.Variables → Variables
   Port.ValueMetric _ → Chart
   Port.CategoricalMetric _ → Form
@@ -288,10 +283,8 @@ toCardType = case _ of
   SetupDownloadCard → Just CT.downloadOptions
   SetupMarkdownCard → Just CT.aceMarkdown
   SetupVariablesCard → Just CT.variables
-  ShowChartCard → Just CT.chart
-  ShowGeoChartCard → Just CT.geo
-  ShowFormCard → Just CT.form
   ShowDownloadCard → Just CT.download
+  ShowVizCard → Just CT.viz
   ShowMarkdownCard → Just CT.markdown
   TableCard → Just CT.table
   TroubleshootCard → Just CT.troubleshoot
@@ -348,9 +341,7 @@ printAction = case _ of
   SetupDownloadCard → Just "setup a download for"
   SetupMarkdownCard → Nothing
   SetupVariablesCard → Nothing
-  ShowChartCard → Just "show"
-  ShowGeoChartCard → Just "show"
-  ShowFormCard → Just "show"
+  ShowVizCard → Just "show"
   ShowDownloadCard → Just "show"
   ShowMarkdownCard → Just "show"
   TableCard → Just "tabulate"
@@ -395,17 +386,15 @@ fromCardType = case_
     # on CT._draftboard (const DraftboardCard)
     # on CT._open (const OpenCard)
     # on CT._search (const SearchCard)
-    # on CT._geo (const ShowGeoChartCard)
     # on CT._downloadOptions (const SetupDownloadCard)
     # on CT._variables (const SetupVariablesCard)
-    # on CT._chart (const ShowChartCard)
     # on CT._download (const ShowDownloadCard)
     # on CT._markdown (const ShowMarkdownCard)
     # on CT._table (const TableCard)
     # on CT._troubleshoot (const TroubleshootCard)
-    # on CT._form (const ShowFormCard)
     # on CT._tabs (const TabsCard)
     # on CT._structureEditor (const StructureEditorCard)
+    # on CT._viz (const ShowVizCard)
 
   fromAce ∷ ∀ r. (Variant r → InsertableCardType) → CT.Ace r → InsertableCardType
   fromAce cb = cb
@@ -436,7 +425,6 @@ fromCardType = case_
   setupGeoThunk _ = SetupGeoChartCard
 
 
-
 all ∷ Array InsertableCardType
 all =
   [ OpenCard
@@ -444,11 +432,9 @@ all =
   , SearchCard
   , TableCard
   , SetupChartCard
-  , ShowChartCard
+  , ShowVizCard
   , SetupFormCard
-  , ShowFormCard
   , SetupGeoChartCard
-  , ShowGeoChartCard
   , SetupMarkdownCard
   , ShowMarkdownCard
   , DraftboardCard
