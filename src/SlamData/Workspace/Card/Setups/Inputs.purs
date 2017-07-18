@@ -238,6 +238,7 @@ type DimensionOptions a b i =
   , onLabelClick ∷ DOM.MouseEvent → Maybe (i Unit)
   , disabled ∷ Boolean
   , dismissable ∷ Boolean
+  , labelless ∷ Boolean
   }
 
 dimensionButton ∷ ∀ a b p i . DimensionOptions a b i → H.HTML p i
@@ -247,7 +248,8 @@ dimensionButton opts =
         $ [ HH.ClassName "sd-dimension-button" ]
         ⊕ ( guard opts.disabled $> HH.ClassName "sd-dimension-button-disabled")
     ]
-    [ HH.div
+    $ ( guard (not opts.labelless) $>
+        HH.div
         [ HP.classes [ HH.ClassName "sd-dimension-button-label" ] ]
         [ HH.input
             [ HP.type_ HP.InputText
@@ -256,11 +258,12 @@ dimensionButton opts =
             , HE.onValueInput opts.onLabelChange
             , HE.onClick opts.onLabelClick
             , HP.placeholder defaultLabel
-            , HP.class_ CN.formControl
             ]
-        ]
-    , HH.div
-        [ HP.classes [ HH.ClassName "sd-dimension-button-toolbar" ] ]
+        ] )
+    ⊕ [ HH.div
+        [ HP.classes [ HH.ClassName if opts.labelless
+                                    then "sd-dimension-button-toolbar-wo-label"
+                                    else "sd-dimension-button-toolbar" ] ]
         $ ( guard opts.dismissable $>
           ( HH.button
             [ HP.classes [ HH.ClassName "sd-dismiss-button" ]
@@ -286,8 +289,10 @@ dimensionButton opts =
                 [ I.cog ]
             else HH.text ""
           ]
-    , HH.button
-        [ HP.classes [ HH.ClassName "sd-dimension-button-display" ]
+      , HH.button
+        [ HP.classes [ HH.ClassName if opts.labelless
+                                    then "sd-dimension-button-display-wo-label"
+                                    else "sd-dimension-button-display" ]
         , HE.onMouseDown opts.onMouseDown
         , HE.onClick opts.onClick
         , HP.disabled opts.disabled
@@ -296,7 +301,7 @@ dimensionButton opts =
           D.Static str → [ renderValue str ]
           D.Projection Nothing v → [ renderValue (opts.showValue v) ]
           D.Projection (Just t) v → [ renderTransform t, renderValue (opts.showValue v) ]
-    ]
+      ]
   where
   value = opts.dimension ^. D._value
   label = opts.dimension ^. D._category

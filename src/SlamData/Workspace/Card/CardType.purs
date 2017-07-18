@@ -66,6 +66,9 @@ type CardType =
             ( InputR
               ( StaticR () ) ) ) ) ) ) )
 
+type VizType =
+  Variant ( ChartR ( GeoR ( SelectR ( InputR ( StaticR () ) ) ) ) )
+
 all ∷ Array CardType
 all =
   Sim.all ⊕ Ace.all ⊕ Cht.all ⊕ Geo.all ⊕ Sel.all ⊕ Inp.all ⊕ Sta.all
