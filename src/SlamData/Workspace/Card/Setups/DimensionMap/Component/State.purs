@@ -110,10 +110,13 @@ transforms prj state =
     mbTr = join $ state.dimMap ^? T.unpackProjection prj ∘ _Just ∘ D._value ∘ D._transform
     axis = spy $ state.dimMap ^? T.unpackProjection prj ∘ _Just ∘ D._value ∘ D._projection
     axisType = spy $ Ax.axisType <$> axis <*> pure state.axes
-  in fromMaybe [] do
+  in traceAny "###" \_ → spy $ fromMaybe [] do
+    traceAnyA "start"
     at ← axisType
+    traceAnyA "at"
     let options = spy $ Tr.axisTransforms at mbTr
-    pure $ if fromMaybe false $ F.elem <$> mbTr <*> pure options
+    traceAnyA "options"
+    pure $ if spy $ fromMaybe false $ F.elem <$> mbTr <*> pure options
       then options
       else A.fromFoldable mbTr <> options
 
