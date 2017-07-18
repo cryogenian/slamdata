@@ -51,7 +51,6 @@ import Data.Codec.Argonaut as CA
 import Data.Formatter.Number as FN
 import Data.Int as Int
 import Data.String as S
-import Data.Symbol (class IsSymbol)
 import Data.Variant (inj)
 import Global (readFloat, isNaN, isFinite)
 import SqlSquared.Signature.Ident (printIdent)
@@ -99,7 +98,7 @@ singletonValue' =
 
 singletonValue ∷ ∀ a m n. Applicative m ⇒ Foldable n ⇒ m a → (Int → m a) → n a → m a
 singletonValue noElements tooManyElements =
-  either tooManyElements (maybe noElements pure) <<< singletonValue'
+  either tooManyElements (maybe noElements pure) ∘ singletonValue'
 
 passover ∷ ∀ a b m. (Applicative m) ⇒ (a → m b) → a → m a
 passover f x =

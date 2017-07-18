@@ -71,7 +71,7 @@ type CardType =
               ( StaticR () ) ) ) ) ) ) )
 
 type VizType =
-  Variant ( GeoR ( ChartR ( GeoR ( SelectR ( InputR ( StaticR () ) ) ) ) ) )
+  Variant ( ChartR ( GeoR ( SelectR ( InputR ( StaticR () ) ) ) ) )
 
 all ∷ Array CardType
 all =
