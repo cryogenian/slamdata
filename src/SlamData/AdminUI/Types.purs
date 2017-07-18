@@ -15,7 +15,7 @@ module SlamData.AdminUI.Types (module X, HTML, DSL) where
 
 import Halogen as H
 import SlamData.AdminUI.Component.ChildSlot (ChildQuery, ChildSlot, MillerQuery, cpDialog, cpGroups) as X
-import SlamData.AdminUI.Component.Query (GroupItem(..), GroupMessage(..), Query(..), groupItemName, Message(..)) as X
+import SlamData.AdminUI.Component.Query (GroupItem(..), GroupMessage(..), Query(..), groupItemName, Message(..), UsersQuery(..)) as X
 import SlamData.AdminUI.Component.State (DatabaseState(..), GroupsState(..), MySettingsState(..), PostgresCon, ServerState(..), State, TabIndex(..), UsersState(..), allTabs, defaultDatabaseState, defaultGroupsState, defaultMySettingsState, defaultPostgresCon, defaultServerState, defaultUsersState, tabTitle) as X
 import SlamData.Monad (Slam)
 

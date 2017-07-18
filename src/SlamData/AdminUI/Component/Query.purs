@@ -40,6 +40,12 @@ data Query a
   | HandleColumns (Miller.Message GroupItem QA.GroupPath) a
   | HandleColumnOrItem GroupMessage a
   | HandleDialog Dialog.Message a
+  | UQ (UsersQuery a)
+
+data UsersQuery a
+  = FetchUsers a
+  | DeleteUser QA.UserId a
+  | EditUser QA.UserId a
 
 data GroupItem = GroupItem { path ∷ QA.GroupPath, name ∷ String }
 

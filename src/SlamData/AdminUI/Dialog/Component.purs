@@ -27,7 +27,9 @@ import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.Monad (Slam)
 import SlamData.Render.ClassName as CN
 
-data Dialog = ConfirmDeletion QAT.GroupPath
+data Dialog
+  = ConfirmGroupDeletion QAT.GroupPath
+  | ConfirmUserDeletion QAT.UserId
 
 derive instance eqDialog ∷ Eq Dialog
 derive instance ordDialog ∷ Ord Dialog
@@ -78,19 +80,32 @@ component dlg =
     pure next
 
 headerMessage ∷ Dialog → String
-headerMessage (ConfirmDeletion _) = "Confirm group deletion"
+headerMessage = case _ of
+ ConfirmGroupDeletion _ → "Confirm group deletion"
+ ConfirmUserDeletion _ → "Confirm user deletion"
+
 
 dismissMessage ∷ Dialog → String
-dismissMessage (ConfirmDeletion _) = "Cancel"
+dismissMessage = case _ of
+ ConfirmGroupDeletion _ → "Cancel"
+ ConfirmUserDeletion _ → "Cancel"
 
 confirmMessage ∷ Dialog → String
-confirmMessage (ConfirmDeletion _) = "Delete"
+confirmMessage = case _ of
+ ConfirmGroupDeletion _ → "Delete"
+ ConfirmUserDeletion _ → "Delete"
 
 renderDialog ∷ Dialog → H.ComponentHTML Query
 renderDialog = case _ of
-  ConfirmDeletion group →
+  ConfirmGroupDeletion group →
     HH.span_
       [ HH.text "Are you sure you want to delete the group "
       , HH.code_ [ HH.text (QAT.printGroupPath group) ]
+      , HH.text "?"
+      ]
+  ConfirmUserDeletion userId →
+    HH.span_
+      [ HH.text "Are you sure you want to delete the user "
+      , HH.code_ [ HH.text (QAT.runUserId userId) ]
       , HH.text "?"
       ]
