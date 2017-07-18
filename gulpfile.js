@@ -211,7 +211,7 @@ gulp.task("watch-sass", ["sass"], () => gulp.watch("./sass/**/*.sass", ["sass"])
 gulp.task("full", [ "add-headers", "trim-whitespace" ]);
 
 gulp.task("version-css", () => {
-  return gulp.src("./public/css/main.css")
+  return gulp.src("./public/css/light.css")
     .pipe(vinylPaths(del))
     .pipe(rename((path) => {
       path.basename += "-" + packageInfo.version;
@@ -231,7 +231,7 @@ gulp.task("version-js", () => {
 gulp.task("version-files", ["version-css", "version-js"])
 
 gulp.task("version-inject", () => {
-  const styles = file("style-embed", "<link rel=\"stylesheet\" href=\"css/main-" + packageInfo.version + ".css\">", { src: true })
+  const styles = file("style-embed", "<link id=\"theme-css\" rel=\"stylesheet\" href=\"css/light-" + packageInfo.version + ".css\">", { src: true })
   const workspaceJS = file("workspace-embed", "<script type=\"text/javascript\" src=\"js/workspace-" + packageInfo.version + ".js\"></script>", { src: true })
   const filesystemJS = file("filesystem-embed", "<script type=\"text/javascript\" src=\"js/filesystem-" + packageInfo.version + ".js\"></script>", { src: true })
 
