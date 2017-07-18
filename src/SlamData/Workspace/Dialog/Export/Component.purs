@@ -19,6 +19,7 @@ module SlamData.Workspace.Dialog.Export.Component where
 import SlamData.Prelude
 
 import Clipboard as C
+
 import Control.Monad.Eff as Eff
 import Control.Monad.Eff.Exception as Exception
 import Control.Monad.Fork (fork)
@@ -52,6 +53,7 @@ import SlamData.Monad (Slam)
 import SlamData.Quasar.Auth as Auth
 import SlamData.Quasar.Security as Q
 import SlamData.Render.ClassName as CN
+import SlamData.Render.Common as RC
 import SlamData.Render.Icon as I
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
@@ -179,7 +181,7 @@ renderLoadingDialog header =
         [ HP.classes [ HH.ClassName "deck-dialog-body" ] ]
         [ HH.div
             [ HP.class_ $ H.ClassName "sd-dialog-loading" ]
-            [ I.spinner
+            [ RC.spinner
             , HH.p_ [ HH.text "Loading…" ]
             ]
         ]

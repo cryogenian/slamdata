@@ -33,6 +33,7 @@ import SlamData.Monad (Slam)
 import SlamData.FileSystem.Listing.Item (Item(..), itemResource)
 import SlamData.FileSystem.Listing.Item.Component.CSS as CSS
 import SlamData.FileSystem.Resource (Resource(..), Mount(..), resourceName, resourcePath, isMount, isFile, isWorkspace, isViewMount, hiddenTopLevel)
+import SlamData.Render.Common as RC
 import SlamData.Render.Icon as I
 
 type State =
@@ -93,7 +94,7 @@ render state = case state.item of
           [ HP.classes [ CSS.itemContent ] ]
           [ HH.span
               [ HP.class_ CSS.phantomSpinner ]
-              [ I.spinner ]
+              [ RC.spinner ]
           , HH.span
               [ HP.class_ CSS.phantomLabel ]
               [ HH.text $ itemName state ]

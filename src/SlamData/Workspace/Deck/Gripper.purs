@@ -25,6 +25,7 @@ import SlamData.Prelude
 import Data.Array as Array
 import Data.Bifoldable (bifoldMap)
 
+import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Core (ClassName)
 import Halogen.HTML.Events as HE
@@ -32,7 +33,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 
 import SlamData.Render.ClassName as CN
-import SlamData.Render.Common (gripperDeckNavigation)
+import SlamData.Render.Icon as I
 import SlamData.Workspace.Deck.Common (DeckHTML)
 import SlamData.Workspace.Deck.Component.Query (Query(StartSliding))
 import SlamData.Workspace.Deck.Component.State (DisplayCard, eqDisplayCard)
@@ -57,15 +58,20 @@ isAvailable = case _ of
   Previous available → available
   Next available → available
 
-gripperLabel ∷ GripperDef → String
-gripperLabel = case _ of
-  Previous _ → "Access previous card"
-  Next _ → "Access next card"
-
 gripperClassName ∷ GripperDef → ClassName
 gripperClassName = case _ of
   Previous _ → CN.cardGripper
   Next _ → CN.cardGripperLast
+
+gripperIcon ∷ ∀ p i. GripperDef → H.HTML p i
+gripperIcon = case _ of
+  Previous _ → I.gripperArrowLeft
+  Next _ → I.gripperArrowRight
+
+gripperLabel ∷ GripperDef → String
+gripperLabel = case _ of
+  Previous _ → "Access previous card"
+  Next _ → "Access next card"
 
 renderGrippers ∷ Boolean → Boolean → GripperDef × GripperDef → Array (String × DeckHTML)
 renderGrippers isActiveCard isGrabbed =
@@ -78,10 +84,11 @@ renderGrippers isActiveCard isGrabbed =
     else
       [ ("gripper-" <> key) × HH.button
           ([ HP.classes [ gripperClassName gripperDef ]
+           , HP.title $ gripperLabel gripperDef
            , HE.onMouseDown $ HE.input $ StartSliding gripperDef
            , ARIA.grabbed $ show isGrabbed
+           , ARIA.label $ gripperLabel gripperDef
            ]
-           <> (guard isActiveCard $> ARIA.label (gripperLabel gripperDef))
           )
-          [ gripperDeckNavigation ]
+          [ gripperIcon gripperDef ]
       ]

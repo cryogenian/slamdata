@@ -17,8 +17,10 @@ limitations under the License.
 module Halogen.Component.Utils.Debounced
   ( DebounceTrigger(..)
   , runDebounceTrigger
+  , cancelDebounceTrigger
   , debouncedEventSource
   , fireDebouncedQuery
+  , cancelDebouncedQuery
   ) where
 
 import Prelude
@@ -37,10 +39,13 @@ import Data.Time.Duration (Milliseconds)
 import Halogen as H
 import Halogen.Query.EventSource as ES
 
-newtype DebounceTrigger f g = DebounceTrigger ((∀ a. a → f a) → g Unit)
+newtype DebounceTrigger f g = DebounceTrigger ((∀ a. Maybe (a → f a)) → g Unit)
 
 runDebounceTrigger ∷ ∀ f g. DebounceTrigger f g -> (∀ a. a → f a) → g Unit
-runDebounceTrigger (DebounceTrigger dt) = dt
+runDebounceTrigger (DebounceTrigger dt) f = dt (Just f)
+
+cancelDebounceTrigger ∷ ∀ f g. DebounceTrigger f g -> g Unit
+cancelDebounceTrigger (DebounceTrigger dt) = dt Nothing
 
 -- | Fires the specified debouced H.query trigger with the passed H.query. This
 -- | function also handles constructing the initial trigger if it has not yet
@@ -52,7 +57,24 @@ fireDebouncedQuery
   → Prism' s (DebounceTrigger f m)
   → (∀ a. a → f a)
   → H.HalogenM s f g p o m Unit
-fireDebouncedQuery ms lens act = do
+fireDebouncedQuery ms lens act = runDebouncedQuery ms lens (Just act)
+
+cancelDebouncedQuery
+  ∷ ∀ s f g p o m eff
+  . (MonadAff (avar ∷ AVAR | eff) m)
+  ⇒ Milliseconds
+  → Prism' s (DebounceTrigger f m)
+  → H.HalogenM s f g p o m Unit
+cancelDebouncedQuery ms lens = runDebouncedQuery ms lens Nothing
+
+runDebouncedQuery
+  ∷ ∀ s f g p o m eff
+  . (MonadAff (avar ∷ AVAR | eff) m)
+  ⇒ Milliseconds
+  → Prism' s (DebounceTrigger f m)
+  → (∀ a. Maybe (a → f a))
+  → H.HalogenM s f g p o m Unit
+runDebouncedQuery ms lens act = do
   DebounceTrigger t ← H.gets (preview lens) >>= case _ of
     Just t' → pure t'
     Nothing → do
@@ -81,7 +103,10 @@ debouncedEventSource ms = do
       emit ← peekVar emitVar
       takeVar cancelVar >>= traverse_ (flip cancel $ Exn.error "Debounced")
       putVar cancelVar <<< Just =<< forkAff do
-        delay ms
-        emit $ E.Left $ k ES.Listening
+        case k of
+          Nothing → pure unit
+          Just f → do
+            delay ms
+            emit $ E.Left $ f ES.Listening
 
   H.subscribe source $> push

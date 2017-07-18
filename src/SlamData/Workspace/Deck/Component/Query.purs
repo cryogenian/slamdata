@@ -41,6 +41,7 @@ data Query a
   | UpdateCardSize a
   | ZoomIn a
   | ZoomOut a
+  | BackToFileSystem a
   | StartSliding GripperDef DOM.MouseEvent a
   | StopSlidingAndSnap DOM.MouseEvent a
   | UpdateSliderPosition DOM.MouseEvent a

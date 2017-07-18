@@ -123,12 +123,9 @@ areaOptions axes r areaData = do
       [ { label: D.jcursorLabel dim, value: _.seriesName
         } ]
 
-  E.tooltip do
+  CCT.tooltip do
     E.formatterItem (CCT.tableFormatter (pure ∘ _.color) (cols <> opts) ∘ pure)
     E.triggerItem
-    E.textStyle do
-      E.fontFamily "Ubuntu, sans"
-      E.fontSize 12
     E.axisPointer do
       E.lineAxisPointer
       E.lineStyle do

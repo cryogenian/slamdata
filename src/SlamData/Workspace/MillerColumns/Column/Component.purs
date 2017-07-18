@@ -35,7 +35,7 @@ import DOM.Classy.Event (currentTarget) as DOM
 import DOM.Classy.Node (fromNode) as DOM
 import Halogen as H
 import Halogen.Component.Proxy (proxyQI)
-import Halogen.Component.Utils.Debounced (debouncedEventSource, runDebounceTrigger)
+import Halogen.Component.Utils.Debounced (debouncedEventSource, runDebounceTrigger, cancelDebounceTrigger)
 import Halogen.HTML as HH
 import Halogen.HTML.CSS as HCSS
 import Halogen.HTML.Events as HE
@@ -121,7 +121,7 @@ component' (ColumnOptions colSpec) colPath =
   loadIndicator =
     HH.li
       [ HP.class_ $ HH.ClassName "sd-miller-column-loading" ]
-      [ I.spinner
+      [ RC.spinner
       , HH.span_ [ HH.text "Loading…" ]
       ]
 
@@ -185,6 +185,8 @@ component' (ColumnOptions colSpec) colPath =
       lift $ runDebounceTrigger trigger (UpdateFilter text)
       pure next
     UpdateFilter text next → do
+      trigger ← H.gets _.filterTrigger
+      lift $ cancelDebounceTrigger trigger
       H.modify (_ { filterText = text, items = L.Nil, lastLoadRequest = Nothing })
       load
       pure next
