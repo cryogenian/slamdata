@@ -189,520 +189,520 @@ packages = lm.union customMap $ map interpret mapFromFree
     CT.text × do
       _ ←
         field Pr.formValue
-        >>= addSource Ax._value
-        >>= addSource Ax._category
-        >>= addSource Ax._time
-        >>= addSource Ax._date
-        >>= addSource Ax._datetime
+          >>= addSource Ax._value
+          >>= addSource Ax._category
+          >>= addSource Ax._time
+          >>= addSource Ax._date
+          >>= addSource Ax._datetime
       pure unit
 
   , CT.numeric × do
       _ ←
         field Pr.formValue
-        >>= addSource Ax._value
+          >>= addSource Ax._value
       pure unit
 
   , CT.date × do
       _ ←
         field Pr.formValue
-        >>= addSource Ax._date
+          >>= addSource Ax._date
       pure unit
 
   , CT.time × do
       _ ←
         field Pr.formValue
-        >>= addSource Ax._time
+          >>= addSource Ax._time
       pure unit
 
   , CT.datetime × do
       _ ←
         field Pr.formValue
-        >>= addSource Ax._time
+          >>= addSource Ax._time
       pure unit
 
   , CT.dropdown × do
       value ←
         field Pr.formValue
-        >>= addSource Ax._value
-        >>= addSource Ax._category
-        >>= addSource Ax._time
-        >>= addSource Ax._date
-        >>= addSource Ax._datetime
+          >>= addSource Ax._value
+          >>= addSource Ax._category
+          >>= addSource Ax._time
+          >>= addSource Ax._date
+          >>= addSource Ax._datetime
 
       label ←
         field Pr.formLabel
-        >>= addSource Ax._category
-        >>= isFilteredBy value
+          >>= addSource Ax._category
+          >>= isFilteredBy value
 
       selected ←
         field Pr.formSelected
-        >>= addSource Ax._category
-        >>= addSource Ax._value
-        >>= addSource Ax._date
-        >>= addSource Ax._time
-        >>= addSource Ax._datetime
-        >>= isFilteredBy value
-        >>= isFilteredBy label
-        >>= isActiveWhen value
+          >>= addSource Ax._category
+          >>= addSource Ax._value
+          >>= addSource Ax._date
+          >>= addSource Ax._time
+          >>= addSource Ax._datetime
+          >>= isFilteredBy value
+          >>= isFilteredBy label
+          >>= isActiveWhen value
 
       pure unit
 
   , CT.radio × do
       value ←
         field Pr.formValue
-        >>= addSource Ax._value
-        >>= addSource Ax._category
-        >>= addSource Ax._time
-        >>= addSource Ax._date
-        >>= addSource Ax._datetime
+          >>= addSource Ax._value
+          >>= addSource Ax._category
+          >>= addSource Ax._time
+          >>= addSource Ax._date
+          >>= addSource Ax._datetime
 
       label ←
         field Pr.formLabel
-        >>= addSource Ax._category
-        >>= isFilteredBy value
+          >>= addSource Ax._category
+          >>= isFilteredBy value
 
       selected ←
         field Pr.formSelected
-        >>= addSource Ax._category
-        >>= addSource Ax._value
-        >>= addSource Ax._date
-        >>= addSource Ax._time
-        >>= addSource Ax._datetime
-        >>= isFilteredBy value
-        >>= isFilteredBy label
-        >>= isActiveWhen value
+          >>= addSource Ax._category
+          >>= addSource Ax._value
+          >>= addSource Ax._date
+          >>= addSource Ax._time
+          >>= addSource Ax._datetime
+          >>= isFilteredBy value
+          >>= isFilteredBy label
+          >>= isActiveWhen value
       pure unit
 
   , CT.checkbox × do
       value ←
         field Pr.formValue
-        >>= addSource Ax._value
-        >>= addSource Ax._category
-        >>= addSource Ax._time
-        >>= addSource Ax._date
-        >>= addSource Ax._datetime
+          >>= addSource Ax._value
+          >>= addSource Ax._category
+          >>= addSource Ax._time
+          >>= addSource Ax._date
+          >>= addSource Ax._datetime
 
       label ←
         field Pr.formLabel
-        >>= addSource Ax._category
-        >>= isFilteredBy value
+          >>= addSource Ax._category
+          >>= isFilteredBy value
 
       selected ←
         field Pr.formSelected
-        >>= addSource Ax._category
-        >>= addSource Ax._value
-        >>= addSource Ax._date
-        >>= addSource Ax._time
-        >>= addSource Ax._datetime
-        >>= isFilteredBy value
-        >>= isFilteredBy label
-        >>= isActiveWhen value
+          >>= addSource Ax._category
+          >>= addSource Ax._value
+          >>= addSource Ax._date
+          >>= addSource Ax._time
+          >>= addSource Ax._datetime
+          >>= isFilteredBy value
+          >>= isFilteredBy label
+          >>= isActiveWhen value
       pure unit
 
   , CT.geoHeatmap × do
       lat ←
         field Pr.lat
-        >>= addSource Ax._value
+          >>= addSource Ax._value
 
       lng ←
         field Pr.lng
-        >>= addSource Ax._value
-        >>= isFilteredBy lat
+          >>= addSource Ax._value
+          >>= isFilteredBy lat
 
       intensity ←
         field Pr.intensity
-        >>= addSource Ax._value
-        >>= isFilteredBy lat
-        >>= isFilteredBy lng
+          >>= addSource Ax._value
+          >>= isFilteredBy lat
+          >>= isFilteredBy lng
       pure unit
 
   , CT.pie × do
       category ←
         field Pr.category
-        >>= addSource Ax._category
-        >>= addSource Ax._time
-        >>= addSource Ax._date
-        >>= addSource Ax._datetime
+          >>= addSource Ax._category
+          >>= addSource Ax._time
+          >>= addSource Ax._date
+          >>= addSource Ax._datetime
 
       value ←
         field Pr.value
-        >>= addSource Ax._value
+          >>= addSource Ax._value
 
       donut ←
         optional Pr.donut
-        >>= addSource Ax._category
-        >>= addSource Ax._time
-        >>= isFilteredBy category
-        >>= isActiveWhen category
+          >>= addSource Ax._category
+          >>= addSource Ax._time
+          >>= isFilteredBy category
+          >>= isActiveWhen category
 
       parallel ←
         optional Pr.parallel
-        >>= addSource Ax._category
-        >>= addSource Ax._time
-        >>= isFilteredBy category
-        >>= isFilteredBy donut
-        >>= isActiveWhen category
+          >>= addSource Ax._category
+          >>= addSource Ax._time
+          >>= isFilteredBy category
+          >>= isFilteredBy donut
+          >>= isActiveWhen category
       pure unit
 
  , CT.line × do
       dimension ←
         field Pr.dimension
-        >>= addSource Ax._category
-        >>= addSource Ax._value
-        >>= addSource Ax._time
-        >>= addSource Ax._date
-        >>= addSource Ax._datetime
+          >>= addSource Ax._category
+          >>= addSource Ax._value
+          >>= addSource Ax._time
+          >>= addSource Ax._date
+          >>= addSource Ax._datetime
 
       value ←
         field Pr.value
-        >>= addSource Ax._value
-        >>= isFilteredBy dimension
+          >>= addSource Ax._value
+          >>= isFilteredBy dimension
 
       secondValue ←
         optional Pr.secondValue
-        >>= addSource Ax._value
-        >>= isFilteredBy value
+          >>= addSource Ax._value
+          >>= isFilteredBy value
 
       size ←
         optional Pr.size
-        >>= addSource Ax._value
-        >>= isFilteredBy dimension
-        >>= isFilteredBy value
-        >>= isFilteredBy secondValue
-        >>= isActiveWhen value
+          >>= addSource Ax._value
+          >>= isFilteredBy dimension
+          >>= isFilteredBy value
+          >>= isFilteredBy secondValue
+          >>= isActiveWhen value
 
       series ←
         optional Pr.series
-        >>= addSource Ax._category
-        >>= addSource Ax._time
-        >>= isFilteredBy dimension
-        >>= isActiveWhen dimension
+          >>= addSource Ax._category
+          >>= addSource Ax._time
+          >>= isFilteredBy dimension
+          >>= isActiveWhen dimension
       pure unit
 
   , CT.bar × do
       category ←
         field Pr.category
-        >>= addSource Ax._category
-        >>= addSource Ax._value
-        >>= addSource Ax._time
-        >>= addSource Ax._date
-        >>= addSource Ax._datetime
+          >>= addSource Ax._category
+          >>= addSource Ax._value
+          >>= addSource Ax._time
+          >>= addSource Ax._date
+          >>= addSource Ax._datetime
 
       value ←
         field Pr.value
-        >>= addSource Ax._value
-        >>= isFilteredBy category
+          >>= addSource Ax._value
+          >>= isFilteredBy category
 
       stack ←
         optional Pr.stack
-        >>= addSource Ax._category
-        >>= addSource Ax._time
-        >>= isFilteredBy category
-        >>= isActiveWhen category
+          >>= addSource Ax._category
+          >>= addSource Ax._time
+          >>= isFilteredBy category
+          >>= isActiveWhen category
 
       parallel ←
         optional Pr.parallel
-        >>= addSource Ax._category
-        >>= addSource Ax._time
-        >>= isFilteredBy category
-        >>= isFilteredBy stack
-        >>= isActiveWhen category
+          >>= addSource Ax._category
+          >>= addSource Ax._time
+          >>= isFilteredBy category
+          >>= isFilteredBy stack
+          >>= isActiveWhen category
       pure unit
 
   , CT.area × do
       dimension ←
         field Pr.dimension
-        >>= addSource Ax._time
-        >>= addSource Ax._value
-        >>= addSource Ax._date
-        >>= addSource Ax._datetime
-        >>= addSource Ax._category
+          >>= addSource Ax._time
+          >>= addSource Ax._value
+          >>= addSource Ax._date
+          >>= addSource Ax._datetime
+          >>= addSource Ax._category
 
       value ←
         field Pr.value
-        >>= isFilteredBy dimension
-        >>= addSource Ax._value
+          >>= isFilteredBy dimension
+          >>= addSource Ax._value
 
       series ←
         optional Pr.series
-        >>= addSource Ax._time
-        >>= addSource Ax._value
-        >>= addSource Ax._date
-        >>= addSource Ax._datetime
-        >>= addSource Ax._category
-        >>= isFilteredBy value
-        >>= isFilteredBy dimension
-        >>= isActiveWhen dimension
+          >>= addSource Ax._time
+          >>= addSource Ax._value
+          >>= addSource Ax._date
+          >>= addSource Ax._datetime
+          >>= addSource Ax._category
+          >>= isFilteredBy value
+          >>= isFilteredBy dimension
+          >>= isActiveWhen dimension
       pure unit
 
   , CT.scatter × do
       abscissa ←
         field Pr.abscissa
-        >>= addSource Ax._value
+          >>= addSource Ax._value
 
       ordinate ←
         field Pr.scatterOrdinate
-        >>= addSource Ax._value
-        >>= isFilteredBy abscissa
+          >>= addSource Ax._value
+          >>= isFilteredBy abscissa
 
       size ←
         optional Pr.scatterSize
-        >>= addSource Ax._value
-        >>= isFilteredBy abscissa
-        >>= isFilteredBy ordinate
+          >>= addSource Ax._value
+          >>= isFilteredBy abscissa
+          >>= isFilteredBy ordinate
       series ←
         optional Pr.series
-        >>= addSource Ax._category
+          >>= addSource Ax._category
       parallel ←
         optional Pr.parallel
-        >>= addSource Ax._category
-        >>= isFilteredBy series
+          >>= addSource Ax._category
+          >>= isFilteredBy series
       pure unit
 
   , CT.radar × do
       category ←
         field Pr.category
-        >>= addSource Ax._category
-        >>= addSource Ax._time
-        >>= addSource Ax._date
-        >>= addSource Ax._datetime
+          >>= addSource Ax._category
+          >>= addSource Ax._time
+          >>= addSource Ax._date
+          >>= addSource Ax._datetime
 
       value ←
         field  Pr.value
-        >>= addSource Ax._value
+          >>= addSource Ax._value
 
       multiple ←
         optional Pr.multiple
-        >>= addSource Ax._category
-        >>= addSource Ax._time
-        >>= isFilteredBy category
-        >>= isActiveWhen category
+          >>= addSource Ax._category
+          >>= addSource Ax._time
+          >>= isFilteredBy category
+          >>= isActiveWhen category
 
       parallel ←
         optional Pr.parallel
-        >>= addSource Ax._category
-        >>= addSource Ax._time
-        >>= isFilteredBy category
-        >>= isFilteredBy multiple
-        >>= isActiveWhen category
+          >>= addSource Ax._category
+          >>= addSource Ax._time
+          >>= isFilteredBy category
+          >>= isFilteredBy multiple
+          >>= isActiveWhen category
       pure unit
 
   , CT.funnel × do
       category ←
         field Pr.category
-        >>= addSource Ax._category
-        >>= addSource Ax._time
-        >>= addSource Ax._date
-        >>= addSource Ax._datetime
+          >>= addSource Ax._category
+          >>= addSource Ax._time
+          >>= addSource Ax._date
+          >>= addSource Ax._datetime
 
       value ←
         field Pr.value
-        >>= addSource Ax._value
+          >>= addSource Ax._value
 
       series ←
         optional Pr.series
-        >>= addSource Ax._category
-        >>= addSource Ax._time
-        >>= addSource Ax._date
-        >>= addSource Ax._datetime
-        >>= isFilteredBy category
-        >>= isActiveWhen category
+          >>= addSource Ax._category
+          >>= addSource Ax._time
+          >>= addSource Ax._date
+          >>= addSource Ax._datetime
+          >>= isFilteredBy category
+          >>= isActiveWhen category
 
       pure unit
 
   , CT.graph × do
       source ←
         field Pr.source
-        >>= addSource Ax._category
+          >>= addSource Ax._category
 
       target ←
         field Pr.target
-        >>= addSource Ax._category
-        >>= isFilteredBy source
+          >>= addSource Ax._category
+          >>= isFilteredBy source
 
       size ←
         optional Pr.size
-        >>= addSource Ax._value
+          >>= addSource Ax._value
 
       color ←
         optional Pr.color
-        >>= addSource Ax._category
-        >>= addSource Ax._time
-        >>= isFilteredBy source
-        >>= isFilteredBy target
+          >>= addSource Ax._category
+          >>= addSource Ax._time
+          >>= isFilteredBy source
+          >>= isFilteredBy target
 
       pure unit
 
   , CT.heatmap × do
       abscissa ←
         field Pr.abscissa
-        >>= addSource Ax._category
-        >>= addSource Ax._value
-        >>= addSource Ax._time
-        >>= addSource Ax._date
-        >>= addSource Ax._datetime
+          >>= addSource Ax._category
+          >>= addSource Ax._value
+          >>= addSource Ax._time
+          >>= addSource Ax._date
+          >>= addSource Ax._datetime
 
       ordinate ←
         field Pr.ordinate
-        >>= addSource Ax._category
-        >>= addSource Ax._value
-        >>= addSource Ax._time
-        >>= addSource Ax._date
-        >>= addSource Ax._datetime
-        >>= isFilteredBy abscissa
+          >>= addSource Ax._category
+          >>= addSource Ax._value
+          >>= addSource Ax._time
+          >>= addSource Ax._date
+          >>= addSource Ax._datetime
+          >>= isFilteredBy abscissa
 
       value ←
         field Pr.value
-        >>= addSource Ax._value
-        >>= isFilteredBy abscissa
-        >>= isFilteredBy ordinate
+          >>= addSource Ax._value
+          >>= isFilteredBy abscissa
+          >>= isFilteredBy ordinate
 
       series ←
         optional Pr.series
-        >>= addSource Ax._category
-        >>= addSource Ax._time
-        >>= isFilteredBy abscissa
-        >>= isFilteredBy ordinate
-        >>= isActiveWhen abscissa
-        >>= isActiveWhen ordinate
+          >>= addSource Ax._category
+          >>= addSource Ax._time
+          >>= isFilteredBy abscissa
+          >>= isFilteredBy ordinate
+          >>= isActiveWhen abscissa
+          >>= isActiveWhen ordinate
       pure unit
 
   , CT.sankey × do
       source ←
         field Pr.source
-        >>= addSource Ax._category
+          >>= addSource Ax._category
 
       target ←
         field Pr.target
-        >>= addSource Ax._category
-        >>= isFilteredBy source
+          >>= addSource Ax._category
+          >>= isFilteredBy source
 
       value ←
         field Pr.value
-        >>= addSource Ax._value
+          >>= addSource Ax._value
 
       pure unit
 
   , CT.gauge × do
       value ←
         field Pr.value
-        >>= addSource Ax._value
+          >>= addSource Ax._value
 
       parallel ←
         optional Pr.parallel
-        >>= addSource Ax._category
-        >>= addSource Ax._time
-        >>= isActiveWhen value
+          >>= addSource Ax._category
+          >>= addSource Ax._time
+          >>= isActiveWhen value
 
       multiple ←
         optional Pr.multiple
-        >>= addSource Ax._category
-        >>= addSource Ax._time
-        >>= isActiveWhen value
-        >>= isFilteredBy parallel
+          >>= addSource Ax._category
+          >>= addSource Ax._time
+          >>= isActiveWhen value
+          >>= isFilteredBy parallel
 
       pure unit
 
   , CT.boxplot × do
       dimension ←
         field Pr.dimension
-        >>= addSource Ax._category
-        >>= addSource Ax._value
-        >>= addSource Ax._time
-        >>= addSource Ax._date
-        >>= addSource Ax._datetime
+          >>= addSource Ax._category
+          >>= addSource Ax._value
+          >>= addSource Ax._time
+          >>= addSource Ax._date
+          >>= addSource Ax._datetime
 
       value ←
         field Pr.flatValue
-        >>= addSource Ax._value
-        >>= isFilteredBy dimension
+          >>= addSource Ax._value
+          >>= isFilteredBy dimension
 
       series ←
         optional Pr.series
-        >>= addSource Ax._category
-        >>= addSource Ax._time
-        >>= isFilteredBy dimension
-        >>= isActiveWhen dimension
+          >>= addSource Ax._category
+          >>= addSource Ax._time
+          >>= isFilteredBy dimension
+          >>= isActiveWhen dimension
 
 
       parallel ←
         optional Pr.parallel
-        >>= addSource Ax._category
-        >>= addSource Ax._time
-        >>= isFilteredBy dimension
-        >>= isFilteredBy series
-        >>= isActiveWhen dimension
+          >>= addSource Ax._category
+          >>= addSource Ax._time
+          >>= isFilteredBy dimension
+          >>= isFilteredBy series
+          >>= isActiveWhen dimension
       pure unit
 
   , CT.punchCard × do
       abscissa ←
         field Pr.abscissa
-        >>= addSource Ax._category
-        >>= addSource Ax._time
-        >>= addSource Ax._date
-        >>= addSource Ax._datetime
+          >>= addSource Ax._category
+          >>= addSource Ax._time
+          >>= addSource Ax._date
+          >>= addSource Ax._datetime
 
       ordinate ←
         field Pr.ordinate
-        >>= addSource Ax._category
-        >>= addSource Ax._time
-        >>= addSource Ax._date
-        >>= addSource Ax._datetime
+          >>= addSource Ax._category
+          >>= addSource Ax._time
+          >>= addSource Ax._date
+          >>= addSource Ax._datetime
 
       value ←
         field Pr.value
-        >>= addSource Ax._value
+          >>= addSource Ax._value
       pure unit
 
   , CT.candlestick × do
       dimension ←
         field Pr.dimension
-        >>= addSource Ax._category
-        >>= addSource Ax._time
-        >>= addSource Ax._date
-        >>= addSource Ax._datetime
+          >>= addSource Ax._category
+          >>= addSource Ax._time
+          >>= addSource Ax._date
+          >>= addSource Ax._datetime
 
       open ←
         field Pr.open
-        >>= addSource Ax._value
+          >>= addSource Ax._value
 
       close ←
         field Pr.close
-        >>= addSource Ax._value
-        >>= isFilteredBy open
+          >>= addSource Ax._value
+          >>= isFilteredBy open
 
       high ←
         field Pr.high
-        >>= addSource Ax._value
-        >>= isFilteredBy open
-        >>= isFilteredBy close
+          >>= addSource Ax._value
+          >>= isFilteredBy open
+          >>= isFilteredBy close
 
       low ←
         field Pr.low
-        >>= addSource Ax._value
-        >>= isFilteredBy open
-        >>= isFilteredBy close
-        >>= isFilteredBy high
+          >>= addSource Ax._value
+          >>= isFilteredBy open
+          >>= isFilteredBy close
+          >>= isFilteredBy high
 
       parallel ←
         optional Pr.parallel
-        >>= addSource Ax._category
-        >>= addSource Ax._time
-        >>= addSource Ax._date
-        >>= addSource Ax._datetime
-        >>= isFilteredBy dimension
-        >>= isActiveWhen dimension
+          >>= addSource Ax._category
+          >>= addSource Ax._time
+          >>= addSource Ax._date
+          >>= addSource Ax._datetime
+          >>= isFilteredBy dimension
+          >>= isActiveWhen dimension
 
       pure unit
 
   , CT.metric × do
       _ ←
         field Pr.value
-        >>= addSource Ax._value
+          >>= addSource Ax._value
       pure unit
   , CT.static × do
       _ ←
         field Pr.value
-        >>= addSource Ax._category
+          >>= addSource Ax._category
       pure unit
   ]

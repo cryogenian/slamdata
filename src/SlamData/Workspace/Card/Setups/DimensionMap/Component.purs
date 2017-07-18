@@ -3,7 +3,9 @@ Copyright 2017 SlamData, Inc.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -69,7 +71,7 @@ renderSelection state = case state ^. ST._selected of
   Just (Left pf) →
     let
       conf =
-        { title: ST.chooseLabel pf
+        { title: Pr.getSelect pf
         , label: DPC.labelNode showJCursorTip
         , render: DPC.renderNode showJCursorTip
         , values: DJ.groupJCursors $ ST.selectedCursors state
@@ -90,7 +92,7 @@ renderButton state fld =
     { configurable: ST.isConfigurable fld state
     , dimension: sequence $ ST.getSelected fld state
     , showLabel: absurd
-    , showDefaultLabel: ST.showDefaultLabel fld
+    , showDefaultLabel: const ∘ Pr.getLabel fld
     , showValue: ST.showValue fld
     , onLabelChange: HE.input \l → Q.OnField fld ∘ Q.LabelChanged l
     , onDismiss: HE.input_ $ Q.OnField fld ∘ Q.Dismiss
@@ -100,16 +102,13 @@ renderButton state fld =
     , onLabelClick: const Nothing
     , disabled: ST.isDisabled fld state
     , dismissable: isJust $ ST.getSelected fld state
-    , labelless: ST.labelless fld
+    , labelless: Pr.isLabelless fld
     } ]
 
 eval ∷ Q.Query ~> DSL
 eval = case _ of
   Q.SetPackage p next → do
-    H.modify _{ package = p
-              , selected = Nothing
-              }
-
+    H.modify _{ package = p, selected = Nothing }
     pure next
   Q.Save k → do
     H.gets $ k ∘ view ST._dimMap

@@ -107,12 +107,6 @@ showValue ∷ Pr.Projection → Maybe J.JCursor → String
 showValue fld c = do
   fromMaybe (Pr.getValue fld) $ map showPrettyJCursor c
 
-chooseLabel ∷ Pr.Projection → String
-chooseLabel = Pr.getSelect
-
-showDefaultLabel ∷ Pr.Projection → Maybe J.JCursor → String
-showDefaultLabel = const ∘ Pr.getLabel
-
 setTransform ∷ Pr.Projection → Maybe Tr.Transform → State → State
 setTransform fld t =
   _dimMap ∘ at fld ∘ _Just ∘ D._value ∘ D._transform .~ t
@@ -134,6 +128,3 @@ deselect = _selected .~ Nothing
 
 getSelected ∷ Pr.Projection → State → Maybe D.LabeledJCursor
 getSelected fld state = state ^. _dimMap ∘ at fld
-
-labelless ∷ Pr.Projection → Boolean
-labelless = Pr.isLabelless

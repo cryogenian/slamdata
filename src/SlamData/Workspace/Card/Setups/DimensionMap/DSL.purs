@@ -74,12 +74,12 @@ _filters = lens _.filters _{ filters = _ }
 
 -- `Iso'` is used because it's more powerful constraint than
 -- simple function pair
-hoistField
+imapField
   ∷ ∀ f ff
   . Iso' f ff
   → DimensionFF f
   ~> DimensionFF ff
-hoistField iso d = withIso iso \fn bn → case d of
+imapField iso d = withIso iso \fn bn → case d of
   MandatoryField prj cb →
     MandatoryField prj $ cb ∘ bn
   OptionalField prj cb →
@@ -92,7 +92,7 @@ hoistField iso d = withIso iso \fn bn → case d of
     ActiveGuard { guard: fn guard, source: fn source } $ cb ∘ bn
 
 indexify ∷ ∀ f z. Semiring z ⇒ DimensionFF f ~> DimensionFF (z × f)
-indexify = hoistField _withZero
+indexify = imapField _withZero
 
 type AxesRequirements =
   Ax.AxisTypeAnnotated Int ( total ∷ Int, nonMeasure ∷ Int )
@@ -131,12 +131,12 @@ applyRequirements f r1 r2 =
 eqRequirements ∷ AxesRequirements → AxesRequirements → Boolean
 eqRequirements r1 r2 =
   r1.value ≡ r2.value
-  ∧ r1.category ≡ r2.category
-  ∧ r1.date ≡ r2.date
-  ∧ r1.time ≡ r2.time
-  ∧ r1.datetime ≡ r2.datetime
-  ∧ r1.total ≡ r2.total
-  ∧ r1.nonMeasure ≡ r2.nonMeasure
+    ∧ r1.category ≡ r2.category
+    ∧ r1.date ≡ r2.date
+    ∧ r1.time ≡ r2.time
+    ∧ r1.datetime ≡ r2.datetime
+    ∧ r1.total ≡ r2.total
+    ∧ r1.nonMeasure ≡ r2.nonMeasure
 
 noneRequirements ∷ AxesRequirements
 noneRequirements =

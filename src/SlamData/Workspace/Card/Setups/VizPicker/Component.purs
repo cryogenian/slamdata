@@ -167,8 +167,7 @@ eval = case _ of
         Explain vt → ExplainNotWorking vt
       pure next
   UpdateAxes axes next → do
-    _ ←
-      H.query' cpList unit
+    _ ← H.query' cpList unit
       $ H.action
       $ AL.UpdateActions
       $ map toAction

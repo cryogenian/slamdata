@@ -176,11 +176,11 @@ renderButton filterString { presentation, metrics, action, lines } =
            -- buttons.
            if A.isIconOnly presentation
              then do
-             CSS.position CSS.absolute
-             CSS.left $ CSS.px metrics.iconOnlyLeftPx
-             CSS.top $ CSS.px metrics.iconOnlyTopPx
+               CSS.position CSS.absolute
+               CSS.left $ CSS.px metrics.iconOnlyLeftPx
+               CSS.top $ CSS.px metrics.iconOnlyTopPx
              else
-             CSS.position CSS.relative
+               CSS.position CSS.relative
       ]
       $ foldMap (pure ∘ I.unIconHTML) $ A.pluckActionIcon action
 
@@ -200,8 +200,8 @@ renderButton filterString { presentation, metrics, action, lines } =
     A.GoBack → true
     _ →
       F.any
-      (Str.contains (Str.Pattern filterString) ∘ Str.toLower)
-      (A.searchFilters action)
+        (Str.contains (Str.Pattern filterString) ∘ Str.toLower)
+        (A.searchFilters action)
 
   attrs =
     [ HP.title $ A.pluckActionDescription action
