@@ -123,7 +123,7 @@ elaborate
 elaborate path currentSource varMap query =
   case RWS.runRWS go (initialEnv path varMap) initialState of
     RWS.RWSResult st res _ →
-      Path.FileName (processIdent currentSource) × res
+      Path.FileName selfName × res
 
   where
   selfName ∷ String
@@ -131,17 +131,19 @@ elaborate path currentSource varMap query =
 
   go ∷ RewriteM (Either Sql.SqlQuery Sql.SqlModule)
   go = do
-    Sql.Query decls sql ← elaborateQuery' query
-    st ← RWS.get
-    vars ← (processVars <<< _.varMap) =<< ask
-    pure if st.isProcess
-      then Right $ sqlModule
-        (st.decls <> decls)
-        selfName
-        (uncurry VM.uniqueVarName ∘ snd <$> vars)
-        st.bindings
-        sql
-      else Left $ Sql.Query decls sql
+    -- TODO: Swithc for processes
+    -- Sql.Query decls sql ← elaborateQuery' query
+    -- st ← RWS.get
+    -- vars ← (processVars <<< _.varMap) =<< ask
+    -- pure if st.isProcess
+    --   then Right $ sqlModule
+    --     (st.decls <> decls)
+    --     selfName
+    --     (uncurry VM.uniqueVarName ∘ snd <$> vars)
+    --     st.bindings
+    --     sql
+    --   else Left $ Sql.Query decls sql
+    Left <$> elaborateQuery' query
 
 elaborateQuery
   ∷ ImportBaseDir

@@ -30,7 +30,6 @@ import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Common as CEC
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Port.VarMap as VM
 import SlamData.Workspace.Card.Search.Error (SearchError(..), throwSearchError)
 import SlamData.Workspace.Card.Search.Interpret as Search
 import SlamData.Workspace.Card.Setups.Common.Eval (analyze)
@@ -62,13 +61,20 @@ evalSearch queryText port = do
   let
     state' = CEM.Analysis { resource, records, axes }
     fields = QQ.allFields records
-    sql = Search.searchSql resourceVar Search.defaultFilterVar Search.defaultDistinctVar
-    filter = VM.Expr $ Search.filterSql fields searchQuery
-    isDistinct = VM.Expr $ Sql.bool $ Search.isDistinct searchQuery
-    varMap' =
-      varMap
-        # VM.insert cardId Search.defaultFilterVar filter
-        # VM.insert cardId Search.defaultDistinctVar isDistinct
+    -- TODO: Switch for processes
+    -- sql = Search.searchSql resourceVar Search.defaultFilterVar Search.defaultDistinctVar
+    -- filter = VM.Expr $ Search.filterSql fields searchQuery
+    -- isDistinct = VM.Expr $ Sql.bool $ Search.isDistinct searchQuery
+    -- varMap' =
+    --   varMap
+    --     # VM.insert cardId Search.defaultFilterVar filter
+    --     # VM.insert cardId Search.defaultDistinctVar isDistinct
+    sql =
+      Search.searchSql resourceVar
+        (Search.projections fields)
+        (Search.filterSql fields searchQuery)
+        (Search.isDistinct searchQuery)
+    varMap' = varMap
   put $ Just state'
   resource' ← CEC.localEvalResource (Sql.Query mempty sql) varMap' >>= searchError SearchQueryCompilationError
   pure $ Port.resourceOut cardId resource' varMap'
