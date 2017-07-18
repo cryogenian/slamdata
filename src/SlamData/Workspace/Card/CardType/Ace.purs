@@ -90,5 +90,5 @@ consumerInteractable cb = cb
   # on _aceMarkdown ff
   # on _aceSql ff
 
-upcastToAce ∷ ∀ r. Upcastable r (AceR ()) ⇒ Variant r → Maybe (Ace ())
-upcastToAce = upcast
+contractToAce ∷ ∀ r. Contractable r (AceR ()) ⇒ Variant r → Maybe (Ace ())
+contractToAce = contract

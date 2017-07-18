@@ -64,12 +64,12 @@ render state =
 
   dispatchVizType ∷ CT.VizType → Array HTML
   dispatchVizType vt
-    | isJust $ CT.upcastToInput vt = renderInput
-    | isJust $ CT.upcastToStatic vt = renderMetric
-    | isJust $ CT.upcastToSelect vt = renderSelect
-    | isJust $ CT.upcastToGeo vt = renderGeo
-    | isJust $ CT.upcastToPivot vt = renderPivot
-    | isJust $ CT.upcastToMetric vt = renderMetric
+    | isJust $ CT.contractToInput vt = renderInput
+    | isJust $ CT.contractToStatic vt = renderMetric
+    | isJust $ CT.contractToSelect vt = renderSelect
+    | isJust $ CT.contractToGeo vt = renderGeo
+    | isJust $ CT.contractToPivot vt = renderPivot
+    | isJust $ CT.contractToMetric vt = renderMetric
     | otherwise = renderEChart
 
   renderEChart ∷ Array HTML
@@ -132,18 +132,18 @@ evalCard = case _ of
     case mvt of
       Nothing → pure $ k $ Card.Viz $ M.chart unit
       Just vt → do
-        mm ← for (CT.upcastToMetricRenderer vt) \_ →
+        mm ← for (CT.contractToMetricRenderer vt) \_ →
           pure $ M.metric unit
-        im ← for (CT.upcastToInput vt) \_ → do
+        im ← for (CT.contractToInput vt) \_ → do
           res ← H.query' CS.cpInput unit $ H.request IR.Save
           pure $ map M.input res
-        pm ← for (CT.upcastToPivot vt) \_ → do
+        pm ← for (CT.contractToPivot vt) \_ → do
           res ← H.query' CS.cpPivotTable unit $ H.request PR.Save
           pure $ map M.pivot res
-        sm ← for (CT.upcastToSelect vt) \_ → do
+        sm ← for (CT.contractToSelect vt) \_ → do
           res ← H.query' CS.cpSelect unit $ H.request SR.Save
           pure $ map M.select res
-        gm ← for (CT.upcastToGeo vt) \_ → do
+        gm ← for (CT.contractToGeo vt) \_ → do
           res ← H.query' CS.cpGeo unit $ H.request GR.Save
           pure $ map M.geo res
         pure $ k $ Card.Viz
@@ -159,12 +159,12 @@ evalCard = case _ of
                           pure next
                       )
         # on M._select (\m → do
-                           H.modify _{ vizType = Just $ downcast m.formInputType }
+                           H.modify _{ vizType = Just $ expand m.formInputType }
                            _ ← H.query' CS.cpSelect unit $ H.action $ SR.Load m
                            pure next
                        )
         # on M._input (\m → do
-                          H.modify _{ vizType = Just $ downcast m.formInputType }
+                          H.modify _{ vizType = Just $ expand m.formInputType }
                           _ ← H.query' CS.cpInput unit $ H.action $ IR.Load m
                           pure next
                       )
@@ -182,16 +182,16 @@ evalCard = case _ of
   CC.ReceiveInput input varMap next → do
     case input of
       SetupInput p → void do
-        H.modify _{ vizType = Just $ downcast p.formInputType }
+        H.modify _{ vizType = Just $ expand p.formInputType }
         H.query' CS.cpInput unit $ H.action $ IR.Setup p
       SetupLabeledFormInput p → void do
-        H.modify _{ vizType = Just $ downcast p.formInputType }
+        H.modify _{ vizType = Just $ expand p.formInputType }
         H.query' CS.cpSelect unit $ H.action $ SR.Setup p
       CategoricalMetric m → void do
         H.modify _{ vizType = Just CT.static }
         H.query' CS.cpMetric unit $ H.action $ MR.SetMetric m
       ChartInstructions r → void do
-        H.modify _{ vizType = Just $ downcast r.chartType }
+        H.modify _{ vizType = Just $ expand r.chartType }
       ValueMetric m → void do
         H.modify _{ vizType = Just CT.metric }
         H.query' CS.cpMetric unit $ H.action $ MR.SetMetric m
@@ -239,12 +239,12 @@ resizeGeo = void do
 
 lodByChartType ∷ CT.VizType → DSL LOD.LevelOfDetails
 lodByChartType vt
-  | isJust $ CT.upcastToPivot vt =
+  | isJust $ CT.contractToPivot vt =
       pure LOD.High
-  | isJust $ CT.upcastToMetricRenderer vt = do
+  | isJust $ CT.contractToMetricRenderer vt = do
       mblod ← H.query' CS.cpMetric unit $ H.request MR.GetLOD
       pure $ fromMaybe LOD.Low mblod
-  | (isJust (CT.upcastToSelect vt) ∨ isJust (CT.upcastToInput vt)) = do
+  | (isJust (CT.contractToSelect vt) ∨ isJust (CT.contractToInput vt)) = do
       width ← H.gets _.dimensions.width
       pure if width < 240 then LOD.Low else LOD.High
   | otherwise = do

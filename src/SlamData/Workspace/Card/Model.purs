@@ -183,7 +183,7 @@ updateCardModel = case _, _ of
 
 instance eqAnyCardModel ∷ Eq AnyCardModel where
   eq = case _, _ of
-    Ace x1 y1, Ace x2 y2 → CT.eq_ (downcast x1) (downcast x2) && Ace.eqModel y1 y2
+    Ace x1 y1, Ace x2 y2 → CT.eq_ (expand x1) (expand x2) && Ace.eqModel y1 y2
     Search s1, Search s2 → s1 ≡ s2
     Markdown x, Markdown y → x ≡ y
     Table x, Table y → JT.eqModel x y
@@ -234,7 +234,7 @@ instance decodeJsonCardModel ∷ J.DecodeJson AnyCardModel where
 
 modelCardType ∷ AnyCardModel → CT.CardType
 modelCardType = case _ of
-  Ace mode _ → downcast mode
+  Ace mode _ → expand mode
   Search _ → CT.search
   BuildMetric _ → CT.metric
   BuildSankey _ → CT.sankey

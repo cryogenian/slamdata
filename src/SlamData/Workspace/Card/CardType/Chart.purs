@@ -305,5 +305,5 @@ cardClasses cb = cb
   where
   clss _ = [ H.ClassName "sd-card-chart-options" ]
 
-upcastToChart ∷ ∀ r. Upcastable r (ChartR ()) ⇒ Variant r → Maybe (Chart ())
-upcastToChart = upcast
+contractToChart ∷ ∀ r. Contractable r (ChartR ()) ⇒ Variant r → Maybe (Chart ())
+contractToChart = contract

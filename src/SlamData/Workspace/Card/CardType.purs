@@ -25,9 +25,9 @@ module SlamData.Workspace.Card.CardType
   , consumerInteractable
   , eq_
   , all
-  , upcastToPivot
-  , upcastToMetric
-  , upcastToMetricRenderer
+  , contractToPivot
+  , contractToMetric
+  , contractToMetricRenderer
   , module SlamData.Workspace.Card.CardType.Ace
   , module SlamData.Workspace.Card.CardType.Chart
   , module SlamData.Workspace.Card.CardType.Geo
@@ -45,19 +45,19 @@ import Data.String as Str
 import Halogen.HTML as H
 
 import SlamData.Render.Icon as I
-import SlamData.Workspace.Card.CardType.Simple ( _search, search, _markdown, markdown, _table, table, _download, download, _variables, variables, _troubleshoot, troubleshoot, _open, open, _downloadOptions, downloadOptions, _tabs, tabs, _structureEditor, structureEditor, _cache, cache, _draftboard, draftboard, _viz, viz, SimpleR, Simple, upcastToSimple)
+import SlamData.Workspace.Card.CardType.Simple ( _search, search, _markdown, markdown, _table, table, _download, download, _variables, variables, _troubleshoot, troubleshoot, _open, open, _downloadOptions, downloadOptions, _tabs, tabs, _structureEditor, structureEditor, _cache, cache, _draftboard, draftboard, _viz, viz, SimpleR, Simple, contractToSimple)
 import SlamData.Workspace.Card.CardType.Simple as Sim
-import SlamData.Workspace.Card.CardType.Ace ( _aceMarkdown, aceMarkdown, _aceSql, aceSql, mode, AceR, Ace, upcastToAce)
+import SlamData.Workspace.Card.CardType.Ace ( _aceMarkdown, aceMarkdown, _aceSql, aceSql, mode, AceR, Ace, contractToAce)
 import SlamData.Workspace.Card.CardType.Ace as Ace
-import SlamData.Workspace.Card.CardType.Chart ( _pie, pie, _line, line, _bar, bar, _area, area, _scatter, scatter, _radar, radar, _funnel, funnel, _graph, graph, _heatmap, heatmap, _sankey, sankey, _gauge, gauge, _boxplot, boxplot, _metric, metric, _pivot, pivot, _punchCard, punchCard, _candlestick, candlestick, _parallel, parallel, ChartR, Chart, upcastToChart)
+import SlamData.Workspace.Card.CardType.Chart ( _pie, pie, _line, line, _bar, bar, _area, area, _scatter, scatter, _radar, radar, _funnel, funnel, _graph, graph, _heatmap, heatmap, _sankey, sankey, _gauge, gauge, _boxplot, boxplot, _metric, metric, _pivot, pivot, _punchCard, punchCard, _candlestick, candlestick, _parallel, parallel, ChartR, Chart, contractToChart)
 import SlamData.Workspace.Card.CardType.Chart as Cht
-import SlamData.Workspace.Card.CardType.Geo ( _geoMarker, geoMarker, _geoHeatmap, geoHeatmap, GeoR, Geo, upcastToGeo)
+import SlamData.Workspace.Card.CardType.Geo ( _geoMarker, geoMarker, _geoHeatmap, geoHeatmap, GeoR, Geo, contractToGeo)
 import SlamData.Workspace.Card.CardType.Geo as Geo
-import SlamData.Workspace.Card.CardType.Static ( _static, static, StaticR, Static, upcastToStatic)
+import SlamData.Workspace.Card.CardType.Static ( _static, static, StaticR, Static, contractToStatic)
 import SlamData.Workspace.Card.CardType.Static as Sta
-import SlamData.Workspace.Card.CardType.Select ( _dropdown, dropdown, _radio, radio, _checkbox, checkbox, SelectR, Select, upcastToSelect)
+import SlamData.Workspace.Card.CardType.Select ( _dropdown, dropdown, _radio, radio, _checkbox, checkbox, SelectR, Select, contractToSelect)
 import SlamData.Workspace.Card.CardType.Select as Sel
-import SlamData.Workspace.Card.CardType.Input ( _text, text, _numeric, numeric, _date, date, _time, time, _datetime, datetime, InputR, Input, upcastToInput)
+import SlamData.Workspace.Card.CardType.Input ( _text, text, _numeric, numeric, _date, date, _time, time, _datetime, datetime, InputR, Input, contractToInput)
 import SlamData.Workspace.Card.CardType.Input as Inp
 
 type CardType =
@@ -173,23 +173,23 @@ cardClasses = case_
   # Geo.cardClasses
   # Ace.cardClasses
 
-upcastToPivot
+contractToPivot
   ∷ ∀ r a
-  . Upcastable r (pivot ∷ a)
+  . Contractable r (pivot ∷ a)
   ⇒ Variant r
   → Maybe (Variant (pivot ∷ a))
-upcastToPivot = upcast
+contractToPivot = contract
 
-upcastToMetric
+contractToMetric
   ∷ ∀ r a
-  . Upcastable r (metric ∷ a)
+  . Contractable r (metric ∷ a)
   ⇒ Variant r
   → Maybe (Variant (metric ∷ a))
-upcastToMetric = upcast
+contractToMetric = contract
 
-upcastToMetricRenderer
+contractToMetricRenderer
   ∷ ∀ r a b
-  . Upcastable r (metric ∷ a, static ∷ b)
+  . Contractable r (metric ∷ a, static ∷ b)
   ⇒ Variant r
   → Maybe (Variant (metric ∷ a, static ∷ b))
-upcastToMetricRenderer = upcast
+contractToMetricRenderer = contract

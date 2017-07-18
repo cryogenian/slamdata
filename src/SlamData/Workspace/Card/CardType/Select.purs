@@ -116,5 +116,5 @@ maximumCountOfSelectedValues = case_
   # on _radio (const 1)
   # on _checkbox (const top)
 
-upcastToSelect ∷ ∀ r. Upcastable r (SelectR ()) ⇒ Variant r → Maybe (Select ())
-upcastToSelect = upcast
+contractToSelect ∷ ∀ r. Contractable r (SelectR ()) ⇒ Variant r → Maybe (Select ())
+contractToSelect = contract

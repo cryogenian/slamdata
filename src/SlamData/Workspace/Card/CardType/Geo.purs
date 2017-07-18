@@ -91,5 +91,5 @@ cardClasses cb = cb
   where
   clss _ = [ H.ClassName "sd-card-chart-options" ]
 
-upcastToGeo ∷ ∀ r. Upcastable r (GeoR ()) ⇒ Variant r → Maybe (Geo ())
-upcastToGeo = upcast
+contractToGeo ∷ ∀ r. Contractable r (GeoR ()) ⇒ Variant r → Maybe (Geo ())
+contractToGeo = contract

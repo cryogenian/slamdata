@@ -66,6 +66,5 @@ consumerInteractable cb = cb # on _static ff
 cardClasses ∷ ∀ r. (Variant r → Array H.ClassName) → Static r → Array H.ClassName
 cardClasses cb = cb # on _static (const [ H.ClassName "sd-form-input-setup" ] )
 
-
-upcastToStatic ∷ ∀ r. Upcastable r (StaticR ()) ⇒ Variant r → Maybe (Static ())
-upcastToStatic = upcast
+contractToStatic ∷ ∀ r. Contractable r (StaticR ()) ⇒ Variant r → Maybe (Static ())
+contractToStatic = contract

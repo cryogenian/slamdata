@@ -582,7 +582,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
           [ HH.p_
             [ HH.text
               $ "A problem occurred in the "
-              <> CT.name (downcast fit)
+              <> CT.name (expand fit)
               <> " card, please notify the author of this workspace." ]
           , collapsible "Error details" (renderDetails err) expanded
           ]
@@ -600,7 +600,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
           [ pure $ errorTitle
             [ HH.text
               $ "An error occured when setting up the "
-              <> CT.name (downcast fit)
+              <> CT.name (expand fit)
               <> " card." ]
           , pure $ HH.p_
               [ HH.text "No axis was selected" ]
@@ -613,7 +613,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
           [ pure $ errorTitle
             [ HH.text
               $ "An error occured when setting up the "
-              <> CT.name (downcast fit)
+              <> CT.name (expand fit)
               <> " card." ]
           , pure $ HH.p_
               [ HH.text "The selected resource was empty." ]
@@ -623,7 +623,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
     CFILE.FILabeledTooManyEntries { formInputType, maximum, entryCount } →
       let
         errorText =
-          "The " <> Sel.print case_ (downcast formInputType)
+          "The " <> Sel.print case_ (expand formInputType)
           <> " form input can't take more than "
           <> show (Sel.maximumCountOfEntries formInputType)
           <> "entries, but there were: "
@@ -635,7 +635,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
             [ pure $ errorTitle
               [ HH.text
                 $ "An error occured when setting up the "
-                <> CT.name (downcast formInputType)
+                <> CT.name (expand formInputType)
                 <> " card." ]
             , pure $ HH.p_
                 [ HH.text errorText ]
@@ -657,7 +657,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
             [ pure $ errorTitle
               [ HH.text
                 $ "An error occured when setting up the "
-                <> CT.name (downcast formInputType)
+                <> CT.name (expand formInputType)
                 <> " card." ]
             , pure $ HH.p_
                 [ HH.text errorText ]
@@ -671,7 +671,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
           [ pure $ errorTitle
             [ HH.text
               $ "An error occured when setting up the "
-              <> CT.name (downcast fit)
+              <> CT.name (expand fit)
               <> " card." ]
           , pure $ HH.p_
               [ HH.text "Labels must be unique. Please, use other axis." ]

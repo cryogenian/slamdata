@@ -234,5 +234,5 @@ consumerInteractable cb = cb
   # on _tabs tt
   # on _structureEditor ff
 
-upcastToSimple ∷ ∀ r. Upcastable r (SimpleR ()) ⇒ Variant r → Maybe (Simple ())
-upcastToSimple = upcast
+contractToSimple ∷ ∀ r. Contractable r (SimpleR ()) ⇒ Variant r → Maybe (Simple ())
+contractToSimple = contract

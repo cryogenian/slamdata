@@ -59,7 +59,6 @@ module SlamData.Prelude
   , module Data.Void
   , module Debug.Trace
   , module Partial.Unsafe
-  , module Utils.Variant
   )
   where
 
@@ -98,14 +97,12 @@ import Data.Newtype (class Newtype, unwrap, ala, alaF)
 import Data.Profunctor (class Profunctor, dimap)
 import Data.Traversable (class Traversable, traverse, sequence, for)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
-import Data.Variant (SProxy(..), Variant, case_)
+import Data.Variant (SProxy(..), Variant, case_, class Contractable, contract, expand)
 import Data.Symbol (class IsSymbol)
 import Data.Void (Void, absurd)
 import Debug.Trace (spy, trace, traceA, traceAny, traceAnyA, traceAnyM, traceShow, traceShowA, traceShowM)
 
 import Partial.Unsafe (unsafePartial)
-
-import Utils.Variant (upcast, downcast, case2_, class Upcastable)
 
 flipCompose ∷ ∀ a b c d. Semigroupoid a ⇒ a b c → a c d → a b d
 flipCompose = flip compose
@@ -142,3 +139,6 @@ type As1 f = f ~> f
 
 asList = id ∷ As1 List
 asArray = id ∷ As1 Array
+
+case2_ ∷ ∀ a. Variant () → Variant () → a
+case2_ _ = case_

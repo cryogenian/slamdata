@@ -136,5 +136,5 @@ cardClasses cb = cb
   where
   clss _ = [ H.ClassName "sd-form-input-setup" ]
 
-upcastToInput ∷ ∀ r. Upcastable r (InputR ()) ⇒ Variant r → Maybe (Input ())
-upcastToInput = upcast
+contractToInput ∷ ∀ r. Contractable r (InputR ()) ⇒ Variant r → Maybe (Input ())
+contractToInput = contract

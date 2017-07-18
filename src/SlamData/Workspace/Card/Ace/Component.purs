@@ -63,7 +63,7 @@ type HTML = CC.InnerCardParentHTML Query AC.AceQuery Unit
 
 aceComponent ∷ CT.Ace () → CC.CardOptions → CC.CardComponent
 aceComponent mode =
-  CC.makeCardComponent (downcast mode) $ H.lifecycleParentComponent
+  CC.makeCardComponent (expand mode) $ H.lifecycleParentComponent
     { render: render mode
     , eval: evalCard mode ⨁ evalComponent
     , initialState: const initialState
