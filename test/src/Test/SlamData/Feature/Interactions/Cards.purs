@@ -4,34 +4,37 @@ import SlamData.Prelude
 
 import Data.Array as Arr
 import Data.String as S
-
 import Test.Feature as Feature
+import Test.Feature.Log (annotate)
+import Test.SlamData.Feature.Expectations.Cards as Expect
 import Test.SlamData.Feature.Monad (SlamFeature)
 import Test.SlamData.Feature.XPaths as XPaths
-
-import XPath as XPath
-
 import Utils.Array (enumerate)
+import XPath as XPath
 
 type ApiVarName = String
 type ApiVarType = String
 type ApiVarValue = String
 
 addColumn ∷ String → SlamFeature Unit
-addColumn str = do
-  Feature.click $ XPath.last $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Add column"
-  Feature.click $ XPath.last $ XPath.anywhere $ XPath.anyWithExactAriaLabel $ "Select " ⊕ str
-  Feature.click $ XPath.last $ XPath.anywhere $ XPath.anyWithExactText "Confirm"
+addColumn str =
+  annotate ("Added column " <> str ) do
+    Feature.click $ XPath.last $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Add column"
+    Feature.click $ XPath.last $ XPath.anywhere $ XPath.anyWithExactAriaLabel $ "Select " ⊕ str
+    Feature.click $ XPath.last $ XPath.anywhere $ XPath.anyWithExactText "Confirm"
+    Expect.addColumnIsPresent
 
 checkFieldInLastDeck ∷ String → SlamFeature Unit
 checkFieldInLastDeck labelText =
-  Feature.check
-    $ XPaths.followingLastPreviousCardGripper
-    $ "input" `XPath.withLabelWithExactText` labelText
+  annotate ("Checked field" <> labelText)
+    $ Feature.check
+      $ XPaths.followingLastPreviousCardGripper
+      $ "input" `XPath.withLabelWithExactText` labelText
 
 doSaveInLastCacheCard ∷ SlamFeature Unit
 doSaveInLastCacheCard =
-  Feature.click (XPath.last $ XPath.anywhere XPaths.saveSubmitButton)
+  annotate "Saved Cache card"
+    $ Feature.click (XPath.last $ XPath.anywhere XPaths.saveSubmitButton)
 
 expandNewCardMenu ∷ SlamFeature Unit
 expandNewCardMenu = Feature.click (XPath.anywhere XPaths.insertCard)
@@ -45,54 +48,64 @@ provideApiVariableBindingsForVariablesCard
   → ApiVarType
   → ApiVarValue
   → SlamFeature Unit
-provideApiVariableBindingsForVariablesCard name ty val = do
-  provideValueForVariablesCard
-  provideTypeForVariablesCard
-  provideDefaultValueForVariablesCard
-  where
-  provideValueForVariablesCard ∷ SlamFeature Unit
-  provideValueForVariablesCard = do
-    Feature.provideFieldValue
-      (XPath.first $ XPath.anywhere $ XPaths.variablesCardVariableName)
-      name
-    Feature.pressEnter
-  provideTypeForVariablesCard ∷ SlamFeature Unit
-  provideTypeForVariablesCard = do
-    Feature.selectFromDropdown
-      (XPath.first $ XPath.anywhere $ XPaths.variablesCardVariableTypeFor name)
-      ty
-    Feature.pressEnter
+provideApiVariableBindingsForVariablesCard name ty val =
+  annotate ("Provided the variables "
+            <> name <> " "
+            <> ty <> " "
+            <> val <> " for the Variable card") do
+    provideValueForVariablesCard
+    provideTypeForVariablesCard
+    provideDefaultValueForVariablesCard
+    where
+    provideValueForVariablesCard ∷ SlamFeature Unit
+    provideValueForVariablesCard = do
+      Feature.provideFieldValue
+        (XPath.first $ XPath.anywhere $ XPaths.variablesCardVariableName)
+        name
+      Feature.pressEnter
+    provideTypeForVariablesCard ∷ SlamFeature Unit
+    provideTypeForVariablesCard = do
+      Feature.selectFromDropdown
+        (XPath.first $ XPath.anywhere $ XPaths.variablesCardVariableTypeFor name)
+        ty
+      Feature.pressEnter
 
-  provideDefaultValueForVariablesCard ∷ SlamFeature Unit
-  provideDefaultValueForVariablesCard = do
-    Feature.provideFieldValue
-      (XPath.first $ XPath.anywhere $ XPaths.variablesCardDefaultValueFor name)
-      val
-    Feature.pressEnter
+    provideDefaultValueForVariablesCard ∷ SlamFeature Unit
+    provideDefaultValueForVariablesCard = do
+      Feature.provideFieldValue
+        (XPath.first $ XPath.anywhere $ XPaths.variablesCardDefaultValueFor name)
+        val
+      Feature.pressEnter
 
 provideFieldValueInLastDeck ∷ String → String → SlamFeature Unit
-provideFieldValueInLastDeck labelText =
-  Feature.provideFieldValue
-    $ XPaths.followingLastPreviousCardGripper
-    $ "input" `XPath.withLabelWithExactText` labelText
+provideFieldValueInLastDeck labelText text =
+  annotate ("Provided Field value "
+            <> text <> " for label "
+            <> labelText)
+    $ (Feature.provideFieldValue
+      $ XPaths.followingLastPreviousCardGripper
+      $ "input" `XPath.withLabelWithExactText` labelText) text
 
 provideMdInLastMdCard ∷ String → SlamFeature Unit
-provideMdInLastMdCard =
-  Feature.provideFieldValue
-    $ XPath.last $ XPath.anywhere XPaths.aceEditor
+provideMdInLastMdCard query =
+  annotate "Provided a query in Markdown card"
+    $ (Feature.provideFieldValue
+        $ XPath.last $ XPath.anywhere XPaths.aceEditor) query
 
 provideQueryInLastQueryCard ∷ String → SlamFeature Unit
-provideQueryInLastQueryCard =
-  Feature.provideFieldValue
-    $ XPath.last $ XPath.anywhere XPaths.aceEditor
+provideQueryInLastQueryCard query =
+  annotate "Provided a query in Query card"
+    $ (Feature.provideFieldValue $ XPath.last $ XPath.anywhere XPaths.aceEditor) query
 
 provideSaveDestinationInLastCacheCard ∷ String → SlamFeature Unit
-provideSaveDestinationInLastCacheCard =
-  Feature.provideFieldValue (XPath.last $ XPath.anywhere XPaths.saveDestinationInput)
+provideSaveDestinationInLastCacheCard destination =
+  annotate ("Provided save location for Cache card of " <> destination)
+    $ (Feature.provideFieldValue (XPath.last $ XPath.anywhere XPaths.saveDestinationInput)) destination
 
 provideSearchStringInLastSearchCard ∷ String → SlamFeature Unit
-provideSearchStringInLastSearchCard =
-  Feature.provideFieldValue $ XPath.last $ XPath.anywhere XPaths.searchStringInput
+provideSearchStringInLastSearchCard string =
+  annotate ("Provided the search string value " <> string)
+    $ (Feature.provideFieldValue $ XPath.last $ XPath.anywhere XPaths.searchStringInput) string
 
 pushRadioButtonInLastDeck ∷ String → SlamFeature Unit
 pushRadioButtonInLastDeck labelText =
@@ -102,17 +115,20 @@ pushRadioButtonInLastDeck labelText =
 
 runQuery ∷ SlamFeature Unit
 runQuery =
-  Feature.click $ XPath.last $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Run query"
+  annotate "Ran the query"
+    $ Feature.click $ XPath.last $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Run query"
 
 selectFileForLastOpenCard ∷ String → SlamFeature Unit
 selectFileForLastOpenCard s =
-  selectInMillerColumns $ pure "Filesystem" <> S.split (S.Pattern "/") s
+  annotate ("Selected " <> s)
+    $ selectInMillerColumns $ pure "Filesystem" <> S.split (S.Pattern "/") s
 
 selectFromDropdownInLastDeck ∷ String → String → SlamFeature Unit
-selectFromDropdownInLastDeck labelText =
-  Feature.selectFromDropdown
-    $ XPaths.followingLastPreviousCardGripper
-    $ "select" `XPath.withLabelWithExactText` labelText
+selectFromDropdownInLastDeck labelText value =
+  annotate ("Selected dropdown value " <> value)
+    $ (Feature.selectFromDropdown
+      $ XPaths.followingLastPreviousCardGripper
+      $ "select" `XPath.withLabelWithExactText` labelText) value
 
 selectInMillerColumns ∷ Array String → SlamFeature Unit
 selectInMillerColumns ps = do
@@ -132,10 +148,12 @@ selectInMillerColumns ps = do
 
 trashActiveOrLastCard ∷ SlamFeature Unit
 trashActiveOrLastCard =
-  Feature.click $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Delete card"
+  annotate "Trashed card"
+    $ Feature.click $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Delete card"
 
 uncheckFieldInLastDeck ∷ String → SlamFeature Unit
 uncheckFieldInLastDeck labelText =
-  Feature.uncheck
-    $ XPaths.followingLastPreviousCardGripper
-    $ "input" `XPath.withLabelWithExactText` labelText
+  annotate ("Unchecked field" <> labelText)
+    $ Feature.uncheck
+      $ XPaths.followingLastPreviousCardGripper
+      $ "input" `XPath.withLabelWithExactText` labelText

@@ -6,6 +6,7 @@ import Data.Map as Map
 import Data.Time.Duration (Milliseconds(..))
 import Selenium.Monad (attempt, later, tryRepeatedlyTo)
 import Test.Feature as Feature
+import Test.Feature.Log (annotate)
 import Test.SlamData.Feature.Interactions.Deck (nameDeck)
 import Test.SlamData.Feature.Monad (Connector(..), SlamFeature, getConfig, getConnector)
 import Test.SlamData.Feature.XPaths as XPaths
@@ -13,36 +14,47 @@ import Test.Utils (appendToCwd)
 import XPath as XPath
 
 accessBreadcrumb ∷ String → SlamFeature Unit
-accessBreadcrumb = Feature.click ∘ XPath.anywhere ∘ XPaths.accessBreadcrumb
+accessBreadcrumb name =
+  annotate ("Accessed " <> name <> " on breadcrumb")
+    $ (Feature.click ∘ XPath.anywhere ∘ XPaths.accessBreadcrumb) name
 
 accessSharingUrl ∷ SlamFeature Unit
-accessSharingUrl = Feature.accessUrlFromFieldValue $ XPath.anywhere XPaths.sharingUrl
+accessSharingUrl =
+  annotate "Accesed sharing URL"
+    $ Feature.accessUrlFromFieldValue $ XPath.anywhere XPaths.sharingUrl
 
 accessFile ∷ String → SlamFeature Unit
-accessFile =
-  Feature.click ∘ XPath.anywhere ∘ XPaths.accessFile
+accessFile name =
+  annotate ("Accessed the file " <> name)
+    $ (Feature.click ∘ XPath.anywhere ∘ XPaths.accessFile) name
 
 browseRootFolder ∷ SlamFeature Unit
-browseRootFolder = do
-  Feature.click $ XPath.anywhere XPaths.headerGripper
-  Feature.click $ XPath.index (XPath.anywhere XPaths.browseRootFolder) 1
+browseRootFolder =
+  annotate "Browsed to Root folder" do
+    Feature.click $ XPath.anywhere XPaths.headerGripper
+    Feature.click $ XPath.index (XPath.anywhere XPaths.browseRootFolder) 1
 
 browseTestFolder ∷ SlamFeature Unit
-browseTestFolder = browseRootFolder *> accessFile "test-mount" *> accessFile "testDb"
+browseTestFolder =
+  annotate "Browsed to Test folder"
+    $ browseRootFolder *> accessFile "test-mount" *> accessFile "testDb"
 
 createFolder ∷ SlamFeature Unit
-createFolder = Feature.click $ XPath.anywhere XPaths.createFolder
+createFolder =
+  annotate "Untitled folder created"
+    $ Feature.click $ XPath.anywhere XPaths.createFolder
 
 createWorkspace ∷ SlamFeature Unit
 createWorkspace = Feature.click $ XPath.anywhere XPaths.createWorkspace
 
 createWorkspaceInTestFolder ∷ String → SlamFeature Unit
-createWorkspaceInTestFolder name = do
+createWorkspaceInTestFolder name =
+  annotate "Created Workspace in Test folder" do
   connector ← getConnector
   browseTestFolder
   -- couchbase presses the wrong button and tries to mount database
   case connector of
-    Couchbase → later (Milliseconds 5000.0) $ pure unit
+    Couchbase → later (Milliseconds 2000.0) $ pure unit
     _ → pure unit
   createWorkspace
   nameDeck name
@@ -52,10 +64,11 @@ createWorkspaceInTestFolder name = do
 
 deleteFile ∷ String → SlamFeature Unit
 deleteFile name =
-  Feature.click (XPath.anywhere $ XPaths.selectFile name)
-    *> Feature.click (XPath.anywhere $ XPaths.removeFile name)
-    *> Feature.click (XPath.anywhere $ XPaths.confirmRemoval)
-    *> Feature.expectNotPresented (XPath.anywhere $ XPath.nodeWithExactText XPath.any name)
+  annotate ("Deleted the file " <> name) do
+    Feature.click (XPath.anywhere $ XPaths.selectFile name)
+    Feature.click (XPath.anywhere $ XPaths.removeFile name)
+    Feature.click (XPath.anywhere $ XPaths.confirmRemoval)
+    Feature.expectNotPresented (XPath.anywhere $ XPath.nodeWithExactText XPath.any name)
 
 deleteFileInTestFolder ∷ String → SlamFeature Unit
 deleteFileInTestFolder name = browseTestFolder *> deleteFile name
@@ -79,9 +92,11 @@ editWorkspace ∷ String → SlamFeature Unit
 editWorkspace name =
   Feature.click (XPath.anywhere $ XPaths.selectFile name)
     *> Feature.click (XPath.anywhere $ XPaths.editWorkspace name)
+
 hideHiddenFiles ∷ SlamFeature Unit
 hideHiddenFiles =
-  Feature.click $ XPath.anywhere $ XPaths.hideHiddenFiles
+  annotate "Hid hidden files"
+    $ Feature.click $ XPath.anywhere $ XPaths.hideHiddenFiles
 
 mountTestDatabase ∷ SlamFeature Unit
 mountTestDatabase = do
@@ -122,6 +137,9 @@ setupCouchbase = do
       renameFile "Untitled Folder" "testDb"
       for_ ["flatViz", "olympics", "patients", "smallZips", "zips"] moveAllCouchbaseFiles
     Right _ → pure unit
+  browseRootFolder
+  accessFile "test-mount"
+  accessFile "testDb"
   where moveAllCouchbaseFiles filename = do
           moveFile
             filename
@@ -146,13 +164,14 @@ setupMarklogic = do
             else pure unit
 
 moveFile ∷ String → String → String → SlamFeature Unit
-moveFile fileName oldLocation newLocation = do
-  selectFile fileName
-  moveFileWithClick fileName
-  later (Milliseconds 1000.0) $ pure unit -- couchbase is a little slow so this is needed here
-  Feature.click $ XPath.anywhere XPaths.selectADestinationFolder
-  Feature.click $ XPath.anywhere $ XPath.anyWithExactText newLocation
-  Feature.click $ XPath.anywhere XPaths.renameButton
+moveFile fileName oldLocation newLocation =
+  annotate ("Moved " <> fileName <> " -> " <> newLocation) do
+    selectFile fileName
+    moveFileWithClick fileName
+    later (Milliseconds 1000.0) $ pure unit -- couchbase is a little slow so this is needed here
+    Feature.click $ XPath.anywhere XPaths.selectADestinationFolder
+    Feature.click $ XPath.anywhere $ XPath.anyWithExactText newLocation
+    Feature.click $ XPath.anywhere XPaths.renameButton
 
 moveFileWithClick ∷ String → SlamFeature Unit
 moveFileWithClick name =
@@ -165,19 +184,21 @@ moveFileWithClick name =
 
 provideFileSearchString ∷ String → SlamFeature Unit
 provideFileSearchString value =
-  Feature.provideFieldValue (XPath.anywhere XPaths.fileSearchInput) value
+  annotate ("Provided the search string " <> value)
+    $ Feature.provideFieldValue (XPath.anywhere XPaths.fileSearchInput) value
 
 renameFile ∷ String → String → SlamFeature Unit
-renameFile oldName newName = do
-  selectFile oldName
-  moveFileWithClick oldName
-  Feature.provideFieldValueWithProperties
-    (Map.singleton "value" $ Just oldName)
-    (XPath.anywhere "input")
-    newName
-  Feature.click $ XPath.anywhere XPaths.renameButton
-  where
-  oldWorkspaceName = oldName <> ".slam"
+renameFile oldName newName =
+  annotate ("Renamed to " <> newName) do
+    selectFile oldName
+    moveFileWithClick oldName
+    Feature.provideFieldValueWithProperties
+      (Map.singleton "value" $ Just oldName)
+      (XPath.anywhere "input")
+      newName
+    Feature.click $ XPath.anywhere XPaths.renameButton
+    where
+    oldWorkspaceName = oldName <> ".slam"
 
 selectFile ∷ String → SlamFeature Unit
 selectFile name =
@@ -200,9 +221,13 @@ shareFile name = do
 
 showHiddenFiles ∷ SlamFeature Unit
 showHiddenFiles =
-  Feature.click $ XPath.anywhere $ XPaths.showHiddenFiles
+  annotate "Showed hidden files"
+    $ Feature.click $ XPath.anywhere $ XPaths.showHiddenFiles
 
 uploadFile ∷ String → SlamFeature Unit
-uploadFile =
-  Feature.provideFileInputValue (XPath.anywhere $ XPaths.uploadFile)
-    <=< appendToCwd
+uploadFile name =
+  annotate ("Uploaded " <> name) do
+    (Feature.provideFileInputValue (XPath.anywhere $ XPaths.uploadFile)
+      <=< appendToCwd) name
+    -- the file can take a while to upload on Travis
+    later (Milliseconds 10000.0) $ pure unit

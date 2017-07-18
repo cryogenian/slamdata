@@ -1,5 +1,5 @@
 {-
-Copyright 2015 SlamData, Inc.
+Copyright 2017 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -64,16 +64,11 @@ test =
       run();
     """
     Interact.insertVariablesCardInFirstDeck
-    successMsg "Inserted Variables Card"
     Interact.provideApiVariableBindingsForVariablesCard "state" "Text" "CO"
-    successMsg "Provided variables; Will access next card"
     Interact.accessNextCardInFirstDeck
-    successMsg "Accessed next card, will insert Troubleshoot card"
     Interact.insertTroubleshootCardInLastDeck
     Expect.troubleshootCardPresented
-    successMsg "Presented Troubleshoot card, will access next card"
     Interact.accessNextCardInLastDeck
-    successMsg "Will insert query card"
     Interact.insertQueryCardInLastDeck
     Interact.provideQueryInLastQueryCard $ S.joinWith " "
       $ [ "SELECT count(*) as ct, city, gender"
@@ -83,45 +78,38 @@ test =
         , "ORDER BY ct DESC"
         , "LIMIT 30"
         ]
+
     Interact.runQuery
     Interact.accessNextCardInLastDeck
     Interact.selectBuildChart
     Interact.insertBuildBarChartCard
     Expect.categoryEnabledInLastBuildChartCard
-    successMsg "Ok, category field is enabled"
     Interact.activateCategoryForChartBuilder
     Interact.selectInChartBuilder ["city"]
     Interact.activateMeasureForChartBuilder
     Interact.selectInChartBuilder ["ct"]
     Interact.accessNextCardInLastDeck
-    successMsg "Will insert chart options card"
     Interact.insertChartCardInLastDeck
-
     Expect.lastEChart chart_CO
     Interact.accessPreviousCardInLastDeck
     Interact.activateStackForChartBuilder
     Interact.selectInChartBuilder ["gender"]
-
     Interact.accessNextCardInLastDeck
     Expect.lastEChart chart_CO_gender
     Interact.setVarMapForDeck "Flexible Visualization" $ SM.singleton "state" "NE"
-
     Expect.lastEChart chart_NE_gender
     Interact.accessWorkspaceWithModifiedURL $ S.replace (S.Pattern "NE") (S.Replacement "CO")
-
     Expect.lastEChart chart_CO_gender
-
-    successMsg "Successfully created flexible patient chart"
+    successMsg "** Successfully created flexible patient chart **"
 
 chart_CO ∷ String
 chart_CO =
-  """{"series":[{"stack":"default stack","data":[{"value":["ANTONITO",1],"name":["key:ANTONITO"]},{"value":["ARVADA",1],"name":["key:ARVADA"]},{"value":["DEL NORTE",1],"name":["key:DEL NORTE"]},{"value":["DENVER",1],"name":["key:DENVER"]},{"value":["HENDERSON",1],"name":["key:HENDERSON"]},{"value":["JOHNSTOWN",1],"name":["key:JOHNSTOWN"]},{"value":["KIOWA",1],"name":["key:KIOWA"]},{"value":["LITTLETON",2],"name":["key:LITTLETON"]},{"value":["LONGMONT",1],"name":["key:LONGMONT"]},{"value":["MANZANOLA",1],"name":["key:MANZANOLA"]},{"value":["PITKIN",1],"name":["key:PITKIN"]},{"value":["ROCKVALE",1],"name":["key:ROCKVALE"]},{"value":["SILVERTHORNE",1],"name":["key:SILVERTHORNE"]},{"value":["VERNON",1],"name":["key:VERNON"]},{"value":["WALSH",1],"name":["key:WALSH"]}],"type":"bar"}],"legend":{"top":"bottom","left":"left","data":[],"textStyle":{"fontFamily":"Ubuntu, sans"}},"yAxis":{"splitLine":{"lineStyle":{"width":1}},"axisLine":{"lineStyle":{"width":1}},"axisLabel":{"textStyle":{"fontFamily":"Ubuntu, sans"}},"type":"value"},"xAxis":{"axisLabel":{"textStyle":{"fontFamily":"Ubuntu, sans"},"rotate":0,"interval":0},"data":["ANTONITO","ARVADA","DEL NORTE","DENVER","HENDERSON","JOHNSTOWN","KIOWA","LITTLETON","LONGMONT","MANZANOLA","PITKIN","ROCKVALE","SILVERTHORNE","VERNON","WALSH"],"boundaryGap":true,"type":"category"},"tooltip":{"trigger":"item","textStyle":{"fontSize":12}}}"""
+  """{"series":[{"stack":"default stack","data":[{"value":["ANTONITO",1],"name":["key:ANTONITO"]},{"value":["ARVADA",1],"name":["key:ARVADA"]},{"value":["DEL NORTE",1],"name":["key:DEL NORTE"]},{"value":["DENVER",1],"name":["key:DENVER"]},{"value":["HENDERSON",1],"name":["key:HENDERSON"]},{"value":["JOHNSTOWN",1],"name":["key:JOHNSTOWN"]},{"value":["KIOWA",1],"name":["key:KIOWA"]},{"value":["LITTLETON",2],"name":["key:LITTLETON"]},{"value":["LONGMONT",1],"name":["key:LONGMONT"]},{"value":["MANZANOLA",1],"name":["key:MANZANOLA"]},{"value":["PITKIN",1],"name":["key:PITKIN"]},{"value":["ROCKVALE",1],"name":["key:ROCKVALE"]},{"value":["SILVERTHORNE",1],"name":["key:SILVERTHORNE"]},{"value":["VERNON",1],"name":["key:VERNON"]},{"value":["WALSH",1],"name":["key:WALSH"]}],"type":"bar"}],"legend":{"top":"bottom","left":"left","data":[],"textStyle":{"fontFamily":"Ubuntu, sans"}},"yAxis":{"splitLine":{"lineStyle":{"width":1}},"axisLine":{"lineStyle":{"width":1}},"axisLabel":{"textStyle":{"fontFamily":"Ubuntu, sans"}},"type":"value"},"xAxis":{"axisLabel":{"textStyle":{"fontFamily":"Ubuntu, sans"},"rotate":0,"interval":0},"data":["ANTONITO","ARVADA","DEL NORTE","DENVER","HENDERSON","JOHNSTOWN","KIOWA","LITTLETON","LONGMONT","MANZANOLA","PITKIN","ROCKVALE","SILVERTHORNE","VERNON","WALSH"],"boundaryGap":true,"type":"category"},"tooltip":{"trigger":"item","textStyle":{"color":"#000000","fontSize":12,"fontFamily":"Ubuntu, sans"}}}"""
 
 chart_CO_gender ∷ String
 chart_CO_gender =
-  """{"series":[{"stack":"default stack","name":"female","data":[{"value":["ANTONITO",1],"name":["female","key:ANTONITO"]},null,{"value":["DEL NORTE",1],"name":["female","key:DEL NORTE"]},null,{"value":["HENDERSON",1],"name":["female","key:HENDERSON"]},{"value":["JOHNSTOWN",1],"name":["female","key:JOHNSTOWN"]},null,{"value":["LITTLETON",1],"name":["female","key:LITTLETON"]},{"value":["LONGMONT",1],"name":["female","key:LONGMONT"]},{"value":["MANZANOLA",1],"name":["female","key:MANZANOLA"]},null,null,null,null,{"value":["WALSH",1],"name":["female","key:WALSH"]}],"type":"bar"},{"stack":"default stack","name":"male","data":[null,{"value":["ARVADA",1],"name":["male","key:ARVADA"]},null,{"value":["DENVER",1],"name":["male","key:DENVER"]},null,null,{"value":["KIOWA",1],"name":["male","key:KIOWA"]},{"value":["LITTLETON",1],"name":["male","key:LITTLETON"]},null,null,{"value":["PITKIN",1],"name":["male","key:PITKIN"]},{"value":["ROCKVALE",1],"name":["male","key:ROCKVALE"]},{"value":["SILVERTHORNE",1],"name":["male","key:SILVERTHORNE"]},{"value":["VERNON",1],"name":["male","key:VERNON"]},null],"type":"bar"}],"legend":{"top":"bottom","left":"left","data":["female","male"],"textStyle":{"fontFamily":"Ubuntu, sans"}},"yAxis":{"splitLine":{"lineStyle":{"width":1}},"axisLine":{"lineStyle":{"width":1}},"axisLabel":{"textStyle":{"fontFamily":"Ubuntu, sans"}},"type":"value"},"xAxis":{"axisLabel":{"textStyle":{"fontFamily":"Ubuntu, sans"},"rotate":0,"interval":0},"data":["ANTONITO","ARVADA","DEL NORTE","DENVER","HENDERSON","JOHNSTOWN","KIOWA","LITTLETON","LONGMONT","MANZANOLA","PITKIN","ROCKVALE","SILVERTHORNE","VERNON","WALSH"],"boundaryGap":true,"type":"category"},"tooltip":{"trigger":"item","textStyle":{"fontSize":12}}}"""
-
+  """{"series":[{"stack":"default stack","name":"female","data":[{"value":["ANTONITO",1],"name":["female","key:ANTONITO"]},null,{"value":["DEL NORTE",1],"name":["female","key:DEL NORTE"]},null,{"value":["HENDERSON",1],"name":["female","key:HENDERSON"]},{"value":["JOHNSTOWN",1],"name":["female","key:JOHNSTOWN"]},null,{"value":["LITTLETON",1],"name":["female","key:LITTLETON"]},{"value":["LONGMONT",1],"name":["female","key:LONGMONT"]},{"value":["MANZANOLA",1],"name":["female","key:MANZANOLA"]},null,null,null,null,{"value":["WALSH",1],"name":["female","key:WALSH"]}],"type":"bar"},{"stack":"default stack","name":"male","data":[null,{"value":["ARVADA",1],"name":["male","key:ARVADA"]},null,{"value":["DENVER",1],"name":["male","key:DENVER"]},null,null,{"value":["KIOWA",1],"name":["male","key:KIOWA"]},{"value":["LITTLETON",1],"name":["male","key:LITTLETON"]},null,null,{"value":["PITKIN",1],"name":["male","key:PITKIN"]},{"value":["ROCKVALE",1],"name":["male","key:ROCKVALE"]},{"value":["SILVERTHORNE",1],"name":["male","key:SILVERTHORNE"]},{"value":["VERNON",1],"name":["male","key:VERNON"]},null],"type":"bar"}],"legend":{"top":"bottom","left":"left","data":["female","male"],"textStyle":{"fontFamily":"Ubuntu, sans"}},"yAxis":{"splitLine":{"lineStyle":{"width":1}},"axisLine":{"lineStyle":{"width":1}},"axisLabel":{"textStyle":{"fontFamily":"Ubuntu, sans"}},"type":"value"},"xAxis":{"axisLabel":{"textStyle":{"fontFamily":"Ubuntu, sans"},"rotate":0,"interval":0},"data":["ANTONITO","ARVADA","DEL NORTE","DENVER","HENDERSON","JOHNSTOWN","KIOWA","LITTLETON","LONGMONT","MANZANOLA","PITKIN","ROCKVALE","SILVERTHORNE","VERNON","WALSH"],"boundaryGap":true,"type":"category"},"tooltip":{"trigger":"item","textStyle":{"color":"#000000","fontSize":12,"fontFamily":"Ubuntu, sans"}}}"""
 
 chart_NE_gender ∷ String
 chart_NE_gender =
-  """{"series":[{"stack":"default stack","name":"female","data":[{"value":["BEE",1],"name":["female","key:BEE"]},{"value":["BLAIR",1],"name":["female","key:BLAIR"]},null,null,null,null,{"value":["OMAHA",2],"name":["female","key:OMAHA"]},null,null,{"value":["PIERCE",1],"name":["female","key:PIERCE"]},null,null,{"value":["WOOD LAKE",1],"name":["female","key:WOOD LAKE"]},{"value":["WYNOT",1],"name":["female","key:WYNOT"]}],"type":"bar"},{"stack":"default stack","name":"male","data":[{"value":["BEE",1],"name":["male","key:BEE"]},null,{"value":["CAIRO",1],"name":["male","key:CAIRO"]},{"value":["CRAIG",1],"name":["male","key:CRAIG"]},{"value":["GOTHENBURG",1],"name":["male","key:GOTHENBURG"]},{"value":["LINCOLN",1],"name":["male","key:LINCOLN"]},{"value":["OMAHA",2],"name":["male","key:OMAHA"]},{"value":["ORD",1],"name":["male","key:ORD"]},{"value":["OSHKOSH",1],"name":["male","key:OSHKOSH"]},{"value":["PIERCE",1],"name":["male","key:PIERCE"]},{"value":["SAINT EDWARD",1],"name":["male","key:SAINT EDWARD"]},{"value":["WILLOW ISLAND",1],"name":["male","key:WILLOW ISLAND"]},null,null],"type":"bar"}],"legend":{"top":"bottom","left":"left","data":["female","male"],"textStyle":{"fontFamily":"Ubuntu, sans"}},"yAxis":{"splitLine":{"lineStyle":{"width":1}},"axisLine":{"lineStyle":{"width":1}},"axisLabel":{"textStyle":{"fontFamily":"Ubuntu, sans"}},"type":"value"},"xAxis":{"axisLabel":{"textStyle":{"fontFamily":"Ubuntu, sans"},"rotate":0,"interval":0},"data":["BEE","BLAIR","CAIRO","CRAIG","GOTHENBURG","LINCOLN","OMAHA","ORD","OSHKOSH","PIERCE","SAINT EDWARD","WILLOW ISLAND","WOOD LAKE","WYNOT"],"boundaryGap":true,"type":"category"},"tooltip":{"trigger":"item","textStyle":{"fontSize":12}}}"""
+  """{"series":[{"stack":"default stack","name":"female","data":[{"value":["BEE",1],"name":["female","key:BEE"]},{"value":["BLAIR",1],"name":["female","key:BLAIR"]},null,null,null,null,{"value":["OMAHA",2],"name":["female","key:OMAHA"]},null,null,{"value":["PIERCE",1],"name":["female","key:PIERCE"]},null,null,{"value":["WOOD LAKE",1],"name":["female","key:WOOD LAKE"]},{"value":["WYNOT",1],"name":["female","key:WYNOT"]}],"type":"bar"},{"stack":"default stack","name":"male","data":[{"value":["BEE",1],"name":["male","key:BEE"]},null,{"value":["CAIRO",1],"name":["male","key:CAIRO"]},{"value":["CRAIG",1],"name":["male","key:CRAIG"]},{"value":["GOTHENBURG",1],"name":["male","key:GOTHENBURG"]},{"value":["LINCOLN",1],"name":["male","key:LINCOLN"]},{"value":["OMAHA",2],"name":["male","key:OMAHA"]},{"value":["ORD",1],"name":["male","key:ORD"]},{"value":["OSHKOSH",1],"name":["male","key:OSHKOSH"]},{"value":["PIERCE",1],"name":["male","key:PIERCE"]},{"value":["SAINT EDWARD",1],"name":["male","key:SAINT EDWARD"]},{"value":["WILLOW ISLAND",1],"name":["male","key:WILLOW ISLAND"]},null,null],"type":"bar"}],"legend":{"top":"bottom","left":"left","data":["female","male"],"textStyle":{"fontFamily":"Ubuntu, sans"}},"yAxis":{"splitLine":{"lineStyle":{"width":1}},"axisLine":{"lineStyle":{"width":1}},"axisLabel":{"textStyle":{"fontFamily":"Ubuntu, sans"}},"type":"value"},"xAxis":{"axisLabel":{"textStyle":{"fontFamily":"Ubuntu, sans"},"rotate":0,"interval":0},"data":["BEE","BLAIR","CAIRO","CRAIG","GOTHENBURG","LINCOLN","OMAHA","ORD","OSHKOSH","PIERCE","SAINT EDWARD","WILLOW ISLAND","WOOD LAKE","WYNOT"],"boundaryGap":true,"type":"category"},"tooltip":{"trigger":"item","textStyle":{"color":"#000000","fontSize":12,"fontFamily":"Ubuntu, sans"}}}"""
