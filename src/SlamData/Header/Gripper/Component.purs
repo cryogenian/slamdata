@@ -212,7 +212,7 @@ eval sel (Init next) = do
     in
       H.subscribe $ H.eventSource attachAnimationEnd handleAnimationEnd
 
-  { auth } ← H.lift Wiring.expose
+  { auth } ← Wiring.expose
 
   H.subscribe $ busEventSource (const (Close H.Listening)) auth.signIn
   pure next

@@ -142,7 +142,7 @@ showPrettyNumber n =
   in fromMaybe s (S.stripSuffix (S.Pattern ".0") s)
 
 showFormattedNumber ∷ Number → String
-showFormattedNumber = FN.format
+showFormattedNumber = FN.format $ FN.Formatter
   { comma: true
   , before: 0
   , after: 0

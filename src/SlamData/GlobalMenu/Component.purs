@@ -249,7 +249,7 @@ eval = case _ of
       GlobalError.Unauthorized _ → update $> next
       _ → pure next
   Init next → do
-    { bus } ← H.lift Wiring.expose
+    { bus } ← Wiring.expose
     H.subscribe $ busEventSource (flip HandleGlobalError ES.Listening) bus.globalError
     update
     pure next
@@ -313,7 +313,7 @@ authenticate = maybe logOut logIn
 
   logIn ∷ ProviderR → DSL Unit
   logIn providerR = do
-    { auth } ← H.lift Wiring.expose
+    { auth } ← Wiring.expose
     idToken ← H.liftAff AVar.makeVar
     H.liftAff $ Bus.write { providerR, idToken, prompt: true, keySuffix } auth.requestToken
     either signInFailure (const $ signInSuccess) =<< (H.liftAff $ AVar.takeVar idToken)
@@ -331,7 +331,7 @@ authenticate = maybe logOut logIn
 
   signInFailure ∷ AuthenticationError → DSL Unit
   signInFailure error = do
-    { auth, bus } ← H.lift Wiring.expose
+    { auth, bus } ← Wiring.expose
     H.liftAff do
       maybe (pure unit) (flip Bus.write bus.notify) (toNotificationOptions error)
       Bus.write SignInFailure auth.signIn

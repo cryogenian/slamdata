@@ -21,15 +21,12 @@ module SlamData.Workspace.Card.Setups.Chart.Gauge.Component
 import SlamData.Prelude
 
 import Data.Lens ((^?), _Just)
-
 import Global (readFloat, isNaN)
-
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-
 import SlamData.Render.ClassName as CN
 import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.CardType as CT

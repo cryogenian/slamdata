@@ -1,5 +1,5 @@
 {-
-Copyright 2015 SlamData, Inc.
+Copyright 2017 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,8 +17,6 @@ module Test.SlamData.Feature.Test.File where
 
 import SlamData.Prelude
 
-import Data.Time.Duration (Milliseconds(..))
-import Selenium.Monad (later)
 import Test.Feature.Log (successMsg)
 import Test.Feature.Scenario (KnownIssues, noIssues, scenario)
 import Test.SlamData.Feature.Expectations as Expect
@@ -75,7 +73,7 @@ test = do
     Expect.file "Пациенты# #"
     Interact.renameFile "Пациенты# #" "Ϡ⨁⟶≣ΜϞ"
     Expect.file "Ϡ⨁⟶≣ΜϞ"
-    successMsg "Successfully renamed a folder"
+    successMsg "** Successfully ran Renamed a folder test **"
 
   fileScenario afterMove "Move a folder" noIssues do
     Interact.createFolder
@@ -87,7 +85,7 @@ test = do
       "/test-mount/testDb/Medical data/"
     Interact.accessFile "Medical data"
     Expect.file "Untitled Folder"
-    successMsg "Successfully moved a folder"
+    successMsg "** Successfully ran Moved a folder test **"
 
   fileScenario defaultAfterFile "Delete a folder" noIssues do
     Interact.createFolder
@@ -98,14 +96,14 @@ test = do
     Expect.file "Untitled Folder"
     Interact.hideHiddenFiles
     Expect.noFile ".trash"
-    successMsg "Successfully deleted a folder"
+    successMsg "** Successfully deleted a folder **"
 
   fileScenario defaultAfterFile "Navigate back using breadcrumbs" noIssues do
     Interact.browseTestFolder
     Interact.accessBreadcrumb "test-mount"
     Interact.accessBreadcrumb "Home"
     Expect.file "test-mount"
-    successMsg "Successfully navigated back using breadcrumbs"
+    successMsg "** Successfully navigated back using breadcrumbs **"
 
   fileScenario afterUpload "Upload a file"
     (noIssues
@@ -113,10 +111,9 @@ test = do
     do
     Interact.browseTestFolder
     Interact.uploadFile "test/array-wrapped.json"
-    later (Milliseconds 10000.0) $ pure unit
     Interact.browseTestFolder
     Expect.file "array-wrapped.json"
-    successMsg "Successfully uploaded file"
+    successMsg "** Successfully uploaded file **"
 
   fileScenario defaultAfterFile "Search for a file"
     (noIssues { couchbase = Just "CB: https://github.com/quasar-analytics/quasar/issues/2396" })
@@ -126,14 +123,14 @@ test = do
     Expect.fileSearchString "+smallZ"
     Expect.file "/test-mount/testDb/smallZips"
     Expect.numberOfFiles 1
-    successMsg "Succesfully searched for a file"
+    successMsg "** Succesfully searched for a file **"
 
   fileScenario defaultAfterFile "Access sharing URL for a file" noIssues do
     Interact.browseTestFolder
     Interact.shareFile "smallZips"
     Interact.accessSharingUrl
     Expect.tableColumnsAre ["city", "loc", "pop", "state"]
-    successMsg "Successfully accessed sharing URL for a file"
+    successMsg "** Successfully accessed sharing URL for a file **"
     -- TODO: figure out how to move downloaded by chrome files to specific folders
 -- and omit prompt
 --  fileScenario defaultAfterFile "Download file as CSV" [] do
@@ -143,7 +140,7 @@ test = do
 --      "tmp/test/downloads"
 --      "smallZips"
 --      "test/smallZips.csv"
---    successMsg "Successfully downloaded file as CSV"
+--    annotate "Successfully downloaded file as CSV"
 
 --  fileScenario defaultAfterFile "Download file as JSON" [] do
 --    Interact.browseTestFolder
@@ -152,4 +149,4 @@ test = do
 --      "tmp/test/downloads"
 --      "smallZips"
 --      "test/smallZips.json"
---    successMsg "Successfully downloaded file as JSON"
+--    annotate "Successfully downloaded file as JSON"
