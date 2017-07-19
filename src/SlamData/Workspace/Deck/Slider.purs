@@ -308,9 +308,7 @@ renderCard opts deckComponent st activeIndex index card =
   hintText ∷ String
   hintText =
     "To do more with "
-      -- TODO
-      -- ⊕ (fromMaybe "the output" $ ICT.printIOType' =<< outputTypes)
-      ⊕ "the output"
+      ⊕ (fromMaybe "the output" $ join $ Array.head $ ICT.printIOType' <$> outputTypes)
       ⊕ " produced by this "
       ⊕ (maybe "card" (\iot → ICT.print iot ⊕ " Card") insertableCardType)
       ⊕ " click or drag this gripper to the left and add a new card to the deck."
