@@ -34,6 +34,7 @@ import Quasar.Advanced.Types as QA
 import SlamData.AdminUI.Dialog.Component as Dialog
 import SlamData.AdminUI.Group as Group
 import SlamData.AdminUI.Types as AT
+import SlamData.AdminUI.Users (crawlGroups)
 import SlamData.AdminUI.Users as Users
 import SlamData.LocalStorage.Class as LS
 import SlamData.LocalStorage.Keys as LK
@@ -407,6 +408,8 @@ eval = case _ of
             pure unit
       Dialog.Confirm (Dialog.ConfirmUserDeletion path) → do
         pure unit
+      Dialog.Confirm (Dialog.EditUserPermissions _) → do
+        pure unit
       Dialog.Dismiss → pure unit
     H.modify (_ { dialog = Nothing })
     pure next
@@ -422,5 +425,7 @@ eval = case _ of
     AT.DeleteUser uid next → do
       H.modify (_ { dialog = Just (Dialog.ConfirmUserDeletion uid) })
       pure next
-    AT.EditUser _ next →
+    AT.EditUser userId next → do
+      groups ← crawlGroups userId
+      H.modify (_ { dialog = Just (Dialog.EditUserPermissions { userId, groups }) })
       pure next

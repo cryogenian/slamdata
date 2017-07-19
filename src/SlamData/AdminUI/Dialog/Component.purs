@@ -30,11 +30,14 @@ import SlamData.Render.ClassName as CN
 data Dialog
   = ConfirmGroupDeletion QAT.GroupPath
   | ConfirmUserDeletion QAT.UserId
+  | EditUserPermissions { userId ∷ QAT.UserId, groups ∷ Array QAT.GroupPath }
 
 derive instance eqDialog ∷ Eq Dialog
 derive instance ordDialog ∷ Ord Dialog
 
-data Query a = Raise Message a
+data Query a
+  = Raise Message a
+ | DeletePermission QAT.UserId QAT.GroupPath a
 
 data Message
   = Confirm Dialog
@@ -75,25 +78,31 @@ component dlg =
       ]
 
   eval ∷ Query ~> H.ComponentDSL Unit Query Message Slam
-  eval (Raise msg next) = do
-    H.raise msg
-    pure next
+  eval = case _ of
+    Raise msg next → do
+      H.raise msg
+      pure next
+    DeletePermission userId groupPath next → do
+      pure next
 
 headerMessage ∷ Dialog → String
 headerMessage = case _ of
  ConfirmGroupDeletion _ → "Confirm group deletion"
  ConfirmUserDeletion _ → "Confirm user deletion"
+ EditUserPermissions _ → "Edit user permissions"
 
 
 dismissMessage ∷ Dialog → String
 dismissMessage = case _ of
  ConfirmGroupDeletion _ → "Cancel"
  ConfirmUserDeletion _ → "Cancel"
+ EditUserPermissions _ → "Confirm"
 
 confirmMessage ∷ Dialog → String
 confirmMessage = case _ of
  ConfirmGroupDeletion _ → "Delete"
  ConfirmUserDeletion _ → "Delete"
+ EditUserPermissions _ → "Confirm"
 
 renderDialog ∷ Dialog → H.ComponentHTML Query
 renderDialog = case _ of
@@ -109,3 +118,23 @@ renderDialog = case _ of
       , HH.code_ [ HH.text (QAT.runUserId userId) ]
       , HH.text "?"
       ]
+  EditUserPermissions { userId, groups } →
+    let
+      mkGroupItem group =
+        HH.li
+          [ HP.class_ (HH.ClassName "admin-ui-user-permission") ]
+          [ HH.text (QAT.printGroupPath group)
+          , HH.button
+              [ HP.classes [ CN.btn ]
+              , HE.onClick (HE.input_ (DeletePermission userId group))
+              ]
+              [ HH.text "Delete" ]
+          ]
+    in
+      HH.span_
+        [ HH.ul
+            [ HP.class_ (HH.ClassName "admin-ui-user-permissions") ]
+            (map mkGroupItem groups)
+        , HH.code_ [ HH.text (QAT.runUserId userId) ]
+        , HH.text "?"
+        ]
