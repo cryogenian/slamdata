@@ -105,7 +105,7 @@ render opts st =
 eval ∷ DeckOptions → Query ~> DeckDSL
 eval opts = case _ of
   Init next → do
-    { bus } ← H.lift Wiring.expose
+    { bus } ← Wiring.expose
     H.subscribe $ busEventSource (\msg → HandleMessage msg H.Listening) bus.decks
     H.subscribe $ busEventSource (\msg → HandleHintDismissalMessage msg H.Listening) bus.hintDismissals
     when (L.null opts.displayCursor) do
@@ -129,7 +129,7 @@ eval opts = case _ of
   HideAccessNextActionCardHint next →
     dismissAccessNextActionCardHint $> next
   Publish next → do
-    { path } ← H.lift Wiring.expose
+    { path } ← Wiring.expose
     let deckPath = deckPath' path opts.deckId
     H.liftEff ∘ Browser.newTab $ mkWorkspaceURL deckPath (WA.Load AT.ReadOnly)
     pure next
@@ -149,7 +149,7 @@ eval opts = case _ of
     navigateToDeck opts.cursor
     pure next
   BackToFileSystem next → do
-    { path } ← H.lift Wiring.expose
+    { path } ← Wiring.expose
     void $ H.liftEff $ Browser.setHref $ parentURL $ Left path
     pure next
   StartSliding gDef mouseEvent next → do
@@ -249,14 +249,14 @@ nextActionCardIsActive = do
 
 dismissFocusDeckHint ∷ DeckDSL Unit
 dismissFocusDeckHint = do
-  wiring ← H.lift Wiring.expose
+  wiring ← Wiring.expose
   H.liftAff $ Bus.write Wiring.DeckFocusHintDismissed wiring.bus.hintDismissals
   H.modify (DCS._focusDeckHintDismissed .~ true)
   LS.persist J.encodeJson LSK.dismissedFocusDeckHintKey true
 
 dismissFocusDeckFrameHint ∷ DeckDSL Unit
 dismissFocusDeckFrameHint = do
-  wiring ← H.lift Wiring.expose
+  wiring ← Wiring.expose
   H.liftAff $ Bus.write Wiring.DeckFrameFocusHintDismissed wiring.bus.hintDismissals
   H.modify (DCS._focusDeckFrameHintDismissed .~ true)
   LS.persist J.encodeJson LSK.dismissedFocusDeckFrameHintKey true
@@ -301,7 +301,7 @@ switchToFrontside = do
 handleBackSide ∷ DeckOptions → ActionList.Message Back.BackAction → DeckDSL Unit
 handleBackSide opts = case _ of
   ActionList.Selected action → do
-    { path } ← H.lift Wiring.expose
+    { path } ← Wiring.expose
     st ← H.get
     case action of
       Back.Trash → do
@@ -395,7 +395,7 @@ queryNextAction =
 updateActiveState ∷ DeckOptions → DeckDSL Unit
 updateActiveState opts = do
   st ← H.get
-  { cache } ← H.lift Wiring.expose
+  { cache } ← Wiring.expose
   for_ st.activeCardIndex \cardIndex →
     H.lift $ Cache.put opts.deckId { cardIndex } cache.activeState
 
@@ -501,7 +501,7 @@ loadDeck opts = mbLoadError =<< runMaybeT do
       updateActiveState opts
   where
   activeCardIndex = do
-    { cache } ← H.lift Wiring.expose
+    { cache } ← Wiring.expose
     map _.cardIndex <$> H.lift (Cache.get opts.deckId cache.activeState)
 
   mbLoadError = case _ of
@@ -549,7 +549,7 @@ mkCardDef cardId cell = { cardId, cardType: Card.modelCardType cell.model }
 
 getDeckTree ∷ DeckId → DeckDSL (Maybe (ET.TraverseDeck ED.Cell EC.Cell))
 getDeckTree deckId = do
-  wiring ← H.lift Wiring.expose
+  wiring ← Wiring.expose
   decks ← H.lift $ Cache.snapshot wiring.eval.decks
   cards ← H.lift $ Cache.snapshot wiring.eval.cards
   pure (ET.unfoldEvalTree decks cards deckId)
@@ -588,7 +588,7 @@ updateCardSize =
 presentFlipGuideFirstTime ∷ DeckDSL Unit
 presentFlipGuideFirstTime = do
   whenM shouldPresentFlipGuide do
-    { bus } ← H.lift Wiring.expose
+    { bus } ← Wiring.expose
     H.liftAff $ Bus.write Guide.FlipGuide bus.stepByStep
 
 shouldPresentFlipGuide ∷ DeckDSL Boolean

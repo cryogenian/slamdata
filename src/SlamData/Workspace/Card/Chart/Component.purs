@@ -175,7 +175,7 @@ lodByChartType = case _ of
 evalComponent ∷ Query ~> DSL
 evalComponent = case _ of
   Init next → do
-    { echarts } ← H.lift Wiring.expose
+    { echarts } ← Wiring.expose
     H.modify _{ theme = Just echarts.theme }
     pure next
   RaiseUpdate em next → do

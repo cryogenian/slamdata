@@ -201,8 +201,6 @@ checkSemantics lst =
   foldFn ∷ AxisTypeAnnotated Int → Maybe Sem.Semantics → AxisTypeAnnotated Int
   foldFn acc Nothing = acc
   foldFn acc (Just a)
-    | Sem.isUsedAsNothing a =
-        acc
     | compatible Measure a =
         acc { value = acc.value + 1 }
     | compatible Category a =

@@ -21,18 +21,14 @@ module SlamData.Workspace.Card.Markdown.Component
 
 import SlamData.Prelude
 
-import Data.StrMap as SM
-
 import Data.Lens ((^?))
-
-import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
-
+import Data.StrMap as SM
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-
 import SlamData.Render.ClassName as CN
+import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
@@ -43,7 +39,6 @@ import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.DeckId as DID
 import SlamData.Workspace.LevelOfDetails as LOD
-
 import Text.Markdown.SlamDown.Halogen.Component as SD
 
 type MarkdownQuery = SD.SlamDownQuery MD.MarkdownExpr
@@ -113,8 +108,8 @@ evalCard = case _ of
 evalComponent ∷ Query ~> DSL
 evalComponent = case _ of
   Init next → do
-    browserFeatures ← H.liftEff detectBrowserFeatures
-    H.modify (_ { browserFeatures = Just browserFeatures })
+    w ← Wiring.expose
+    H.modify (_ { browserFeatures = Just w.browserFeatures })
     pure next
   HandleMessage _ next → do
     state ← fromMaybe SM.empty <$> H.query unit (H.request SD.GetFormState)
