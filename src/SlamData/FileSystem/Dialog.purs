@@ -42,7 +42,7 @@ dialog = case _ of
         HH.div_
           [ HH.text "Are you sure you want delete "
           , HH.code_ [ HH.text (R.resourceName res) ]
-          , HH.text " ?"
+          , HH.text "?"
           ]
       , class_: HH.ClassName "sd-delete-dialog"
       , action: Right ("Delete" × DoDelete res)

@@ -39,14 +39,17 @@ mkSpec { title, class_, action, message } =
   , class_
   , dialog: Proxy.proxy (component message)
   , buttons: case action of
-    Right (label × action) →
-      dismissButton "Cancel" `NEL.cons` pure { label, action: Dialog.Confirm action, class_: CN.btnPrimary, disabled: false }
+    Right (label × o) →
+      dismissButton "Cancel" `NEL.cons` pure { label, action: Dialog.Confirm o, class_: CN.btnPrimary, disabled: false }
     Left cancelLabel → pure (dismissButton cancelLabel)
   }
   where
     dismissButton label = { label, action: Dialog.Dismiss, class_: CN.btnDefault, disabled: false }
 
-component ∷ ∀ o m. H.ComponentHTML (Const Void) → H.Component HH.HTML (Const Void) Unit (Dialog.InnerMessage o) m
+component
+  ∷ ∀ o m
+  . H.ComponentHTML (Const Void)
+  → H.Component HH.HTML (Const Void) Unit (Dialog.InnerMessage o) m
 component h =
   H.component
     { initialState: const unit
