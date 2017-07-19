@@ -38,6 +38,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import SlamData.Monad (Slam)
 import SlamData.Render.ClassName as CN
+import SlamData.Render.Common as RC
 import Utils.DOM as DOM
 
 type DialogSpec o =
@@ -102,8 +103,15 @@ render = case _ of
       ]
       [ HH.div
           [ HP.classes [ H.ClassName "sd-dialog", class_ ] ]
-          -- TODO: show spinner when `pending`
-          [ HH.h4_ [ HH.text title ]
+          [ HH.div
+              [ HP.class_ (HH.ClassName "sd-dialog-header") ]
+              $ join
+                [ pure $
+                    HH.div
+                      [ HP.class_ (HH.ClassName "sd-dialog-title") ]
+                      [ HH.h4_ [ HH.text title ] ]
+                , guard pending $> RC.spinner
+                ]
           , HH.div
               [ HP.class_ (H.ClassName "sd-dialog-body") ]
               [ HH.slot unit dialog unit (HE.input HandleMessage) ]
@@ -151,6 +159,7 @@ eval mkInner = case _ of
     H.modify (map (_ { dialog { buttons = buttons } }))
     pure next
   Raise msg next → do
+    H.modify (map (_ { pending = true }))
     H.raise msg
     pure next
   BackdropDismiss me next → do
