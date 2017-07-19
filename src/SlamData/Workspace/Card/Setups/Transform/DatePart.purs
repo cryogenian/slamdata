@@ -107,20 +107,14 @@ applyDateTransform ∷ DatePart → Sql.Projection Sql.Sql → Sql.Projection Sq
 applyDateTransform dp (Sql.Projection { alias, expr }) =
   Sql.Projection
     { alias
-    , expr:
-        Sql.invokeFunction "DATE_PART"
-        $ L.fromFoldable
-        [ Sql.string $ printDate dp, expr ]
+    , expr: transformDateSql dp expr
     }
 
 applyTimeTransform ∷ TimePart → Sql.Projection Sql.Sql → Sql.Projection Sql.Sql
 applyTimeTransform tp (Sql.Projection { alias, expr }) =
   Sql.Projection
     { alias
-    , expr:
-        Sql.invokeFunction "DATE_PART"
-        $ L.fromFoldable
-        [ Sql.string $ printTime tp, expr ]
+    , expr: transformTimeSql tp expr
     }
 
 

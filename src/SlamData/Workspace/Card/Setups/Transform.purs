@@ -109,10 +109,8 @@ transformSql = foldTransform
   DP.transformTimeSql
   (\_ p → p)
   S.transformStringSql
-  (\_ p → p)
-  (\_ p → p)
-
-
+  N.transformNumericSql
+  (\_ s → Sql.invokeFunction "COUNT" $ pure s)
 
 
 dateTransforms ∷ Array Transform

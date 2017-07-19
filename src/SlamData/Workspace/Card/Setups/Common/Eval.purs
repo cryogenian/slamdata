@@ -35,6 +35,7 @@ import Data.Foreign (Foreign, toForeign)
 import Data.Foreign.Index (readProp)
 import Data.Function (on)
 import Data.Lens ((^.))
+import Data.List as L
 import Data.Map as M
 import Data.NonEmpty as NE
 import Data.Path.Pathy as Path
@@ -105,21 +106,81 @@ chartSetupEval buildSql buildPort m resource = do
       let
         path = resource ^. Port._filePath
         backendPath = fromMaybe Path.rootDir $ Path.parentDir path
-        sql = buildSql r path
+
+        val = Sql.vari "val"
+        sqlOne = Sql.int 1
+        sqlZero = Sql.int 0
+        modded = Sql.binop Sql.Mod val sqlOne
+        tens = Sql.binop Sql.Pow (Sql.num 10.0) (Sql.vari "n")
+        tensBody str =
+          Sql.binop Sql.Div
+            ( Sql.invokeFunction "CEIL1" $ pure $ Sql.binop Sql.Mult val tens )
+            tens
+
+        floor1Func = Sql.FunctionDecl
+          { ident: "FLOOR1"
+          , args: pure "val"
+          , body:
+              let
+                elseCase = Sql.binop Sql.Minus val modded
+                ltCase = Sql.binop Sql.Minus (Sql.pars elseCase) sqlOne
+              in
+                Sql.switch
+                  ( L.fromFoldable
+                    [ Sql.when
+                        ( Sql.binop Sql.Eq (Sql.pars modded) sqlZero )
+                        # Sql.then_ val
+                    , Sql.when
+                        ( Sql.binop Sql.Lt val sqlZero )
+                        # Sql.then_ ltCase
+                    ] )
+                  ( pure elseCase )
+          }
+        round1Func = Sql.FunctionDecl
+          { ident: "ROUND1"
+          , args: pure "val"
+          , body: Sql.invokeFunction "FLOOR1" $ pure
+              $ Sql.binop Sql.Plus (Sql.num 0.5) val
+          }
+        ceil1Func = Sql.FunctionDecl
+          { ident: "CEIL1"
+          , args: pure "val"
+          , body: Sql.invokeFunction "FLOOR1" $ pure
+              $ Sql.binop Sql.Plus sqlOne val
+          }
+        floor = Sql.FunctionDecl
+          { ident: "FLOOR"
+          , args: L.fromFoldable [ "val", "n" ]
+          , body: tensBody "FLOOR1"
+          }
+        ceil = Sql.FunctionDecl
+          { ident: "CEIL"
+          , args: L.fromFoldable [ "val", "n" ]
+          , body: tensBody "CEIL1"
+          }
+        round = Sql.FunctionDecl
+          { ident: "ROUND"
+          , args: L.fromFoldable [ "val", "n" ]
+          , body: tensBody "ROUND1"
+          }
+        sql =
+          Sql.Query
+          (L.fromFoldable [ floor1Func, round1Func, ceil1Func, floor, ceil, round ])
+          $ buildSql r path
 
       outputResource ← CEM.temporaryOutputResource
 
       { inputs } ←
         CE.liftQ $ lmap (QE.prefixMessage "Error compiling query") <$>
-          QQ.compile backendPath sql SM.empty
+          QQ.compileQuery backendPath sql SM.empty
 
       _ ← CE.liftQ do
-        _ ← QQ.viewQuery outputResource sql SM.empty
+        _ ← QQ.viewQueryQuery outputResource sql SM.empty
         QFS.messageIfFileNotFound
           outputResource
           "Error making search temporary resource"
       let
-        view = Port.View outputResource (Sql.print sql) SM.empty
+        view = Port.View outputResource (Sql.printQuery sql) SM.empty
         port = buildPort r axes
       pure (port × SM.singleton Port.defaultResourceVar (Left view))
 

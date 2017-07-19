@@ -92,14 +92,6 @@ isDisabled ∷ T.Projection → Package → State → Boolean
 isDisabled prj pack state =
   Set.isEmpty $ projectionCursors prj pack state
 
-isConfigurable ∷ T.Projection → Package → State → Boolean
-isConfigurable prj pack state
-  | DMD.isFlat prj = false
-  | otherwise =
-    let
-      axis = state.dimMap ^? T.unpackProjection prj ∘ _Just ∘ D._value ∘ D._projection
-    in isJust $ Ax.axisType <$> axis <*> pure state.axes
-
 getTransform ∷ T.Projection → State → Maybe Tr.Transform
 getTransform tp state =
   state.dimMap ^? T.unpackProjection tp ∘ _Just ∘ D._value ∘ D._transform ∘ _Just
@@ -108,15 +100,13 @@ transforms ∷ T.Projection → State → Array Tr.Transform
 transforms prj state =
   let
     mbTr = join $ state.dimMap ^? T.unpackProjection prj ∘ _Just ∘ D._value ∘ D._transform
-    axis = spy $ state.dimMap ^? T.unpackProjection prj ∘ _Just ∘ D._value ∘ D._projection
-    axisType = spy $ Ax.axisType <$> axis <*> pure state.axes
-  in traceAny "###" \_ → spy $ fromMaybe [] do
-    traceAnyA "start"
+    available = DMD.availableTransforms prj mbTr
+    axis = state.dimMap ^? T.unpackProjection prj ∘ _Just ∘ D._value ∘ D._projection
+    axisType = Ax.axisType  <$> axis <*> pure state.axes
+  in A.nub $ fromMaybe [] do
     at ← axisType
-    traceAnyA "at"
-    let options = spy $ Tr.axisTransforms at mbTr
-    traceAnyA "options"
-    pure $ if spy $ fromMaybe false $ F.elem <$> mbTr <*> pure options
+    let options = A.intersect available $ Tr.axisTransforms at mbTr
+    pure $ if fromMaybe false $ F.elem <$> mbTr <*> pure options
       then options
       else A.fromFoldable mbTr <> options
 
