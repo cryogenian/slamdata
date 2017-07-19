@@ -282,7 +282,7 @@ eval = case _ of
     case result of
       Left err → case GE.fromQError err of
         Left msg →
-          showDialog $ Dialog.Error
+          showDialogNew $ DialogT.Error
             $ "You can only create files or folders in data sources."
             ⊕ "Please mount a data source, and then create your file or location inside the mounted data source."
         Right ge →
@@ -297,8 +297,8 @@ eval = case _ of
          createWorkspace state.path \mkUrl →
            H.liftEff $ setLocation $ mkUrl New
        else
-         showDialog
-           $ Dialog.Error
+         showDialogNew
+           $ DialogT.Error
            $ "There was a problem creating the workspace: Path "
            ⊕ printPath state.path
            ⊕ " is not inside a mount."
@@ -337,7 +337,7 @@ eval = case _ of
       dismissIntroVideo
     pure next
   HandleError ge next → do
-    showDialog $ Dialog.Error $ GE.print ge
+    showDialogNew $ DialogT.Error $ GE.print ge
     pure next
   HandleListing (Listing.ItemMessage m) next → do
     handleItemMessage m
@@ -437,7 +437,7 @@ eval = case _ of
     _ ← H.query' CS.cpListing unit $ H.action $ Listing.Adds items
     pure next
   ShowError message next → do
-    _ ← H.query' CS.cpDialog unit $ H.action $ Dialog.Show $ Dialog.Error message
+    showDialogNew (DialogT.Error message)
     pure next
   HandleSignInMessage message next → do
     when (message ≡ GlobalMenu.SignInSuccess) (H.liftEff Browser.reload)
@@ -529,7 +529,7 @@ remove res = do
       void $ H.query' CS.cpListing unit $ H.action $ Listing.Add (Item res)
       case GE.fromQError err of
         Left m →
-          showDialog $ Dialog.Error m
+          showDialogNew $ DialogT.Error m
         Right ge →
           GE.raiseGlobalError ge
     Right mbRes →
@@ -606,7 +606,7 @@ uploadFileSelected f = do
 
   handleError err =
     case GE.fromQError err of
-      Left msg → showDialog $ Dialog.Error msg
+      Left msg → showDialogNew $ DialogT.Error msg
       Right ge → GE.raiseGlobalError ge
 
 presentMountHint ∷ ∀ a. Array a → DirPath → DSL Unit
@@ -676,7 +676,7 @@ configure m =
 
     raiseError err = case GE.fromQError err of
       Left msg →
-        showDialog $ Dialog.Error
+        showDialogNew $ DialogT.Error
           $ "There was a problem reading the mount settings: "
           ⊕ msg
       Right ge →
@@ -737,7 +737,7 @@ createWorkspace path action = do
           -- This error isn't strictly true as we're not actually creating the
           -- workspace here, but saying there was a problem "creating a name for the
           -- workspace" would be a little strange
-          showDialog $ Dialog.Error
+          showDialogNew $ DialogT.Error
             $ "There was a problem creating the workspace: " ⊕ msg
         Right ge →
           GE.raiseGlobalError ge

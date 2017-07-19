@@ -19,22 +19,34 @@ module SlamData.FileSystem.Dialog where
 import SlamData.Prelude
 
 import Data.String as Str
-import Halogen.HTML as HH
 import Halogen.Component.Proxy as Proxy
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import SlamData.Dialog.Component as Dialog
 import SlamData.Dialog.Message.Component as Message
-import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Dialog.Share.Component as Share
+import SlamData.FileSystem.Resource as R
 import SlamData.Render.ClassName as CN
 
 data Definition
-  = Delete R.Resource
+  = Error String
+  | Delete R.Resource
   | Share String String
 
 data Action = DoDelete R.Resource
 
 dialog ∷ Definition → Dialog.DialogSpec Action
 dialog = case _ of
+  Error msg →
+    Message.mkSpec
+      { title: "Error"
+      , message:
+          HH.div
+            [ HP.classes [ CN.alert, CN.alertDanger ] ]
+            [ HH.text msg ]
+      , class_: HH.ClassName "sd-error-dialog"
+      , action: Left "Dismiss"
+      }
   Delete res →
     Message.mkSpec
       { title: "Confirm deletion"

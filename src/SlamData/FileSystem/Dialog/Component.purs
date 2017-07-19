@@ -33,7 +33,6 @@ import Network.HTTP.RequestHeader (RequestHeader)
 
 import Quasar.Advanced.Types as QAT
 
-import SlamData.Dialog.Error.Component as Error
 import SlamData.Dialog.License (advancedLicenseExpired, advancedTrialLicenseExpired, licenseInvalid)
 import SlamData.FileSystem.Dialog.Component.Message (Message(..))
 import SlamData.FileSystem.Dialog.Download.Component as Download
@@ -48,8 +47,7 @@ import SlamData.Workspace.Deck.Component.CSS as CSS
 import Utils.DOM as DOM
 
 data Dialog
-  = Error String
-  | Rename Resource
+  = Rename Resource
   | Mount Mount.Input
   | Download Resource (Array RequestHeader)
   | LicenseProblem License.LicenseProblem
@@ -66,13 +64,12 @@ data Query a
   | AddDirsToRename (Array Resource) a
 
 type ChildQuery
-  = Error.Query
-  ⨁ Rename.Query
+  = Rename.Query
   ⨁ Download.Query
   ⨁ Mount.Query
   ⨁ Const Void
 
-type ChildSlot = Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Void
+type ChildSlot = Unit ⊹ Unit ⊹ Unit ⊹ Void
 
 component ∷ H.Component HH.HTML Query Unit Message Slam
 component =
@@ -94,14 +91,12 @@ render state =
         $ maybe [] (singleton ∘ dialog) state
   where
   dialog = case _ of
-    Error str →
-      HH.slot' CP.cp1 unit Error.component str (HE.input_ RaiseDismiss)
     Rename res →
-      HH.slot' CP.cp2 unit Rename.component res (HE.input HandleChild)
+      HH.slot' CP.cp1 unit Rename.component res (HE.input HandleChild)
     Download resource headers →
-      HH.slot' CP.cp3 unit Download.component { resource, headers } (HE.input HandleChild)
+      HH.slot' CP.cp2 unit Download.component { resource, headers } (HE.input HandleChild)
     Mount input →
-      HH.slot' CP.cp4 unit Mount.component input (HE.input HandleChild)
+      HH.slot' CP.cp3 unit Mount.component input (HE.input HandleChild)
     LicenseProblem (License.Expired licenseType) →
       case licenseType of
         QAT.Advanced → advancedLicenseExpired
@@ -112,10 +107,10 @@ render state =
 eval ∷ Query ~> H.ParentDSL State Query ChildQuery ChildSlot Message Slam
 eval = case _ of
   QueryRename q next → do
-    _ ← H.query' CP.cp2 unit q
+    _ ← H.query' CP.cp1 unit q
     pure next
   SaveMount reply → do
-    map (reply ∘ join) $ H.query' CP.cp4 unit $ H.request Mount.Save
+    map (reply ∘ join) $ H.query' CP.cp3 unit $ H.request Mount.Save
   Show d next → do
     H.put (Just d)
     pure next
@@ -133,5 +128,5 @@ eval = case _ of
       _ → H.raise m
     pure next
   AddDirsToRename dirs next → do
-    _ ← H.query' CP.cp2 unit $ H.action $ Rename.AddDirs dirs
+    _ ← H.query' CP.cp1 unit $ H.action $ Rename.AddDirs dirs
     pure next
