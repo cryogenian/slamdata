@@ -1,5 +1,5 @@
 {-
-Copyright 2015 SlamData, Inc.
+Copyright 2017 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,10 +19,8 @@ module Test.SlamData.Feature.Test.Markdown where
 import SlamData.Prelude
 
 import Data.String (joinWith)
-import Data.Time.Duration (Milliseconds(..))
-import Selenium.Monad (later)
 import Test.Feature.Log (successMsg)
-import Test.Feature.Scenario (KnownIssues, noIssues, scenario)
+import Test.Feature.Scenario (KnownIssues, allIssue, noIssues, scenario)
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Interactions as Interact
 import Test.SlamData.Feature.Monad (Connector(..), SlamFeature, getConnector, isMarklogic)
@@ -54,7 +52,9 @@ test ∷ SlamFeature Unit
 test = do
   connector ← getConnector
   isMarklogic' ← isMarklogic
-  mdScenario "Provide and play markdown" noIssues do
+  mdScenario "Provide and play markdown"
+    (allIssue "ALL: date/time picker https://github.com/slamdata/slamdata/issues/1976")
+    do
     Interact.insertMdCardInFirstDeck
     Interact.provideMdInLastMdCard
       $ joinWith "\n\n"
@@ -71,6 +71,7 @@ test = do
           , "color = [x]Red []Green [x]Blue"
           , "type = (x)Gold ()Silver ()Bronze"
           ]
+
     Interact.runQuery
     Interact.accessNextCardInFirstDeck
     Interact.insertDisplayMarkdownCardInLastDeck
@@ -96,8 +97,7 @@ test = do
     Expect.checkableFieldInLastMdCard "Gold" "radio" true
     Expect.checkableFieldInLastMdCard "Silver" "radio" false
     Expect.checkableFieldInLastMdCard "Bronze" "radio" false
-
-    successMsg "Ok, succesfully provided and played markdown."
+    successMsg "** Ok, succesfully provided and played markdown **"
 
   mdScenario "Change and play markdown" noIssues do
     Interact.insertMdCardInFirstDeck
@@ -109,9 +109,8 @@ test = do
     Interact.provideMdInLastMdCard "sport =  __ (Bobsleigh)"
     Interact.runQuery
     Interact.accessNextCardInFirstDeck
-
     Expect.fieldInLastMdCard "sport" "text" "Bobsleigh"
-    successMsg "Ok, successfully changed and played markdown."
+    successMsg "** Ok, successfully changed and played markdown **"
 
   mdScenario "Provide and play markdown with evaluated content" noIssues do
     Interact.insertMdCardInFirstDeck
@@ -174,7 +173,7 @@ test = do
     Expect.checkableFieldInLastMdCard "X" "checkbox" false
     Expect.checkableFieldInLastMdCard "W" "checkbox" true
     Expect.checkableFieldInLastMdCard "M" "checkbox" false
-    successMsg "Ok, successfully provided and played markdown with evaluated content"
+    successMsg "** Ok, successfully provided and played markdown with evaluated content **"
 
   mdScenario "Filter query results with default field values"
     (noIssues { marklogic = Just "ML: not sure what is happening here"
@@ -202,14 +201,13 @@ test = do
     case connector of
       Couchbase → Interact.addColumn "typeMedal"
       _ → Interact.addColumn "type"
-    later (Milliseconds 3000.0) $ pure unit -- need a wait so type collumn is added as test quicker than ui, needs fixing
     Interact.accessNextCardInLastDeck
     Interact.insertChartCardInLastDeck
     Expect.cellsInTableColumnInLastCardToEq 2 "discipline" "Figure skating"
     Expect.cellsInTableColumnInLastCardToEq 2 "country" "AUT"
     Expect.cellsInTableColumnInLastCardToEq 2 "gender" "W"
     Expect.cellsInTableColumnInLastCardToBeGT 2 "year" "1924"
-    successMsg "Ok, Filtered query results with fields"
+    successMsg "** Ok, Filtered query results with fields **"
 
   mdScenario "Filter query results by changing field values"
     (noIssues
@@ -221,8 +219,9 @@ test = do
     Interact.runQuery
     Interact.accessNextCardInFirstDeck
     Interact.insertDisplayMarkdownCardInLastDeck
-    Expect.displayMarkdownCardPresented
-    Interact.accessNextCardInLastDeck
+    do
+      Expect.displayMarkdownCardPresented
+      Interact.accessNextCardInLastDeck
     Interact.insertQueryCardInLastDeck
     Interact.provideMdInLastMdCard
       "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type != :type AND gender IN :gender AND year > :year AND country = :country"
@@ -252,6 +251,7 @@ test = do
     Interact.accessNextCardInLastDeck
     Interact.accessNextCardInLastDeck
     Interact.accessNextCardInLastDeck
+
     -- commented out "type" "typeMedal" results as query needs ORDER to make results consistent:
     case connector of
       Couchbase → do
@@ -261,12 +261,11 @@ test = do
       -- Expect.cellsInTableColumnInLastCardToNotEq 7 "typeMedal" "Gold"
 
       _ → do
-         Expect.cellsInTableColumnInLastCardToEq 8 "discipline" "Luge"
-         Expect.cellsInTableColumnInLastCardToEqOneOf 8 "gender" ["M", "X"]
-         Expect.cellsInTableColumnInLastCardToBeGT 8 "year" "1950"
+        Expect.cellsInTableColumnInLastCardToEq 8 "discipline" "Luge"
+        Expect.cellsInTableColumnInLastCardToEqOneOf 8 "gender" ["M", "X"]
+        Expect.cellsInTableColumnInLastCardToBeGT 8 "year" "1950"
       -- Expect.cellsInTableColumnInLastCardToNotEq 8 "type" "Gold"
-
-    successMsg "Ok, Filtered query results by changing field values"
+    successMsg "** Ok, Filtered query results by changing field values **"
 
   mdScenario "Markdown chaining" noIssues do
     let
@@ -282,8 +281,8 @@ test = do
     Interact.accessNextCardInLastDeck
     Interact.insertMdCardInFirstDeck
     Interact.provideMdInLastMdCard $
-        "city = ___"
-        <> "(!``select city from `/test-mount/testDb/zips` where state = :state order by asc limit 1``)"
+      "city = ___"
+      <> "(!``select city from `/test-mount/testDb/zips` where state = :state order by asc limit 1``)"
     Interact.runQuery
     Interact.accessNextCardInLastDeck
     Interact.insertDisplayMarkdownCardInLastDeck
@@ -294,4 +293,4 @@ test = do
     Interact.accessNextCardInLastDeck
     Interact.accessNextCardInLastDeck
     Expect.fieldInLastMdCard "city" "text" "ASHAWAY"
-    successMsg "Ok, variables from md card could be used in md card"
+    successMsg "** Ok, variables from md card could be used in md card **"

@@ -8,7 +8,7 @@ var quasarPort = env.getEnv("QUASAR_PORT")();
 
 module.exports = {
   selenium: {
-    waitTime: databaseType == "couchbase" ? 50000 : 30000
+    waitTime: 30000
   },
   slamdataUrl: "http://localhost:" + quasarPort,
   database: {

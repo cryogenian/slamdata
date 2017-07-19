@@ -1,10 +1,12 @@
 module Test.SlamData.Feature.Expectations.Flipside where
 
 import SlamData.Prelude
+
+import Test.Feature (expectNotPresented, expectPresented)
+import Test.Feature.Log (annotate)
+import Test.SlamData.Feature.Monad (SlamFeature)
 import Test.SlamData.Feature.XPaths as XPaths
 import XPath as XPath
-import Test.Feature (expectNotPresented, expectPresented)
-import Test.SlamData.Feature.Monad (SlamFeature)
 
 flipsideActionNotPresented ∷ String → SlamFeature Unit
 flipsideActionNotPresented xPath =
@@ -15,19 +17,21 @@ flipsideActionNotPresented xPath =
     $ XPath.attribute "disabled"
 
 flipsideMenuPresented ∷ SlamFeature Unit
-flipsideMenuPresented = do
-  trashButtonPresented
-  publishButtonPresented
-  embedButtonPresented
+flipsideMenuPresented =
+  annotate "Found expected flipside menu" do
+    trashButtonPresented
+    publishButtonPresented
+    embedButtonPresented
 
 flipsideMenuNotPresented ∷ SlamFeature Unit
-flipsideMenuNotPresented = do
-  for_
-    [ XPaths.trashCardAction
-    , XPaths.publishDeckAction
-    , XPaths.embedDeckAction
-    ]
-    flipsideActionNotPresented
+flipsideMenuNotPresented =
+  annotate "Found flipside menu to be not presented as expected" do
+    for_
+      [ XPaths.trashCardAction
+      , XPaths.publishDeckAction
+      , XPaths.embedDeckAction
+      ]
+      flipsideActionNotPresented
 
 embedButtonPresented ∷ SlamFeature Unit
 embedButtonPresented =
@@ -36,32 +40,35 @@ embedButtonPresented =
     $ XPaths.embedDeckAction
 
 onlyEmbedActionPresented ∷ SlamFeature Unit
-onlyEmbedActionPresented = do
-  embedButtonPresented
-  for_
-    [ XPaths.shareDeckAction
-    , XPaths.publishDeckAction
-    , XPaths.trashCardAction
-    ]
-    flipsideActionNotPresented
+onlyEmbedActionPresented =
+  annotate "Found only Embeded action presented" do
+    embedButtonPresented
+    for_
+      [ XPaths.shareDeckAction
+      , XPaths.publishDeckAction
+      , XPaths.trashCardAction
+      ]
+      flipsideActionNotPresented
 
 onlyPublishActionPresented ∷ SlamFeature Unit
-onlyPublishActionPresented = do
-  publishButtonPresented
-  for_
-    [ XPaths.embedDeckAction
-    , XPaths.trashCardAction
-    ]
-    flipsideActionNotPresented
+onlyPublishActionPresented =
+  annotate "Found only Publish action presented" do
+    publishButtonPresented
+    for_
+      [ XPaths.embedDeckAction
+      , XPaths.trashCardAction
+      ]
+      flipsideActionNotPresented
 
 onlyTrashActionPresented ∷ SlamFeature Unit
-onlyTrashActionPresented = do
-  trashButtonPresented
-  for_
-    [ XPaths.publishDeckAction
-    , XPaths.embedDeckAction
-    ]
-    flipsideActionNotPresented
+onlyTrashActionPresented =
+  annotate "Found only Trash action presented" do
+    trashButtonPresented
+    for_
+      [ XPaths.publishDeckAction
+      , XPaths.embedDeckAction
+      ]
+      flipsideActionNotPresented
 
 publishButtonPresented ∷ SlamFeature Unit
 publishButtonPresented =

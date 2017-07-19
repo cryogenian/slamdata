@@ -69,7 +69,7 @@ test = do
     Interact.accessNextCardInLastDeck
     Interact.insertChartCardInLastDeck
     Expect.cellsInTableColumnInLastCardToContain 25 "city" "SPRINGFIELD"
-    successMsg "Successfully searched for a city in zips"
+    successMsg "** Successfully searched for a city in zips **"
 
   searchScenario "Search within results"
     (noIssues { couchbase = Just "CB: https://github.com/quasar-analytics/quasar/issues/2341"
@@ -94,7 +94,7 @@ test = do
     Interact.insertChartCardInLastDeck
     Expect.cellsInTableColumnInLastCardToContain 2 "city" "SPRINGFIELD"
     Expect.cellsInTableColumnInLastCardToContain 2 "state" "OR"
-    successMsg "Successfully searched within results"
+    successMsg "** Successfully searched within results **"
 
   searchScenario "Search with field names"
     (noIssues
@@ -104,11 +104,11 @@ test = do
       })
     do
     Interact.insertOpenCardInLastDeck
-    Interact.selectFileForLastOpenCard "/test-mount/testDb/zips"
+    selectFile
     Interact.accessNextCardInFirstDeck
     Interact.insertSearchCardInLastDeck
     Interact.provideSearchStringInLastSearchCard
-      "city:springfield state:or pop:>20000"
+          "city:springfield state:or pop:>20000"
     Interact.accessNextCardInLastDeck
     Interact.selectBuildChart
     Interact.insertPivotCard
@@ -124,7 +124,7 @@ test = do
       Marklogic → Expect.cellsInTableColumnInLastCardToBeGT 1 "pop" "30000"
       Mongo → Expect.cellsInTableColumnInLastCardToBeGT 1 "pop" "30000"
       Couchbase → Expect.cellsInTableColumnInLastCardToBeGT 1 "pop" "27500"
-    successMsg "Successfully searched with field names"
+    successMsg "** Successfully searched with field names **"
 
   searchScenario "Suppress search results"
     (noIssues
@@ -134,7 +134,7 @@ test = do
       })
     do
     Interact.insertOpenCardInLastDeck
-    Interact.selectFileForLastOpenCard "/test-mount/testDb/zips"
+    selectFile
     Interact.accessNextCardInFirstDeck
     Interact.insertSearchCardInLastDeck
     Interact.provideSearchStringInLastSearchCard "city:portland -state:OR"
@@ -149,4 +149,4 @@ test = do
     Interact.insertChartCardInLastDeck
     Expect.cellsInTableColumnInLastCardToContain 10 "city" "PORTLAND"
     Expect.cellsInTableColumnInLastCardToNotEq 10 "state" "OR"
-    successMsg "Successfully suppressed search results"
+    successMsg "** Successfully suppressed search results **"
