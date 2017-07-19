@@ -164,7 +164,7 @@ makeCardComponent cardType component options =
         initializeInnerCard
         queryInnerCard EQ.Activate
       H.modify ∘ (CS._accessType .~ _)
-        =<< _.accessType <$> H.lift Wiring.expose
+        =<< _.accessType <$> Wiring.expose
       pure next
     CQ.UpdateDimensions next → do
       st ← H.get

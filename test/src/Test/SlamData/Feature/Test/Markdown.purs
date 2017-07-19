@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Data.String (joinWith)
 import Test.Feature.Log (successMsg)
-import Test.Feature.Scenario (KnownIssues, allIssue, noIssues, scenario)
+import Test.Feature.Scenario (KnownIssues, noIssues, scenario)
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Interactions as Interact
 import Test.SlamData.Feature.Monad (Connector(..), SlamFeature, getConnector, isMarklogic)
@@ -52,9 +52,7 @@ test ∷ SlamFeature Unit
 test = do
   connector ← getConnector
   isMarklogic' ← isMarklogic
-  mdScenario "Provide and play markdown"
-    (allIssue "ALL: date/time picker https://github.com/slamdata/slamdata/issues/1976")
-    do
+  mdScenario "Provide and play markdown" noIssues do
     Interact.insertMdCardInFirstDeck
     Interact.provideMdInLastMdCard
       $ joinWith "\n\n"

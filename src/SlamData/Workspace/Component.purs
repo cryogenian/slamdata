@@ -177,7 +177,7 @@ render accessType state =
 eval ∷ Query ~> WorkspaceDSL
 eval = case _ of
   Init next → do
-    { auth, bus, accessType } ← H.lift Wiring.expose
+    { auth, bus, accessType } ← Wiring.expose
     H.subscribe $ busEventSource (H.request ∘ PresentStepByStepGuide) bus.stepByStep
     H.subscribe $ busEventSource (flip HandleSignInMessage ES.Listening) auth.signIn
     H.subscribe $ busEventSource (flip HandleWorkspace ES.Listening) bus.workspace
@@ -234,7 +234,7 @@ eval = case _ of
     initializeGuides
     pure next
   SignIn providerR next → do
-    { auth } ← H.lift Wiring.expose
+    { auth } ← Wiring.expose
     idToken ← H.liftAff makeVar
     H.liftAff $ Bus.write { providerR, idToken, prompt: true, keySuffix } auth.requestToken
     either signInFailure (const $ signInSuccess) =<< (H.liftAff $ takeVar idToken)
@@ -281,7 +281,7 @@ eval = case _ of
     cursor' ←
       if List.null cursor
         then do
-          wiring ← H.lift Wiring.expose
+          wiring ← Wiring.expose
           rootId ← H.liftAff $ peekVar wiring.eval.root
           pure (pure rootId)
         else
@@ -303,12 +303,12 @@ eval = case _ of
     AuthenticationMode.toKeySuffix AuthenticationMode.ChosenProvider
 
   signInSuccess = do
-    { auth } ← H.lift Wiring.expose
+    { auth } ← Wiring.expose
     H.liftAff $ Bus.write SignInSuccess $ auth.signIn
     H.liftEff Browser.reload
 
   signInFailure error = do
-    { auth, bus } ← H.lift Wiring.expose
+    { auth, bus } ← Wiring.expose
     H.liftAff do
       for_ (Authentication.toNotificationOptions error) $
         flip Bus.write bus.notify
@@ -316,7 +316,7 @@ eval = case _ of
 
 runFreshWorkspace ∷ Array CM.AnyCardModel → WorkspaceDSL Unit
 runFreshWorkspace cards = do
-  { path, accessType, varMaps, bus } ← H.lift Wiring.expose
+  { path, accessType, varMaps, bus } ← Wiring.expose
   deckId × cell ← H.lift $ P.freshWorkspace cards
   H.modify _
     { stateMode = Ready
@@ -338,7 +338,7 @@ runFreshWorkspace cards = do
 
 initializeGuides ∷ WorkspaceDSL Unit
 initializeGuides = do
-  { bus, accessType } ← H.lift Wiring.expose
+  { bus, accessType } ← Wiring.expose
   initialCardGuideStep >>= case _ of
     Nothing → do
       void $ queryDeck $ H.action Deck.DismissedCardGuide

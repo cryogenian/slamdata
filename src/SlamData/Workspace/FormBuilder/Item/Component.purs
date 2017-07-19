@@ -225,7 +225,7 @@ render state =
 eval ∷ Query ~> DSL
 eval = case _ of
   Init next → do
-    w ← H.lift Wiring.expose
+    w ← Wiring.expose
     H.modify _{inputTypeSupported = w.browserFeatures.inputTypeSupported}
     pure next
   UpdateName str next → do
