@@ -39,7 +39,6 @@ import SlamData.FileSystem.Dialog.Component.Message (Message(..))
 import SlamData.FileSystem.Dialog.Download.Component as Download
 import SlamData.FileSystem.Dialog.Mount.Component as Mount
 import SlamData.FileSystem.Dialog.Rename.Component as Rename
-import SlamData.FileSystem.Dialog.Share.Component as Share
 import SlamData.FileSystem.Resource (Resource, Mount)
 import SlamData.License as License
 import SlamData.Monad (Slam)
@@ -50,7 +49,6 @@ import Utils.DOM as DOM
 
 data Dialog
   = Error String
-  | Share String
   | Rename Resource
   | Mount Mount.Input
   | Download Resource (Array RequestHeader)
@@ -69,13 +67,12 @@ data Query a
 
 type ChildQuery
   = Error.Query
-  ⨁ Share.Query
   ⨁ Rename.Query
   ⨁ Download.Query
   ⨁ Mount.Query
   ⨁ Const Void
 
-type ChildSlot = Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Void
+type ChildSlot = Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Void
 
 component ∷ H.Component HH.HTML Query Unit Message Slam
 component =
@@ -99,14 +96,12 @@ render state =
   dialog = case _ of
     Error str →
       HH.slot' CP.cp1 unit Error.component str (HE.input_ RaiseDismiss)
-    Share str →
-      HH.slot' CP.cp2 unit Share.component str (HE.input HandleChild)
     Rename res →
-      HH.slot' CP.cp3 unit Rename.component res (HE.input HandleChild)
+      HH.slot' CP.cp2 unit Rename.component res (HE.input HandleChild)
     Download resource headers →
-      HH.slot' CP.cp4 unit Download.component { resource, headers } (HE.input HandleChild)
+      HH.slot' CP.cp3 unit Download.component { resource, headers } (HE.input HandleChild)
     Mount input →
-      HH.slot' CP.cp5 unit Mount.component input (HE.input HandleChild)
+      HH.slot' CP.cp4 unit Mount.component input (HE.input HandleChild)
     LicenseProblem (License.Expired licenseType) →
       case licenseType of
         QAT.Advanced → advancedLicenseExpired
@@ -117,10 +112,10 @@ render state =
 eval ∷ Query ~> H.ParentDSL State Query ChildQuery ChildSlot Message Slam
 eval = case _ of
   QueryRename q next → do
-    _ ← H.query' CP.cp3 unit q
+    _ ← H.query' CP.cp2 unit q
     pure next
   SaveMount reply → do
-    map (reply ∘ join) $ H.query' CP.cp5 unit $ H.request Mount.Save
+    map (reply ∘ join) $ H.query' CP.cp4 unit $ H.request Mount.Save
   Show d next → do
     H.put (Just d)
     pure next
@@ -138,5 +133,5 @@ eval = case _ of
       _ → H.raise m
     pure next
   AddDirsToRename dirs next → do
-    _ ← H.query' CP.cp3 unit $ H.action $ Rename.AddDirs dirs
+    _ ← H.query' CP.cp2 unit $ H.action $ Rename.AddDirs dirs
     pure next

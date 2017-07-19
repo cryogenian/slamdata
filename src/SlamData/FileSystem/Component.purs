@@ -391,12 +391,12 @@ eval = case _ of
     remove mount
     H.liftEff Browser.reload
     pure next
-  HandleNewDialog (NewDialog.Confirm (DialogT.Delete res)) next → do
+  HandleNewDialog (NewDialog.Confirm (DialogT.DoDelete res)) next → do
     remove res
-    H.modify (_ { dialog = Nothing})
+    hideDialogNew
     pure next
   HandleNewDialog NewDialog.Dismiss next → do
-    H.modify (_ { dialog = Nothing})
+    hideDialogNew
     pure next
   HandleHeader (Header.GlobalMenuMessage GlobalMenu.OpenAdminUI) next → do
     _ ← H.query' CS.cpAdminUI unit (H.action AdminUI.Types.Open)
@@ -474,15 +474,17 @@ handleItemMessage = case _ of
     flip getDirectories rootDir \x →
       void $ H.query' CS.cpDialog unit $ H.action $ Dialog.AddDirsToRename x
   Item.Remove res →
-    H.modify (_ { dialog = Just (DialogT.Delete res) })
+    showDialogNew (DialogT.Delete res)
   Item.Share res → do
     path ← H.gets _.path
     loc ← map (_ ⊕ "/") $ H.liftEff locationString
-    for_ (preview R._filePath res) \fp → do
-      createWorkspace path \mkUrl →
-        showDialog $ Dialog.Share $ append loc $ mkUrl $ Exploring fp
+    for_ (preview R._filePath res) \fp →
+      createWorkspace path \mkUrl → do
+        let url = append loc $ mkUrl $ Exploring fp
+        showDialogNew (DialogT.Share (R.resourceName res) url)
     for_ (preview R._Workspace res) \wp → do
-      showDialog (Dialog.Share $ append loc $ mkWorkspaceURL wp (Load ReadOnly))
+      let url = append loc $ mkWorkspaceURL wp (Load ReadOnly)
+      showDialogNew (DialogT.Share (R.resourceName res) url)
   Item.Download res →
     download res
 
@@ -708,8 +710,13 @@ showDialog ∷ Dialog.Dialog → DSL Unit
 showDialog = void ∘ H.query' CS.cpDialog unit ∘ H.action ∘ Dialog.Show
 
 hideDialog ∷ DSL Unit
-hideDialog =
-  void $ H.query' CS.cpDialog unit $ H.action Dialog.RaiseDismiss
+hideDialog = void $ H.query' CS.cpDialog unit $ H.action Dialog.RaiseDismiss
+
+showDialogNew ∷ DialogT.Definition → DSL Unit
+showDialogNew d = H.modify (_ { dialog = Just d })
+
+hideDialogNew ∷ DSL Unit
+hideDialogNew = H.modify (_ { dialog = Nothing })
 
 queryHeaderGripper ∷ ∀ a. Gripper.Query a → DSL (Maybe a)
 queryHeaderGripper =

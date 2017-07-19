@@ -50,7 +50,9 @@ type DialogSpec o =
 
 type InnerComponent o = Proxy.ProxyComponent (Const Void) Unit (InnerMessage o) Slam
 
-data InnerMessage o = Change (Buttons o)
+data InnerMessage o
+  = SelfDismiss
+  | Change (Buttons o)
 
 type Button o =
   { label ∷ String
@@ -155,8 +157,12 @@ eval mkInner = case _ of
   ChangeDialog i next → do
     H.put $ { pending: false, dialog: _ } ∘ mkInner <$> i
     pure next
-  HandleMessage (Change buttons) next → do
-    H.modify (map (_ { dialog { buttons = buttons } }))
+  HandleMessage msg next → do
+    case msg of
+      SelfDismiss →
+        H.raise Dismiss
+      Change buttons →
+        H.modify (map (_ { dialog { buttons = buttons } }))
     pure next
   Raise msg next → do
     H.modify (map (_ { pending = true }))

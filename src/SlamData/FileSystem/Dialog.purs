@@ -18,15 +18,22 @@ module SlamData.FileSystem.Dialog where
 
 import SlamData.Prelude
 
+import Data.String as Str
 import Halogen.HTML as HH
-import SlamData.Dialog.Component (DialogSpec)
+import Halogen.Component.Proxy as Proxy
+import SlamData.Dialog.Component as Dialog
 import SlamData.Dialog.Message.Component as Message
 import SlamData.FileSystem.Resource as R
+import SlamData.FileSystem.Dialog.Share.Component as Share
+import SlamData.Render.ClassName as CN
 
-data Definition = Delete R.Resource
-type Action = Definition
+data Definition
+  = Delete R.Resource
+  | Share String String
 
-dialog ∷ Definition → DialogSpec Action
+data Action = DoDelete R.Resource
+
+dialog ∷ Definition → Dialog.DialogSpec Action
 dialog = case _ of
   Delete res →
     Message.mkSpec
@@ -38,5 +45,17 @@ dialog = case _ of
           , HH.text " ?"
           ]
       , class_: HH.ClassName "sd-delete-dialog"
-      , action: Right ("Delete" × Delete res)
+      , action: Right ("Delete" × DoDelete res)
       }
+  Share name url →
+    { title: "Share " <> fromMaybe name (Str.stripSuffix (Str.Pattern ".slam") name)
+    , class_: HH.ClassName "sd-share-dialog"
+    , dialog: Proxy.proxy (Share.component url)
+    , buttons:
+        pure
+          { label: "Dismiss"
+          , action: Dialog.Dismiss
+          , class_: CN.btnDefault
+          , disabled: false
+          }
+    }
