@@ -20,10 +20,9 @@ import SlamData.Prelude
 
 import Data.Lens (Lens', lens)
 import Data.Path.Pathy (rootDir)
-
 import SlamData.Common.Sort (Sort(..))
+import SlamData.FileSystem.Dialog as DialogT
 import SlamData.FileSystem.Routing.Salt (Salt(..))
-
 import Utils.Path (DirPath)
 
 type State =
@@ -36,6 +35,7 @@ type State =
   , isUnconfigured :: Boolean
   , showHiddenFiles :: Boolean
   , presentIntroVideo :: Boolean
+  , dialog :: Maybe DialogT.Definition
   }
 
 _version :: Lens' State (Maybe String)
@@ -76,4 +76,5 @@ initialState =
   , isUnconfigured: false
   , showHiddenFiles: false
   , presentIntroVideo: false
+  , dialog: Nothing
   }

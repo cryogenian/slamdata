@@ -19,8 +19,9 @@ module SlamData.FileSystem.Component.ChildSlot where
 import SlamData.Prelude
 
 import Halogen.Component.ChildPath as CP
-
 import SlamData.AdminUI.Types as AdminUI
+import SlamData.Dialog.Component as NewDialog
+import SlamData.FileSystem.Dialog as DialogT
 import SlamData.FileSystem.Dialog.Component as Dialog
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Search.Component as Search
@@ -34,10 +35,12 @@ type ChildQuery
   ⨁ Header.Query
   ⨁ Notify.Query
   ⨁ AdminUI.Query
+  ⨁ NewDialog.Query DialogT.Definition DialogT.Action
   ⨁ Const Void
 
 type ChildSlot
   = Unit
+  ⊹ Unit
   ⊹ Unit
   ⊹ Unit
   ⊹ Unit
@@ -80,3 +83,9 @@ cpAdminUI
       AdminUI.Query ChildQuery
       Unit ChildSlot
 cpAdminUI = CP.cp6
+
+cpNewDialog
+  ∷ CP.ChildPath
+      (NewDialog.Query DialogT.Definition DialogT.Action) ChildQuery
+      Unit ChildSlot
+cpNewDialog = CP.cp7

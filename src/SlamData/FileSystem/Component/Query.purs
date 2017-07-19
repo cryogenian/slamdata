@@ -22,6 +22,8 @@ import DOM.Event.Types (Event, MouseEvent)
 import DOM.HTML.Types (HTMLElement)
 import SlamData.AdminUI.Types as AdminUI
 import SlamData.Common.Sort (Sort)
+import SlamData.Dialog.Component as NewDialog
+import SlamData.FileSystem.Dialog as DialogT
 import SlamData.FileSystem.Dialog.Component.Message as Dialog
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Listing.Item (Item)
@@ -75,6 +77,7 @@ data Query a
   | HandleLicenseProblem LicenseProblem a
   | HandleHeader Header.Message a
   | HandleAdminUI AdminUI.Message a
+  | HandleNewDialog (NewDialog.Message DialogT.Action) a
   | SetLoading Boolean a
   | SetIsSearching Boolean a
   | AddListings (Array Item) a

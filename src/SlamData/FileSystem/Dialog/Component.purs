@@ -38,7 +38,6 @@ import SlamData.Dialog.License (advancedLicenseExpired, advancedTrialLicenseExpi
 import SlamData.FileSystem.Dialog.Component.Message (Message(..))
 import SlamData.FileSystem.Dialog.Download.Component as Download
 import SlamData.FileSystem.Dialog.Mount.Component as Mount
-import SlamData.FileSystem.Dialog.Remove.Component as Remove
 import SlamData.FileSystem.Dialog.Rename.Component as Rename
 import SlamData.FileSystem.Dialog.Share.Component as Share
 import SlamData.FileSystem.Resource (Resource, Mount)
@@ -52,7 +51,6 @@ import Utils.DOM as DOM
 data Dialog
   = Error String
   | Share String
-  | Remove Resource
   | Rename Resource
   | Mount Mount.Input
   | Download Resource (Array RequestHeader)
@@ -75,10 +73,9 @@ type ChildQuery
   ⨁ Rename.Query
   ⨁ Download.Query
   ⨁ Mount.Query
-  ⨁ Remove.Query
   ⨁ Const Void
 
-type ChildSlot = Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Void
+type ChildSlot = Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Void
 
 component ∷ H.Component HH.HTML Query Unit Message Slam
 component =
@@ -110,8 +107,6 @@ render state =
       HH.slot' CP.cp4 unit Download.component { resource, headers } (HE.input HandleChild)
     Mount input →
       HH.slot' CP.cp5 unit Mount.component input (HE.input HandleChild)
-    Remove res →
-      HH.slot' CP.cp6 unit Remove.component res (HE.input HandleChild)
     LicenseProblem (License.Expired licenseType) →
       case licenseType of
         QAT.Advanced → advancedLicenseExpired

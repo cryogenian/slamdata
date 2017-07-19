@@ -23,6 +23,7 @@ module SlamData.FileSystem.Component
 
 import SlamData.Prelude
 
+import CSS as CSS
 import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Fork (fork)
 import Control.Monad.Rec.Class (tailRecM, Step(Done, Loop))
@@ -30,7 +31,7 @@ import Control.UI.Browser (setLocation, locationString, clearValue)
 import Control.UI.Browser as Browser
 import Control.UI.Browser.Event as Be
 import Control.UI.File as Cf
-import CSS as CSS
+import DOM.Event.Event as DEE
 import Data.Argonaut as J
 import Data.Array as Array
 import Data.Coyoneda (liftCoyoneda)
@@ -42,7 +43,6 @@ import Data.Path.Pathy (rootDir, (</>), dir, file, parentDir, printPath)
 import Data.String as S
 import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
-import DOM.Event.Event as DEE
 import Halogen as H
 import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML as HH
@@ -58,25 +58,27 @@ import SlamData.AdminUI.Component as AdminUI
 import SlamData.AdminUI.Types as AdminUI.Types
 import SlamData.Common.Sort (notSort)
 import SlamData.Config as Config
+import SlamData.Dialog.Component as NewDialog
 import SlamData.Dialog.Render as RenderDialog
 import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
+import SlamData.FileSystem.Component.CSS as FileSystemClassNames
 import SlamData.FileSystem.Component.ChildSlot (ChildQuery, ChildSlot)
 import SlamData.FileSystem.Component.ChildSlot as CS
-import SlamData.FileSystem.Component.CSS as FileSystemClassNames
 import SlamData.FileSystem.Component.Query (Query(..))
 import SlamData.FileSystem.Component.Render (sorting, toolbar)
 import SlamData.FileSystem.Component.State (State, initialState)
 import SlamData.FileSystem.Component.State as State
+import SlamData.FileSystem.Dialog as DialogT
 import SlamData.FileSystem.Dialog.Component as Dialog
 import SlamData.FileSystem.Dialog.Component.Message as DialogMessage
 import SlamData.FileSystem.Dialog.Mount.Component as Mount
 import SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State as Couchbase
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component.State as MarkLogic
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MongoDB
+import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
 import SlamData.FileSystem.Dialog.Mount.SparkFTP.Component.State as SparkFTP
 import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State as SparkHDFS
 import SlamData.FileSystem.Dialog.Mount.SparkLocal.Component.State as SparkLocal
-import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Listing.Item (Item(..), itemResource, sortItem)
 import SlamData.FileSystem.Listing.Item.Component as Item
@@ -140,6 +142,7 @@ render state@{ version, sort, salt, path } =
           , HH.slot' CS.cpListing unit Listing.component unit $ HE.input HandleListing
           ]
       , HH.slot' CS.cpDialog unit Dialog.component unit $ HE.input HandleDialog
+      , HH.slot' CS.cpNewDialog unit (NewDialog.component DialogT.dialog) state.dialog $ HE.input HandleNewDialog
       , HH.slot' CS.cpNotify unit (NC.component NC.Hidden) unit
           $ HE.input HandleNotifications
       , HH.slot' CS.cpAdminUI unit AdminUI.component unit $ HE.input HandleAdminUI
@@ -388,6 +391,13 @@ eval = case _ of
     remove mount
     H.liftEff Browser.reload
     pure next
+  HandleNewDialog (NewDialog.Confirm (DialogT.Delete res)) next → do
+    remove res
+    H.modify (_ { dialog = Nothing})
+    pure next
+  HandleNewDialog NewDialog.Dismiss next → do
+    H.modify (_ { dialog = Nothing})
+    pure next
   HandleHeader (Header.GlobalMenuMessage GlobalMenu.OpenAdminUI) next → do
     _ ← H.query' CS.cpAdminUI unit (H.action AdminUI.Types.Open)
     pure next
@@ -464,7 +474,7 @@ handleItemMessage = case _ of
     flip getDirectories rootDir \x →
       void $ H.query' CS.cpDialog unit $ H.action $ Dialog.AddDirsToRename x
   Item.Remove res →
-    showDialog $ Dialog.Remove res
+    H.modify (_ { dialog = Just (DialogT.Delete res) })
   Item.Share res → do
     path ← H.gets _.path
     loc ← map (_ ⊕ "/") $ H.liftEff locationString
