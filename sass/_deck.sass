@@ -76,6 +76,11 @@
       display: block
       background: transparent
 
+      > .sd-deck-frame-controls
+        // room for the menu
+        right: $grid-size
+        width: calc(100% - #{$grid-size})
+
     > .sd-deck
       top: 0
       bottom: 0
@@ -84,11 +89,99 @@
 
     > .sd-deck > .sd-card-slider,
     > .sd-deck > .sd-card-sizer
-      $g: $grid-size * 2
       top: $grid-size
       left: $grid-size
       right: $grid-size
-      height: calc(100% - #{$g})
+      height: calc(100% - #{$grid-size * 2})
+
+
+// Chrome at the root is part of the normal dimensions, so the card is
+// offset, but in nested decks the chrome is positioned outside the normal
+// dimensions and the card should be full size
+.sd-deck-level-2
+  .sd-card
+    height: 100%
+
+
+.sd-deck-frame-controls
+  display: flex
+  flex-flow: row-reverse nowrap
+  justify-content: space-between
+  align-items: center
+  position: absolute
+  top: 0
+  left: 0
+  right: 0
+  width: 100%
+  height: $grid-size
+  padding: 0 $padding-base-vertical
+  background-color: $frame-controls-bg
+  color: $frame-controls-color
+
+  &.sd-grab-deck
+    cursor: grab
+
+    &:active
+      cursor: grabbing
+
+  > *
+    position: relative
+
+    &:not(:first-of-type)
+      padding-left: $padding-base-vertical
+
+    &:not(:last-of-type)
+      padding-right: $padding-base-vertical
+
+
+  .sd-deck-frame-actions
+    display: flex
+    flex: 0 0 auto
+    order: -1
+    pointer-events: none
+
+    > button
+      height: 100%
+      width: 1em
+      margin: 0
+      padding: 0
+      border: none
+      background: none
+      font-size: 1.5rem
+      pointer-events: all
+
+      // same as .indicator dots
+      &:not(:first-of-type)
+        margin-left: 0.4rem
+
+      &:not(:last-of-type)
+        margin-right: 0.4rem
+
+    .sd-zoom-deck-btn
+      font-size: 1.6rem
+
+      > .sd-icon
+        position: relative
+        top: -0.1rem
+
+      > .sd-icon--gripper-arrow-left
+        top: -0.3rem
+        font-size: 1.3rem
+
+  .sd-deck-name
+    flex: 0 1 auto
+    overflow: hidden
+    line-height: 1.8
+    font-size: 1.1rem
+    text-align: right
+    text-overflow: ellipsis
+    white-space: nowrap
+
+    &:last-child
+      padding-right: 0
+
+    &:empty
+      display: none
 
 
 .sd-deck
@@ -111,6 +204,7 @@
   height: 100%
   left: 0
   right: 0
+
 
 .sd-card
   $g: $grid-size * 2
@@ -137,16 +231,20 @@
     position: relative
     width: $grid-size
     height: 100%
-    padding-left: 0.3rem
-    padding-right: 0.3rem
+    padding: 0
     border: none
     opacity: 0
-    color: $gripper-dots-color
+    color: $gripper-color
+    font-size: 2.4rem
     pointer-events: none
+    cursor: grab
     transition: color 200ms ease-out
 
     &:hover
-      color: $gripper-dots-hover-color
+      color: $gripper-hover-color
+
+    &:active
+      cursor: grabbing
 
 .sd-focused > .sd-deck > .sd-card-slider > .sd-card
   > .sd-card-gripper,
@@ -154,55 +252,6 @@
     transition: 0.2s ease-out opacity
     opacity: 1
     pointer-events: auto
-
-
-.sd-grab-deck
-  appearance: none
-  position: absolute
-  top: 0
-  left: 0
-  right: 0
-  height: $grid-size
-  width: $grid-size * 4
-  margin: 0 auto
-  border: none
-  background: none
-  color: $gripper-dots-color
-
-  &:hover
-    color: $gripper-dots-hover-color
-
-
-.sd-flip-deck-btn, .sd-zoom-deck-btn
-  height: $grid-size
-  width: $grid-size
-  margin: 0
-  padding: 0
-  border: none
-  background-color: transparent
-  font-size: 1.5rem
-
-  .sd-icon
-    position: relative
-
-
-.sd-zoom-deck-btn
-  float: left
-
-
-.sd-flip-deck-btn
-  float: right
-
-
-.sd-deck-name
-  float: left
-  line-height: 1.5
-  font-size: 1.1rem
-  margin-left: 0.125rem
-  width: calc(50% - (0.125rem - (1.5rem * 3)))
-  overflow: hidden
-  white-space: nowrap
-  text-overflow: ellipsis
 
 
 .sd-deck-card

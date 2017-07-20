@@ -189,10 +189,9 @@ lineOptions axes r lineData = do
       , r.size <#> \dim → { label: D.jcursorLabel dim, value: CCT.formatSymbolSize }
       , r.series <#> \dim → { label: D.jcursorLabel dim, value: _.seriesName }
       ]
-  E.tooltip do
+  CCT.tooltip do
     E.triggerItem
     E.formatterItem (CCT.tableFormatter (pure ∘ _.color) (cols <> opts) ∘ pure)
-    E.textStyle $ E.fontSize 12
 
   E.colors colors
   E.grid BCP.cartesian

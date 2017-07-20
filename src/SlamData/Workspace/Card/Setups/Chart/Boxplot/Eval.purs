@@ -222,11 +222,8 @@ buildBoxplotData =
 
 boxplotOptions ∷ ModelR → Axes → Array OnOneBoxplot → DSL OptionI
 boxplotOptions r axes boxplotData = do
-  E.tooltip do
+  CCT.tooltip do
     E.triggerItem
-    E.textStyle do
-      E.fontFamily "Ubuntu, sans"
-      E.fontSize 12
 
   rectangularTitles boxplotData
     $ maybe "" D.jcursorLabel r.parallel

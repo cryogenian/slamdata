@@ -186,7 +186,7 @@ renderIntroVideo =
 eval ∷ Query ~> DSL
 eval = case _ of
   Init next → do
-    w ← H.lift Wiring.expose
+    w ← Wiring.expose
     dismissedIntroVideoBefore >>= if _
       then
         void $ H.query' CS.cpNotify unit $ H.action $ NC.UpdateRenderMode NC.Notifications

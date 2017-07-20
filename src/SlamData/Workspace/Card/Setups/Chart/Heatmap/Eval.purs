@@ -134,11 +134,8 @@ buildData r =
 
 buildOptions ∷ Ax.Axes → ModelR → Array HeatmapSeries → DSL OptionI
 buildOptions axes r heatmapData = do
-  E.tooltip do
+  CCT.tooltip do
     E.triggerItem
-    E.textStyle do
-      E.fontFamily "Ubuntu, sans"
-      E.fontSize 12
     E.axisPointer do
       E.crossAxisPointer
       E.crossStyle do

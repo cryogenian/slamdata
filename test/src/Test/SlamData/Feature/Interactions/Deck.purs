@@ -4,20 +4,15 @@ import SlamData.Prelude
 
 import Data.Argonaut (encodeJson)
 import Data.StrMap as SM
-
-import Global (encodeURIComponent)
-
 import Data.Time.Duration (Milliseconds(..))
-
+import Global (encodeURIComponent)
 import Selenium.Monad (get, getCurrentUrl, refresh)
-
 import Test.Feature as Feature
+import Test.Feature.Log (annotate)
 import Test.SlamData.Feature.Monad (SlamFeature, waitTime)
 import Test.SlamData.Feature.XPaths as XPaths
-
-import XPath as XPath
-
 import Utils (prettyJson)
+import XPath as XPath
 
 accessNextCardInLastDeck ∷ SlamFeature Unit
 accessNextCardInLastDeck =
@@ -27,36 +22,46 @@ accessNextCardInLastDeck =
 
 accessNextCardInFirstDeck ∷ SlamFeature Unit
 accessNextCardInFirstDeck =
-  Feature.click $ XPath.anywhere $ XPaths.nextCardGripper
+  annotate "Navigated to next card in deck"
+    $ Feature.click $ XPath.anywhere $ XPaths.nextCardGripper
 
 accessPreviousCardInLastDeck ∷ SlamFeature Unit
 accessPreviousCardInLastDeck =
-  Feature.dragAndDrop
-    (XPath.last $ XPath.anywhere $ XPaths.enabledPreviousCardGripper)
-    (XPath.last $ XPath.anywhere $ XPaths.nextCardGripper)
+  annotate "Navigated to previous card in deck"
+    $ Feature.dragAndDrop
+        (XPath.last $ XPath.anywhere $ XPaths.enabledPreviousCardGripper)
+        (XPath.last $ XPath.anywhere $ XPaths.nextCardGripper)
 
 accessPublishingUrl ∷ SlamFeature Unit
-accessPublishingUrl = Feature.accessUrlFromFieldValue $ XPath.anywhere XPaths.publishingUrl
+accessPublishingUrl =
+  annotate "Accessed Publish URL"
+    $ Feature.accessUrlFromFieldValue $ XPath.anywhere XPaths.publishingUrl
 
 accessWorkspaceWithModifiedURL ∷ (String → String) → SlamFeature Unit
 accessWorkspaceWithModifiedURL modifier =
-  getCurrentUrl >>= modifier >>> get
+  annotate "Accessed Workspace with modified URL"
+    $ getCurrentUrl >>= modifier >>> get
 
 confirmDeckAction ∷ SlamFeature Unit
 confirmDeckAction =
-  Feature.click $ XPath.anywhere $ XPath.anyWithExactText "Confirm"
+  annotate "Confirmed deck action"
+    $ Feature.click $ XPath.anywhere $ XPath.anyWithExactText "Confirm"
 
 filterDeckAndCardActions ∷ String → SlamFeature Unit
-filterDeckAndCardActions =
-  Feature.provideFieldValue (XPath.anywhere $ XPath.anyWithExactAriaLabel "Filter deck and card actions")
+filterDeckAndCardActions value =
+  annotate ("filtered flipside menu with " <> value)
+    $ (Feature.provideFieldValue
+       (XPath.anywhere $ XPath.anyWithExactAriaLabel "Filter deck and card actions")) value
 
 flipDeck ∷ SlamFeature Unit
 flipDeck =
-  Feature.click $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Flip deck"
+  annotate "Clicked on Flip deck icon"
+    $ Feature.click $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Flip deck"
 
 insertBuildBarChartCard ∷ SlamFeature Unit
 insertBuildBarChartCard =
-  Feature.click $ XPaths.followingLastPreviousCardGripper XPaths.insertBuildBarChartCard
+  annotate "Inserted Build Barchart card"
+    $ Feature.click $ XPaths.followingLastPreviousCardGripper XPaths.insertBuildBarChartCard
 
 insertCacheCardInLastDeck ∷ SlamFeature Unit
 insertCacheCardInLastDeck =
@@ -64,19 +69,23 @@ insertCacheCardInLastDeck =
 
 insertChartCardInLastDeck ∷ SlamFeature Unit
 insertChartCardInLastDeck =
-  Feature.click $ XPaths.followingLastPreviousCardGripper XPaths.insertChartCard
+  annotate "Inserted chart card"
+    $ Feature.click $ XPaths.followingLastPreviousCardGripper XPaths.insertChartCard
 
 insertChartOptionsCardInLastDeck ∷ SlamFeature Unit
 insertChartOptionsCardInLastDeck =
-  Feature.click $ XPaths.followingLastPreviousCardGripper XPaths.insertChartOptionsCard
+  annotate "Inserted Chart Options card"
+    $ Feature.click $ XPaths.followingLastPreviousCardGripper XPaths.insertChartOptionsCard
 
 insertDisplayMarkdownCardInLastDeck ∷ SlamFeature Unit
 insertDisplayMarkdownCardInLastDeck =
-  Feature.click $ XPath.anywhere $ XPaths.insertDisplayMarkdownCard
+  annotate "Inserted Display Markdown card"
+    $ Feature.click $ XPath.anywhere $ XPaths.insertDisplayMarkdownCard
 
 insertMdCardInFirstDeck ∷ SlamFeature Unit
 insertMdCardInFirstDeck =
-  Feature.click $ XPath.anywhere $ XPaths.insertMdCard
+  annotate "Inserted Setup Markdown card"
+    $ Feature.click $ XPath.anywhere $ XPaths.insertMdCard
 
 insertMdCardInLastDeck ∷ SlamFeature Unit
 insertMdCardInLastDeck =
@@ -84,23 +93,28 @@ insertMdCardInLastDeck =
 
 insertOpenCardInLastDeck ∷ SlamFeature Unit
 insertOpenCardInLastDeck =
-  Feature.click $ XPath.anywhere $ XPaths.insertOpenCard
+  annotate "Inserted Open card as first card in deck"
+    $ Feature.click $ XPath.anywhere $ XPaths.insertOpenCard
 
 insertPivotCard ∷ SlamFeature Unit
 insertPivotCard =
-  Feature.click $ XPaths.followingLastPreviousCardGripper XPaths.insertPivotCard
+  annotate "Inserted pivot card"
+    $ Feature.click $ XPaths.followingLastPreviousCardGripper XPaths.insertPivotCard
 
 insertQueryCardInLastDeck ∷ SlamFeature Unit
 insertQueryCardInLastDeck =
-  Feature.click $ XPaths.followingLastPreviousCardGripper XPaths.insertQueryCard
+  annotate "Inserted Query card as last card"
+    $ Feature.click $ XPaths.followingLastPreviousCardGripper XPaths.insertQueryCard
 
 insertQueryCardInFirstDeck ∷ SlamFeature Unit
 insertQueryCardInFirstDeck =
-  Feature.click $ XPath.anywhere $ XPaths.insertQueryCard
+  annotate "Inserted Query Card as first card"
+    $ Feature.click $ XPath.anywhere $ XPaths.insertQueryCard
 
 insertSearchCardInLastDeck ∷ SlamFeature Unit
 insertSearchCardInLastDeck =
-  Feature.click $ XPaths.followingLastPreviousCardGripper XPaths.insertSearchCard
+  annotate "Inserted Search card"
+    $ Feature.click $ XPaths.followingLastPreviousCardGripper XPaths.insertSearchCard
 
 insertTableCardInLastDeck ∷ SlamFeature Unit
 insertTableCardInLastDeck =
@@ -108,11 +122,13 @@ insertTableCardInLastDeck =
 
 insertTroubleshootCardInLastDeck ∷ SlamFeature Unit
 insertTroubleshootCardInLastDeck =
-  Feature.click $ XPaths.followingLastPreviousCardGripper XPaths.insertTroubleshootCard
+  annotate "Inserted Troubleshoot card"
+    $ Feature.click $ XPaths.followingLastPreviousCardGripper XPaths.insertTroubleshootCard
 
 insertVariablesCardInFirstDeck ∷ SlamFeature Unit
 insertVariablesCardInFirstDeck =
-  Feature.click $ XPath.anywhere $ XPaths.insertVariablesCard
+  annotate "Inserted Variable card"
+    $ Feature.click $ XPath.anywhere $ XPaths.insertVariablesCard
 
 insertVariablesCardInLastDeck ∷ SlamFeature Unit
 insertVariablesCardInLastDeck =
@@ -127,21 +143,24 @@ nameDeck name = do
 
 publishDeck ∷ SlamFeature Unit
 publishDeck =
-  Feature.click $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Publish deck"
+  annotate "Clicked Publish Deck"
+    $ Feature.click $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Publish deck"
 
 reopenCurrentWorkspace ∷ SlamFeature Unit
 reopenCurrentWorkspace = waitTime (Milliseconds 2000.0) *> refresh
 
 setVarMapForDeck ∷ String → SM.StrMap String → SlamFeature Unit
-setVarMapForDeck deckName vm = accessWorkspaceWithModifiedURL \urlStr →
-  let
-    varsValue =
-      encodeURIComponent
-      $ prettyJson
-      $ encodeJson
-      $ SM.singleton deckName vm
-  in
-   urlStr ⊕ "/?vars=" ⊕ varsValue
+setVarMapForDeck deckName vm =
+  annotate ("Set Variable map for the deck " <> deckName)
+    $ accessWorkspaceWithModifiedURL \urlStr →
+      let
+        varsValue =
+          encodeURIComponent
+          $ prettyJson
+          $ encodeJson
+          $ SM.singleton deckName vm
+      in
+      urlStr ⊕ "/?vars=" ⊕ varsValue
 
 shareDeck ∷ SlamFeature Unit
 shareDeck =

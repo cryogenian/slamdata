@@ -34,6 +34,7 @@ import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Setups.Auxiliary.Area as Area
 import SlamData.Workspace.Card.Setups.Auxiliary.Bar as Bar
 import SlamData.Workspace.Card.Setups.Auxiliary.Funnel as Funnel
+import SlamData.Workspace.Card.Setups.Auxiliary.Gauge as Gauge
 import SlamData.Workspace.Card.Setups.Auxiliary.Graph as Graph
 import SlamData.Workspace.Card.Setups.Auxiliary.Heatmap as Heatmap
 import SlamData.Workspace.Card.Setups.Auxiliary.Line as Line
@@ -49,6 +50,7 @@ type State = Variant
   ( area ∷ Area.State
   , bar ∷ Bar.State
   , funnel ∷ Funnel.State
+  , gauge ∷ Gauge.State
   , graph ∷ Graph.State
   , heatmap ∷ Heatmap.State
   , line ∷ Line.State
@@ -64,6 +66,7 @@ eq_ = V.case_
   # V.on CT._area (\r → V.on CT._area (Area.eq_ r) ff)
   # V.on CT._bar (\r → V.on CT._bar (Bar.eq_ r) ff)
   # V.on CT._funnel (\r → V.on CT._funnel (Funnel.eq_ r) ff)
+  # V.on CT._gauge (\r → V.on CT._gauge (Gauge.eq_ r) ff)
   # V.on CT._graph (\r → V.on CT._graph (Graph.eq_ r) ff)
   # V.on CT._heatmap (\r → V.on CT._heatmap (Heatmap.eq_ r) ff)
   # V.on CT._line (\r → V.on CT._line (Line.eq_ r) ff)
@@ -78,6 +81,7 @@ encode = V.case_
   # V.on CT._area Area.encode
   # V.on CT._bar Bar.encode
   # V.on CT._funnel Funnel.encode
+  # V.on CT._gauge Gauge.encode
   # V.on CT._graph Graph.encode
   # V.on CT._heatmap Heatmap.encode
   # V.on CT._line Line.encode
@@ -92,6 +96,7 @@ decode j =
   (map (V.inj CT._area) $ Area.decode j)
   <|> (map (V.inj CT._bar) $ Bar.decode j)
   <|> (map (V.inj CT._funnel) $ Funnel.decode j)
+  <|> (map (V.inj CT._gauge) $ Gauge.decode j)
   <|> (map (V.inj CT._graph) $ Graph.decode j)
   <|> (map (V.inj CT._heatmap) $ Heatmap.decode j)
   <|> (map (V.inj CT._line) $ Line.decode j)
@@ -119,6 +124,7 @@ type Query = VariantF
   ( area ∷ FProxy Area.Query
   , bar ∷ FProxy Bar.Query
   , funnel ∷ FProxy Funnel.Query
+  , gauge ∷ FProxy Guage.Query
   , graph ∷ FProxy Graph.Query
   , heatmap ∷ FProxy Heatmap.Query
   , line ∷ FProxy Line.Query
@@ -152,6 +158,9 @@ bar = HCP.proxy $ injAux CT._bar Bar.component
 funnel ∷ ∀ m. UnifiedAux m
 funnel = HCP.proxy $ injAux CT._funnel Funnel.component
 
+gauge ∷ ∀ m. UnifiedAux m
+gauge = HCP.proxy $ injAux CT._gauge Gauge.component
+
 graph ∷ ∀ m. UnifiedAux m
 graph = HCP.proxy $ injAux CT._graph Graph.component
 
@@ -181,6 +190,7 @@ cardTypeAux = V.default empty
   # V.on CT._area (const $ pure area)
   # V.on CT._bar (const $ pure bar)
   # V.on CT._funnel (const $ pure funnel)
+  # V.on CT._gauge (const $ pure gauge)
   # V.on CT._graph (const $ pure graph)
   # V.on CT._heatmap (const $ pure heatmap)
   # V.on CT._line (const $ pure line)

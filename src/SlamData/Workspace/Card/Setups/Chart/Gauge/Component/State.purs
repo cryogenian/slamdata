@@ -17,9 +17,13 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Setups.Chart.Gauge.Component.State where
 
-import SlamData.Prelude
-
-type State = Unit
+type State =
+  { minValue ∷ Number
+  , maxValue ∷ Number
+  }
 
 initialState ∷ State
-initialState = unit
+initialState =
+  { minValue: 0.0
+  , maxValue: 100.0
+  }

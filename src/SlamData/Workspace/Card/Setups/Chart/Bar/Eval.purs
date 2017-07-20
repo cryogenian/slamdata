@@ -141,9 +141,8 @@ barOptions axes r barData = do
       , seriesFn (fromMaybe 0 $ r.stack $> 1) <$> r.parallel
       ]
 
-  E.tooltip do
+  CCT.tooltip do
     E.formatterItem (CCT.tableFormatter (pure ∘ _.color) (cols <> opts) ∘ pure)
-    E.textStyle $ E.fontSize 12
     E.triggerItem
 
   E.colors colors

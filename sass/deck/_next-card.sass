@@ -64,7 +64,7 @@
 
         &:not(.sd-button-warning):not(:disabled)
           background: $action-list-active-bg
-          color: $action-list-btn-color
+          color: $action-list-active-color
 
         &:disabled
           background: $action-list-disabled-bg
@@ -106,9 +106,6 @@ form.sd-action-filter
     border: 0.1rem solid $input-border
     box-shadow: inset 0.2rem 0.3rem 0.6rem -0.3rem $shade-tint
 
-    //&:focus
-    //  border-color: $input-border-focus
-
   button
     position: absolute
     z-index: 2
@@ -147,10 +144,12 @@ form.sd-action-filter
 
 .sd-action-select
   ul li button
-    background: $action-list-active-bg
+    background-color: $action-list-active-bg
+    color: $action-list-active-color
+    1
 
     &:not(.sd-button-warning):not(:disabled)
-      background: darken($action-list-active-bg, 20%)
+      background-color: darken($action-list-active-bg, 20%)
 
   .sd-picker-dialog-toolbar
     border-top-color: transparent

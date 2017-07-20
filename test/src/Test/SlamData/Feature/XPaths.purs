@@ -347,6 +347,10 @@ embedDeckAction ∷ String
 embedDeckAction =
   XPath.anyWithExactAriaLabel "Embed deck"
 
+addColumnAction ∷ String
+addColumnAction =
+  XPath.anyWithExactAriaLabel "Add column"
+
 shareDeckAction ∷ String
 shareDeckAction =
   XPath.anyWithExactAriaLabel "Share deck"

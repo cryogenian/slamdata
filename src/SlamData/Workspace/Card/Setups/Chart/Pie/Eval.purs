@@ -148,9 +148,8 @@ buildOptions r pieData = do
       [ r.donut <#> \dim → { label: D.jcursorLabel dim, value: _.seriesName }
       ]
 
-  E.tooltip do
+  CCT.tooltip do
     E.formatterItem (CCT.tableFormatter (Just ∘ _.color) (cols <> opts) ∘ pure)
-    E.textStyle $ E.fontSize 12
     E.triggerItem
 
   E.colors colors

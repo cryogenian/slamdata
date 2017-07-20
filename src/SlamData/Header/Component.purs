@@ -16,10 +16,10 @@ limitations under the License.
 
 module SlamData.Header.Component where
 
+import SlamData.Prelude
 import Data.Coyoneda (Coyoneda)
 import Data.Coyoneda as Coyoneda
-
-import SlamData.Prelude
+import DOM.Event.Types (MouseEvent)
 import Halogen as H
 import Halogen.Query.HalogenM as HQ
 import Halogen.Component.ChildPath as CP
@@ -34,6 +34,7 @@ import SlamData.Header.Attribution as Attribution
 import SlamData.Header.Gripper.Component as Gripper
 import SlamData.Render.ClassName as CN
 import SlamData.Monad (Slam)
+import Utils.DOM as DOM
 
 type State =
   { open ∷ Boolean
@@ -45,6 +46,7 @@ data Query a
   | HandleGlobalMenu GlobalMenu.Message a
   | QueryGripper (Coyoneda Gripper.Query a)
   | QueryGlobalMenu (Coyoneda GlobalMenu.Query a)
+  | BackdropDismiss MouseEvent a
   | Dismiss a
 
 data Message
@@ -72,7 +74,7 @@ render { open, attributions } =
         , HH.ClassName if open then "open" else "closed" ]
         ]
     [ if attributions
-        then Attribution.render (HandleGlobalMenu GlobalMenu.PresentAttributionsDialog)
+        then Attribution.render BackdropDismiss (HandleGlobalMenu GlobalMenu.PresentAttributionsDialog)
         else HH.text ""
     , HH.div_
         [ HH.div_
@@ -130,6 +132,11 @@ eval = case _ of
       case result of
         Nothing -> HQ.halt "Inner component query failed (this should be impossible)"
         Just a -> pure (k a)
+  BackdropDismiss me next → do
+    isDialog ← H.liftEff $ DOM.nodeEq (DOM.target me) (DOM.currentTarget me)
+    when isDialog do
+      H.modify _ { attributions = false }
+    pure next
   Dismiss next → do
     _ ← H.query' CP.cp2 unit $ H.action GlobalMenu.DismissSubmenu
     pure next

@@ -58,7 +58,7 @@ import SlamData.Notification.Component as NC
 import SlamData.Quasar as Quasar
 import SlamData.Quasar.Auth.Authentication as Authentication
 import SlamData.Quasar.Error as QE
-import SlamData.Render.Icon as I
+import SlamData.Render.Common as RC
 import SlamData.Wiring as Wiring
 import SlamData.Wiring.Cache as Cache
 import SlamData.Workspace.AccessType as AT
@@ -101,8 +101,9 @@ render ∷ AT.AccessType → State → WorkspaceHTML
 render accessType state =
   HH.div
     [ HP.classes
-        $ (guard (AT.isReadOnly accessType) $> HH.ClassName "sd-published")
-        ⊕ [ HH.ClassName "sd-workspace" ]
+        $ [ HH.ClassName "sd-workspace" ]
+        <> (guard (AT.isReadOnly accessType) $> HH.ClassName "sd-published")
+        <> (guard state.rootDeckFocused $> HH.ClassName "root-deck-focused")
     , HE.onClick (HE.input DismissAll)
     ]
     [ header
@@ -165,7 +166,7 @@ render accessType state =
         HH.div
           [ HP.class_ $ HH.ClassName "sd-pending-overlay" ]
           [ HH.div_
-              [ I.spinner
+              [ RC.spinner
               , HH.span_ [ HH.text "Please wait while the workspace loads" ]
               ]
           ]
@@ -176,13 +177,13 @@ render accessType state =
 eval ∷ Query ~> WorkspaceDSL
 eval = case _ of
   Init next → do
-    { auth, bus, accessType } ← H.lift Wiring.expose
+    { auth, bus, accessType } ← Wiring.expose
     H.subscribe $ busEventSource (H.request ∘ PresentStepByStepGuide) bus.stepByStep
     H.subscribe $ busEventSource (flip HandleSignInMessage ES.Listening) auth.signIn
     H.subscribe $ busEventSource (flip HandleWorkspace ES.Listening) bus.workspace
     H.subscribe $ busEventSource (flip HandleLicenseProblem ES.Listening) bus.licenseProblems
+    H.subscribe $ busEventSource (flip HandleDeck ES.Listening) bus.decks
     H.subscribe $ throttledEventSource_ (Milliseconds 100.0) onResize (H.request Resize)
-    H.subscribe $ busEventSource (flip HandleLicenseProblem ES.Listening) bus.licenseProblems
     notifyDaysRemainingIfNeeded
     pure next
   PresentStepByStepGuide guideType reply → do
@@ -233,7 +234,7 @@ eval = case _ of
     initializeGuides
     pure next
   SignIn providerR next → do
-    { auth } ← H.lift Wiring.expose
+    { auth } ← Wiring.expose
     idToken ← H.liftAff makeVar
     H.liftAff $ Bus.write { providerR, idToken, prompt: true, keySuffix } auth.requestToken
     either signInFailure (const $ signInSuccess) =<< (H.liftAff $ takeVar idToken)
@@ -265,6 +266,13 @@ eval = case _ of
     H.query' cpDialog unit (H.action (Dialog.Show dlg)) $> next
   HandleLicenseProblem problem next →
     H.query' cpDialog unit (H.action (Dialog.Show $ Dialog.LicenseProblem problem)) $> next
+  HandleDeck msg next → case msg of
+    Wiring.DeckFocused deckId → do
+      cursor ← H.gets _.cursor
+      H.modify _{ rootDeckFocused = List.head cursor == Just deckId }
+      pure next
+    _ →
+      pure next
   HandleDialog msg next →
     handleDialog msg $> next
 
@@ -273,7 +281,7 @@ eval = case _ of
     cursor' ←
       if List.null cursor
         then do
-          wiring ← H.lift Wiring.expose
+          wiring ← Wiring.expose
           rootId ← H.liftAff $ peekVar wiring.eval.root
           pure (pure rootId)
         else
@@ -295,12 +303,12 @@ eval = case _ of
     AuthenticationMode.toKeySuffix AuthenticationMode.ChosenProvider
 
   signInSuccess = do
-    { auth } ← H.lift Wiring.expose
+    { auth } ← Wiring.expose
     H.liftAff $ Bus.write SignInSuccess $ auth.signIn
     H.liftEff Browser.reload
 
   signInFailure error = do
-    { auth, bus } ← H.lift Wiring.expose
+    { auth, bus } ← Wiring.expose
     H.liftAff do
       for_ (Authentication.toNotificationOptions error) $
         flip Bus.write bus.notify
@@ -308,7 +316,7 @@ eval = case _ of
 
 runFreshWorkspace ∷ Array CM.AnyCardModel → WorkspaceDSL Unit
 runFreshWorkspace cards = do
-  { path, accessType, varMaps, bus } ← H.lift Wiring.expose
+  { path, accessType, varMaps, bus } ← Wiring.expose
   deckId × cell ← H.lift $ P.freshWorkspace cards
   H.modify _
     { stateMode = Ready
@@ -330,7 +338,7 @@ runFreshWorkspace cards = do
 
 initializeGuides ∷ WorkspaceDSL Unit
 initializeGuides = do
-  { bus, accessType } ← H.lift Wiring.expose
+  { bus, accessType } ← Wiring.expose
   initialCardGuideStep >>= case _ of
     Nothing → do
       void $ queryDeck $ H.action Deck.DismissedCardGuide

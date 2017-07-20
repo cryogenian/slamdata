@@ -130,12 +130,9 @@ buildOptions r funnelData = do
     opts = flip foldMap r.series \dim →
       [ { label: D.jcursorLabel dim, value: _.seriesName } ]
 
-  E.tooltip do
+  CCT.tooltip do
     E.formatterItem (CCT.tableFormatter (pure ∘ _.color) (cols <> opts) ∘ pure)
     E.triggerItem
-    E.textStyle do
-      E.fontFamily "Ubuntu, sans"
-      E.fontSize 12
 
   E.legend do
     E.items $ map ET.strItem legendNames

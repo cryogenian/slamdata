@@ -68,7 +68,7 @@ evalCard = case _ of
         ⋙ Card.Variables
         ⋙ k
   CC.Load card next → do
-    accessType ← _.accessType <$> H.lift Wiring.expose
+    accessType ← _.accessType <$> Wiring.expose
     _ ← H.query unit $ H.action $ FB.SetAccessType accessType
     case card of
       Card.Variables { items } →

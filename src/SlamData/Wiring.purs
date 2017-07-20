@@ -46,13 +46,11 @@ import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Ref (Ref)
 import Control.Monad.Eff.Ref as Ref
-
+import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
+import Data.BrowserFeatures (BrowserFeatures)
 import Data.StrMap (StrMap)
-
 import ECharts.Theme as ETheme
-
 import Quasar.Advanced.Types (TokenHash)
-
 import SlamData.AuthenticationMode (AllowedAuthenticationModes, allowedAuthenticationModesForAccessType)
 import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
@@ -72,7 +70,6 @@ import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
 import SlamData.Workspace.Eval.Graph (EvalGraph)
 import SlamData.Workspace.Guide (GuideType)
-
 import Utils.Path (DirPath)
 
 -- TODO: DeckFocused should use DeckOptions too. It's not totally trivial though,
@@ -154,6 +151,7 @@ type WiringR =
   , cache ∷ CacheWiring
   , bus ∷ BusWiring
   , echarts ∷ EChartsWiring
+  , browserFeatures ∷ BrowserFeatures
   }
 
 newtype Wiring = Wiring WiringR
@@ -181,9 +179,10 @@ make path accessType vm permissionTokenHashes = liftAff do
   cache ← makeCache
   bus ← makeBus
   echarts ← makeEcharts
+  browserFeatures ← liftEff detectBrowserFeatures
   varMaps ← liftEff (Ref.newRef vm)
   license ← liftEff (Ref.newRef vm)
-  pure $ Wiring { path, accessType, varMaps, eval, auth, cache, bus, echarts }
+  pure $ Wiring { path, accessType, varMaps, eval, auth, cache, bus, echarts, browserFeatures }
 
   where
   makeEcharts = do

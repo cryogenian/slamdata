@@ -295,15 +295,6 @@ semanticsToDateTime ∷ Semantics → Maybe DT.DateTime
 semanticsToDateTime (DateTime dt) = pure dt
 semanticsToDateTime _ = Nothing
 
-isUsedAsNothing ∷ Semantics → Boolean
-isUsedAsNothing (Category "undefined") = true
-isUsedAsNothing (Category "null") = true
-isUsedAsNothing (Category "NA") = true
-isUsedAsNothing (Category "N/A") = true
-isUsedAsNothing (Category "") = true
-isUsedAsNothing _ = false
-
-
 analyze ∷ JsonPrim → Maybe Semantics
 analyze p =
   runJsonPrim p

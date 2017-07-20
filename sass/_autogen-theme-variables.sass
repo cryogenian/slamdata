@@ -85,10 +85,14 @@ $hr-border: $color-separator !default
 //---------------------------------------------------------------------------
 
 // Action List
-$action-list-btn-color: if(luma($brand-primary) < 210, #fff, #000) !default
 $action-list-active-bg: $brand-primary !default
+$action-list-active-color: if(luma($brand-primary) < 210, #fff, #111) !default
 $action-list-disabled-bg: brighten($body-bg, 20%, 5%) !default
-$action-list-disabled-color: $text-color !default
+$action-list-disabled-color: mix($action-list-disabled-bg, $text-color, 40%) !default
+
+// Frame Controls
+$frame-controls-bg: $action-list-active-bg
+$frame-controls-color: $action-list-active-color
 
 // Draftboard
 $draftboard-bg: if(luma($body-bg) > 20, darken($body-bg, 7.5%), lighten($body-bg, 5%)) !default
@@ -103,8 +107,11 @@ $global-menu-bg: #262626 !default
 $global-menu-color: if(luma($global-menu-bg) > 127.5, #000, #fff) !default
 
 // Grippers
-$gripper-dots-color: $color-separator !default
-$gripper-dots-hover-color: brighten($color-separator, 3.75%, 5%) !default
+$gripper-color: $text-color !default
+$gripper-hover-color: brighten($gripper-color, 5%, 5%) !default
+
+// Buttons
+$button-discrete-color: brighten($body-bg, 27.5%, 25%) !default
 
 // Indicators
 $indicator-color: brighten($body-bg, 10%, 15%) !default
@@ -126,6 +133,8 @@ $error-card-bg: brighten($body-bg, 3.75%, 5%) !default
 $miller-column-border-color: $color-separator !default
 $miller-column-item-selected-bg: brighten($body-bg, 10%, 15%) !default
 $miller-column-item-hover-bg: brighten($body-bg, 3.75%, 5%) !default
+$miller-column-current-selected-bg: $action-list-active-bg
+$miller-column-current-selected-color: $action-list-active-color
 
 // Pivot Card
 $pivot-card-border: $color-separator !default
@@ -139,4 +148,3 @@ $tabs-card-header-active-bg: brighten($body-bg, 5%, 10%) !default
 $tabs-card-add-btn-color: $brand-primary !default
 $tabs-card-add-btn-bg: brighten($body-bg, 15%, 15%) !default
 $tabs-card-add-btn-active-bg: brighten($body-bg, 20%, 20%) !default
-

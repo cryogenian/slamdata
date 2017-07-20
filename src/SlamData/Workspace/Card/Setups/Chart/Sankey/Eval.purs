@@ -92,12 +92,9 @@ sankeyOptions r sankeyData = do
       , { label: D.jcursorLabel r.target, value: CCT.formatDataProp "target" }
       , { label: D.jcursorLabel r.value, value: CCT.formatDataProp "value" }
       ]
-  E.tooltip do
+  CCT.tooltip do
     E.formatterItem (CCT.tableFormatter (const Nothing) cols ∘ pure)
     E.triggerItem
-    E.textStyle do
-      E.fontFamily "Ubuntu, sans"
-      E.fontSize 12
 
   E.colors colors
 

@@ -101,13 +101,6 @@ function injectIconsIntoHTML(iconAttribution) {
       removeTags: true,
       transform: (filePath, file) => file.contents.toString("utf8")
     }))
-    // also add the grippers
-    .pipe(inject(gulp.src("html/gripper-symbols.svg"), {
-      starttag: "<!-- gripper-symbols -->",
-      endtag: "<!-- /gripper-symbols -->",
-      removeTags: true,
-      transform: (filePath, file) => file.contents.toString("utf8")
-    }))
     .pipe(gulp.dest('./public'))
 }
 
