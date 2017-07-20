@@ -182,8 +182,8 @@ derive instance eqZoom ∷ Eq Zoom
 deckFrameControls ∷ Zoom → DCS.State → DeckHTML
 deckFrameControls zoom { name } =
   HH.div
-    attrs
-    [ renderName name
+    [ HP.class_ CSS.deckFrameControls ]
+    [ nameMover
     , HH.div
         [ HP.class_ CSS.deckFrameActions ]
         [ case zoom of
@@ -194,16 +194,25 @@ deckFrameControls zoom { name } =
         ]
     ]
   where
-    attrs =
-      -- zoom-in-able frame controls are grabbable
-      if zoom == In then
-        [ HP.classes [ CSS.deckFrameControls, CSS.grabDeck ]
-        , HE.onMouseDown (HE.input HandleGrab)
-        , ARIA.label "Move deck"
-        , HP.title "Move deck"
-        ]
-      else
-        [ HP.class_ CSS.deckFrameControls ]
+    nameMover =
+      [ HH.text name ]
+        -- zoom-in-able names are grabbable
+        # if zoom == In then
+          HH.button
+            [ HP.classes [ CSS.deckName, CSS.grabDeck ]
+            , HP.type_ HP.ButtonButton
+            , HP.title "Move deck"
+            , ARIA.label "Move deck"
+            , HE.onMouseDown (HE.input HandleGrab)
+            ]
+        else
+          HH.div
+            [ HP.class_ CSS.deckName ]
+
+
+
+
+
 
 deckIndicator ∷ DCS.State → DeckHTML
 deckIndicator st =
@@ -226,15 +235,6 @@ deckIndicator st =
 
   renderCircle ix card =
     HH.i [ HP.classes $ classes ix card ] [ HH.text "" ]
-
-renderName ∷ String → DeckHTML
-renderName name =
-  if name == "" then
-    HH.text ""
-  else
-    HH.div
-      [ HP.class_ CSS.deckName ]
-      [ HH.text name ]
 
 flipButton ∷ DeckHTML
 flipButton =
