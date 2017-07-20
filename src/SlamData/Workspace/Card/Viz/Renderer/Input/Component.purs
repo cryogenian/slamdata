@@ -18,46 +18,40 @@ module SlamData.Workspace.Card.Viz.Renderer.Input.Component where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor(..))
-import Data.Time.Duration (Milliseconds(..))
-import Data.Variant (on)
 import DOM.Classy.Event as DOM
 import DOM.Event.Types (Event)
 import Data.Argonaut (JCursor(..))
-import Data.BrowserFeatures.InputType (InputType)
 import Data.BrowserFeatures.InputType as IT
 import Data.DateTime as DT
 import Data.Either.Nested (Either3)
 import Data.Formatter.DateTime as FD
 import Data.Functor.Coproduct.Nested (Coproduct3)
 import Data.Time.Duration (Milliseconds(..))
+import Data.Variant (on, default)
 import Halogen as H
 import Halogen.Component.ChildPath as CP
 import Halogen.Component.Utils (sendAfter)
 import Halogen.Datepicker.Component.Date as DatePicker
 import Halogen.Datepicker.Component.DateTime as DateTimePicker
 import Halogen.Datepicker.Component.Time as TimePicker
-import Halogen.Datepicker.Component.Types (PickerMessage(..), setValue, value)
+import Halogen.Datepicker.Component.Types as DPT
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import SlamData.Monad (Slam)
 import SlamData.Render.ClassName as CN
+import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port (SetupInputPort)
 import SlamData.Workspace.Card.Viz.Renderer.Input.Model as M
-import SlamData.Wiring as Wiring
-import SlamData.Workspace.Card.CardType.FormInputType (FormInputType(..))
-import SlamData.Workspace.Card.FormInput.TextLikeRenderer.Model as M
-import SlamData.Workspace.Card.Port (SetupTextLikeFormInputPort)
-import SlamData.Workspace.PickerUtils (config, datePickerFormat, dateTimePickerFormat, timePickerFormat)
-import Text.Markdown.SlamDown.Halogen.Component (defaultBrowserFeatures)
+import SlamData.Workspace.PickerUtils as PU
+import Text.Markdown.SlamDown.Halogen.Component as TMH
 
 type State =
   { label ∷ Maybe String
   , value ∷ String
   , formInputType ∷ CT.Input ()
-  , inputTypeSupported ∷ InputType → Boolean
+  , inputTypeSupported ∷ IT.InputType → Boolean
   , cursor ∷ JCursor
   }
 
@@ -67,7 +61,7 @@ initialState =
   , value: ""
   , formInputType: CT.text
   , cursor: JCursorTop
-  , inputTypeSupported: defaultBrowserFeatures.inputTypeSupported
+  , inputTypeSupported: TMH.defaultBrowserFeatures.inputTypeSupported
   }
 
 data Query a
@@ -96,8 +90,8 @@ cpDateTimePicker = CP.cp3
 type DSL = H.ParentDSL State Query ChildQuery Slot Message Slam
 type HTML m = H.ParentHTML Query ChildQuery Slot m
 
-comp ∷ H.Component HH.HTML Query Unit Message Slam
-comp =
+component ∷ H.Component HH.HTML Query Unit Message Slam
+component =
   H.lifecycleParentComponent
     { initialState: const initialState
     , render
@@ -107,7 +101,6 @@ comp =
     , finalizer: Nothing
     }
 
-
 render ∷ ∀ m
   . State
   → HTML m
@@ -115,42 +108,49 @@ render state =
   HH.form
     [ HE.onSubmit (HE.input PreventDefault) ]
     $ foldMap (\n → [ HH.h3_  [ HH.text n ] ]) state.label
-    ⊕ [
-      case state.formInputType of
-        Datetime | not state.inputTypeSupported IT.DateTimeLocal →
-          HH.slot'
-            cpDateTimePicker
-            unit
-            (DateTimePicker.pickerWithConfig config dateTimePickerFormat)
-            unit
-            $ HE.input
-            $ \(NotifyChange n) →
-              ValueChanged $ fromMaybe "" $ value n >>= formatDateTime
-        Date | not state.inputTypeSupported IT.Date →
-          HH.slot'
-            cpDatePicker
-            unit
-            (DatePicker.pickerWithConfig config datePickerFormat)
-            unit
-            $ HE.input
-            $ \(NotifyChange n) →
-              ValueChanged $ fromMaybe "" $ value n >>= formatDate
-        Time | not state.inputTypeSupported IT.Time →
-          HH.slot'
-            cpTimePicker
-            unit
-            (TimePicker.pickerWithConfig config timePickerFormat)
-            unit
-            $ HE.input
-            $ \(NotifyChange n) →
-              ValueChanged $ fromMaybe "" $ value n >>= formatTime
-        _ →
-          HH.input
-            [ HP.classes [ CN.formControl ]
-            , HP.value state.value
-            , HP.type_ $ inputTypeFromFIT state.formInputType
-            , HE.onValueInput $ HE.input ValueChanged
-            ]
+    ⊕ [ let
+           inp =
+             HH.input
+               [ HP.classes [ CN.formControl ]
+               , HP.value state.value
+               , HP.type_ $ halInputTypeFromFIT state.formInputType
+               , HE.onValueInput $ HE.input ValueChanged
+               ]
+        in if state.inputTypeSupported $ inputTypeFromFIT state.formInputType
+        then inp
+        else default inp
+          # on CT._datetime
+              (const
+                 $ HH.slot'
+                   cpDateTimePicker
+                   unit
+                   (DateTimePicker.pickerWithConfig PU.config PU.dateTimePickerFormat)
+                   unit
+                   $ HE.input
+                   $ \(DPT.NotifyChange n) →
+                     ValueChanged $ fromMaybe "" $ DPT.value n >>= formatDateTime )
+          # on CT._date
+              (const
+                 $ HH.slot'
+                   cpDatePicker
+                   unit
+                   (DatePicker.pickerWithConfig PU.config PU.datePickerFormat)
+                   unit
+                   $ HE.input
+                   $ \(DPT.NotifyChange n) →
+                     ValueChanged $ fromMaybe "" $ DPT.value n >>= formatDate )
+          # on CT._time
+              (const
+                 $ HH.slot'
+                   cpTimePicker
+                   unit
+                   (TimePicker.pickerWithConfig PU.config PU.timePickerFormat)
+                   unit
+                   $ HE.input
+                   $ \(DPT.NotifyChange n) →
+                     ValueChanged $ fromMaybe "" $ DPT.value n >>= formatTime )
+          $ state.formInputType
+
       ]
 
 eval ∷ Query ~> DSL
@@ -192,20 +192,26 @@ eval = case _ of
       , cursor = m.cursor
       }
     s ← H.get
-    void case s.formInputType of
-      Datetime | not s.inputTypeSupported IT.DateTimeLocal →
-        H.query' cpDateTimePicker unit
-        $ setValue
-        $ Right <$> unformatDateTime s.value
-      Date | not s.inputTypeSupported IT.Date →
-        H.query' cpDatePicker unit
-        $ setValue
-        $ Right <$> unformatDate s.value
-      Time | not s.inputTypeSupported IT.Time →
-        H.query' cpTimePicker unit
-        $ setValue
-        $ Right <$> unformatTime s.value
-      _ -> pure (Just unit)
+    unless (s.inputTypeSupported $ inputTypeFromFIT s.formInputType) $ void do
+      default ( pure $ pure unit )
+        # on CT._datetime
+          ( const
+            $ H.query' cpDateTimePicker unit
+            $ DPT.setValue
+            $ Right <$> unformatDateTime s.value )
+        # on CT._date
+          ( const
+            $ H.query' cpDatePicker unit
+            $ DPT.setValue
+            $ Right <$> unformatDate s.value )
+        # on CT._time
+          ( const
+            $ H.query' cpTimePicker unit
+            $ DPT.setValue
+            $ Right <$> unformatTime s.value )
+
+
+        $ s.formInputType
     pure next
   PreventDefault ev next → do
     H.liftEff $ DOM.preventDefault ev
@@ -214,15 +220,22 @@ eval = case _ of
     H.raise Updated
     pure next
 
-inputTypeFromFIT ∷ CT.Input () → HP.InputType
-inputTypeFromFIT = case_
-  # on CT._numeric (const $ HP.InputNumber)
-  # on CT._date (const $ HP.InputDate)
-  # on CT._time (const $ HP.InputTime)
-  # on CT._datetime (const $ HP.InputDatetimeLocal)
-  # on CT._text (const $ HP.InputText)
+halInputTypeFromFIT ∷ CT.Input () → HP.InputType
+halInputTypeFromFIT = inputTypeFromFIT ⋙ case _ of
+  IT.Number → HP.InputNumber
+  IT.Date → HP.InputDate
+  IT.DateTimeLocal → HP.InputDatetimeLocal
+  IT.Time → HP.InputTime
+  _ → HP.InputText
 
--- NOTE prism can be used here
+inputTypeFromFIT ∷ CT.Input () → IT.InputType
+inputTypeFromFIT = case_
+  # on CT._numeric (const $ IT.Number)
+  # on CT._date (const $ IT.Date)
+  # on CT._time (const $ IT.Time)
+  # on CT._datetime (const $ IT.DateTimeLocal)
+  # on CT._text (const $ IT.Text)
+
 formatDateTime ∷ DT.DateTime → Maybe String
 formatDateTime x = hush $ FD.formatDateTime "YYYY-MM-DDTHH:mm:ssZ" x
 

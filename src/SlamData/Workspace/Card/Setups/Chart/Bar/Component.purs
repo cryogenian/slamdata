@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Bar.Component
-  ( barBuilderComponent
+module SlamData.Workspace.Card.Setups.Chart.Bar.Component where
+{-  ( barBuilderComponent
   ) where
 
 import SlamData.Prelude
@@ -174,3 +174,4 @@ setupEval = case _ of
     case q of
       DQ.Update _ → raiseUpdate
     pure next
+-}

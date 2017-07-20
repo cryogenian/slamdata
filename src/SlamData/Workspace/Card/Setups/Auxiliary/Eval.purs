@@ -30,7 +30,7 @@ import Global (decodeURIComponent, readFloat, isNaN)
 import Halogen as H
 
 import SlamData.Form.Select (class OptionVal)
-import SlamData.Workspace.Card.Geo.Model (onURIRef)
+import SlamData.Workspace.Card.Viz.Renderer.Geo.Model (onURIRef)
 import SlamData.Workspace.Card.Setups.Auxiliary.Algebra as Alg
 import SlamData.Workspace.Card.Setups.Auxiliary.Proxy (_uri, _string, _min, _max)
 import SlamData.Workspace.Card.Setups.Auxiliary.Piece as P

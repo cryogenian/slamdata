@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Line.Component
-  ( lineBuilderComponent
+module SlamData.Workspace.Card.Setups.Chart.Line.Component where
+{-  ( lineBuilderComponent
   ) where
 
 import SlamData.Prelude
@@ -271,3 +271,4 @@ setupEval = case _ of
           $ H.modify _{ optionalMarkers = false }
         raiseUpdate
     pure next
+-}

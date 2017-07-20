@@ -124,7 +124,7 @@ type Query = VariantF
   ( area ∷ FProxy Area.Query
   , bar ∷ FProxy Bar.Query
   , funnel ∷ FProxy Funnel.Query
-  , gauge ∷ FProxy Guage.Query
+  , gauge ∷ FProxy Gauge.Query
   , graph ∷ FProxy Graph.Query
   , heatmap ∷ FProxy Heatmap.Query
   , line ∷ FProxy Line.Query

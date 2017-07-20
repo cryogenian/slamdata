@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Geo.Marker.Component
-  ( component
+module SlamData.Workspace.Card.Setups.Geo.Marker.Component where
+{-  ( component
   ) where
 
 import SlamData.Prelude
@@ -322,3 +322,4 @@ setupEval = case _ of
          }
     H.raise CC.modelUpdate
     pure next
+-}

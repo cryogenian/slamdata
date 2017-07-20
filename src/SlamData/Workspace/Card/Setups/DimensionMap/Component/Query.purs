@@ -35,9 +35,9 @@ data FieldQuery a
 
 data Query a
   = OnField Pr.Projection (FieldQuery a)
-  | Load Pr.DimensionMap a
-  | Save (Pr.DimensionMap → a)
+  | Load Pr.DimMap a
+  | Save (Pr.DimMap → a)
   | SetAxes Ax.Axes a
   | SetPackage DP.Package a
 
-data Message = Update Pr.DimensionMap
+data Message = Update Pr.DimMap

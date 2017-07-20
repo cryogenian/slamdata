@@ -31,7 +31,7 @@ import Global (encodeURIComponent, decodeURIComponent)
 import SlamData.Common.Sort (Sort(..))
 import SlamData.Common.Align (Align(..))
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (ColorScheme(..))
-import SlamData.Workspace.Card.Geo.Model (onURIRef)
+import SlamData.Workspace.Card.Viz.Renderer.Geo.Model (onURIRef)
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen

@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.PunchCard.Component
-  ( punchCardBuilderComponent
+module SlamData.Workspace.Card.Setups.Chart.PunchCard.Component where
+{-  ( punchCardBuilderComponent
   ) where
 
 import SlamData.Prelude
@@ -208,3 +208,4 @@ setupEval = case _ of
     case q of
       DQ.Update _ → raiseUpdate
     pure next
+-}

@@ -21,44 +21,39 @@ import SlamData.Prelude hiding (case_)
 import Data.Argonaut ((:=), (.?), (~>))
 import Data.Argonaut as J
 import Data.Functor.Variant (FProxy, on, inj, case_)
-
 import Halogen as H
 import Halogen.HTML as HH
-
-import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.Setups.Auxiliary.Algebra as A
 import SlamData.Workspace.Card.Setups.Auxiliary.Eval as Eval
 import SlamData.Workspace.Card.Setups.Auxiliary.Piece (minValue, maxValue)
 import SlamData.Workspace.Card.Setups.Auxiliary.Piece as P
-import SlamData.Workspace.Card.Setups.Auxiliary.Proxy (_size, _circular, _reset)
+import SlamData.Workspace.Card.Setups.Auxiliary.Proxy (_val, _reset)
 import SlamData.Workspace.Card.Setups.Auxiliary.Render as Render
 import SlamData.Workspace.Card.Setups.Auxiliary.Reset (ResetF, AuxComponent)
-
-import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 
-type QueryR = ( value ∷ FProxy A.MinMaxF )
-type State = { value ∷ P.MinMax }
+type QueryR = ( val ∷ FProxy A.MinMaxF )
+type State = { val ∷ P.MinMax }
 type Query = ResetF State QueryR
 
 initial ∷ State
-initial = { value: { min: minValue, max: maxValue } }
+initial = { val: { min: minValue, max: maxValue } }
 
 gen ∷ Gen.Gen State
 gen = do
-  value ← P.genMinMax
-  pure { size, circular }
+  val ← P.genMinMax
+  pure { val }
 
 eq_ ∷ State → State → Boolean
 eq_ r1 r2 =
-  r1.value.min ≡ r2.value.min
-  ∧ r1.value.max ≡ r2.value.max
+  r1.val.min ≡ r2.val.min
+  ∧ r1.val.max ≡ r2.val.max
 
 encode ∷ State → J.Json
 encode r =
   "tag" := "graph"
-  ~> "minValue" := r.value.min
-  ~> "maxValue" := r.value.max
+  ~> "minValue" := r.val.min
+  ~> "maxValue" := r.val.max
   ~> J.jsonEmptyObject
 
 decode ∷ J.Json → String ⊹ State
@@ -67,19 +62,17 @@ decode r = J.decodeJson r >>= \obj → do
   unless (tag ≡ "graph") $ Left "This is not a graph"
   minValue ← obj .? "minValue"
   maxValue ← obj .? "maxValue"
-  pure { size: { min: minSize, max: maxSize } }
+  pure { val: { min: minValue, max: maxValue } }
 
 component ∷ ∀ m. AuxComponent QueryR State m
 component = H.component
   { initialState: const initial
   , render: \state → HH.div_
     [ HH.hr_
-    , row [ Render.toggle _circular state ]
-    , HH.hr_
-    , Render.minMax _size state
+    , Render.minMax _val state
     ]
   , eval: case_
-    # on _size (Eval.minMax _size)
+    # on _val (Eval.minMax _val)
     # on _reset Eval.reset
   , receiver: map $ inj _reset ∘ H.action ∘ Tuple
   }

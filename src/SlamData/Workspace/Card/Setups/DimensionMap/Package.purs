@@ -34,7 +34,7 @@ import SlamData.Workspace.Card.Setups.DimensionMap.DSL as DSL
 import SlamData.Workspace.Card.Setups.DimensionMap.Projection as Pr
 
 lm ∷ ∀ v. LM.Module VT.VizType v
-lm = LM.openModule \a b → CT.eq_ (expandVariant a) (expandVariant b)
+lm = LM.openModule \a b → CT.eq_ (expand a) (expand b)
 
 type Package = DSL.Package (Set.Set J.JCursor) ()
 
@@ -44,12 +44,12 @@ interpret = DSL.interpret axesComposer
 axesComposer ∷ Pr.AxesComposer (Set.Set J.JCursor)
 axesComposer = { filter, guard }
   where
-  filter ∷ Pr.Projection → Pr.DimensionMap → Set.Set J.JCursor → Set.Set J.JCursor
+  filter ∷ Pr.Projection → Pr.DimMap → Set.Set J.JCursor → Set.Set J.JCursor
   filter prj dimMap s = maybe s (flip Set.delete s) do
     jc ← Pr.lookup prj dimMap
     jc ^? D._value ∘ D._projection
 
-  guard ∷ Pr.Projection → Pr.DimensionMap → Set.Set J.JCursor → Set.Set J.JCursor
+  guard ∷ Pr.Projection → Pr.DimMap → Set.Set J.JCursor → Set.Set J.JCursor
   guard prj dimMap s =  foldMap id do
     jc ← Pr.lookup prj dimMap
     _ ← jc ^? D._value ∘ D._projection

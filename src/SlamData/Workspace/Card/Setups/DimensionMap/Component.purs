@@ -92,7 +92,7 @@ renderButton state fld =
     { configurable: ST.isConfigurable fld state
     , dimension: sequence $ ST.getSelected fld state
     , showLabel: absurd
-    , showDefaultLabel: const ∘ Pr.getLabel fld
+    , showDefaultLabel: const $ Pr.getLabel fld
     , showValue: ST.showValue fld
     , onLabelChange: HE.input \l → Q.OnField fld ∘ Q.LabelChanged l
     , onDismiss: HE.input_ $ Q.OnField fld ∘ Q.Dismiss

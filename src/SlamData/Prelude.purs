@@ -21,6 +21,7 @@ module SlamData.Prelude
   , type (⨁), type (⊹), type (×)
   , As, As1
   , asList, asArray
+  , case2_
   , module Prelude
   , module Control.Alt
   , module Control.Apply

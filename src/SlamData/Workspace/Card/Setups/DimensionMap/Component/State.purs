@@ -33,7 +33,7 @@ import Utils (showPrettyJCursor)
 
 type State =
   { axes ∷ Ax.Axes
-  , dimMap ∷ Pr.DimensionMap
+  , dimMap ∷ Pr.DimMap
   , selected ∷ Maybe (Pr.Projection ⊹ Pr.Projection)
   , package ∷ DP.Package
   }

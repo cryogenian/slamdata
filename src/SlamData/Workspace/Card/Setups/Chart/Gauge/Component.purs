@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Gauge.Component
-  ( gaugeBuilderComponent
+module SlamData.Workspace.Card.Setups.Chart.Gauge.Component where
+{-  ( gaugeBuilderComponent
   ) where
 
 import SlamData.Prelude
@@ -180,3 +180,4 @@ setupEval = case _ of
       H.modify _{maxValue = fl}
       raiseUpdate
     pure next
+-}

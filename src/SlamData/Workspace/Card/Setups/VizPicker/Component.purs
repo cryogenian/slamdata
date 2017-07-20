@@ -132,20 +132,20 @@ render state =
   ]
   where
   eq_ ∷ Action → Action → Boolean
-  eq_ (Set a) (Set b) = CT.eq_ (expandVariant a) (expandVariant b)
-  eq_ (Explain a) (Explain b) = CT.eq_ (expandVariant a) (expandVariant b)
+  eq_ (Set a) (Set b) = CT.eq_ (expand a) (expand b)
+  eq_ (Explain a) (Explain b) = CT.eq_ (expand a) (expand b)
   eq_ _ _ = false
 
 description ∷ Action → String
 description = case _ of
-  Set vt → "Set vizualization type to " ⊕ (CT.name $ expandVariant vt)
-  Explain vt → "Find why " ⊕ (CT.name $ expandVariant vt) ⊕ " is unavailable for this data set"
+  Set vt → "Set vizualization type to " ⊕ (CT.name $ expand vt)
+  Explain vt → "Find why " ⊕ (CT.name $ expand vt) ⊕ " is unavailable for this data set"
 
 
 toAction ∷ Action → AA.Action Action
 toAction vt = AA.mkDo
-  { name: CT.name $ expandVariant $ vizType vt
-  , icon: Just $ CT.icon $ expandVariant $ vizType vt
+  { name: CT.name $ expand $ vizType vt
+  , icon: Just $ CT.icon $ expand $ vizType vt
   , highlighted: isSet vt
   , disabled: false
   , description: description vt
