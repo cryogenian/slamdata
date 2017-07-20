@@ -24,7 +24,6 @@ import Halogen as H
 import Halogen.Component.Proxy as Proxy
 import Halogen.HTML as HH
 import SlamData.Dialog.Component as Dialog
-import SlamData.Render.ClassName as CN
 
 type MessageSpec o =
   { title ∷ String
@@ -40,11 +39,14 @@ mkSpec { title, class_, action, message } =
   , dialog: Proxy.proxy (component message)
   , buttons: case action of
     Right (label × o) →
-      dismissButton "Cancel" `NEL.cons` pure { label, action: Dialog.Confirm o, class_: CN.btnPrimary, disabled: false }
-    Left cancelLabel → pure (dismissButton cancelLabel)
+      dismissButton "Cancel"
+        `NEL.cons` pure (Dialog.buttonPrimary label (Dialog.Confirm o))
+    Left cancelLabel →
+      pure (dismissButton cancelLabel)
   }
   where
-    dismissButton label = { label, action: Dialog.Dismiss, class_: CN.btnDefault, disabled: false }
+    dismissButton ∷ String → Dialog.Button o
+    dismissButton = flip Dialog.buttonDefault Dialog.Dismiss
 
 component
   ∷ ∀ o m

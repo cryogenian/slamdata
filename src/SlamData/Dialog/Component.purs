@@ -18,8 +18,12 @@ module SlamData.Dialog.Component
   ( DialogSpec
   , InnerComponent
   , InnerMessage(..)
-  , Button
+  , Button(..)
+  , button
+  , buttonDefault
+  , buttonPrimary
   , Buttons
+  , adaptInner
   , Query(Raise, BackdropDismiss)
   , Message(..)
   , component
@@ -27,11 +31,14 @@ module SlamData.Dialog.Component
 
 import SlamData.Prelude
 
+import DOM.Event.Types (MouseEvent)
 import Data.Array as A
 import Data.List as L
 import Data.List.NonEmpty as NEL
-import DOM.Event.Types (MouseEvent)
+import Data.Newtype (under)
+import Data.Profunctor as PF
 import Halogen as H
+import Halogen.Component.Profunctor (ProComponent(..))
 import Halogen.Component.Proxy as Proxy
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -54,14 +61,39 @@ data InnerMessage o
   = SelfDismiss
   | Change (Buttons o)
 
-type Button o =
-  { label ∷ String
-  , class_ ∷ H.ClassName
-  , action ∷ Message o
-  , disabled ∷ Boolean
-  }
+derive instance functorInnerMessage ∷ Functor InnerMessage
+
+newtype Button o =
+  Button
+    { label ∷ String
+    , class_ ∷ H.ClassName
+    , action ∷ Message o
+    , disabled ∷ Boolean
+    }
+
+button ∷ ∀ o. H.ClassName → String → Message o → Button o
+button class_ label action =
+  Button { label, class_, action, disabled: false }
+
+buttonDefault ∷ ∀ o. String → Message o → Button o
+buttonDefault label action =
+  Button { label, class_: CN.btnDefault, action, disabled: false }
+
+buttonPrimary ∷ ∀ o. String → Message o → Button o
+buttonPrimary label action =
+  Button { label, class_: CN.btnPrimary, action, disabled: false }
+
+derive instance newtypeButton ∷ Newtype (Button o) _
+derive instance functorButton ∷ Functor Button
 
 type Buttons o = NEL.NonEmptyList (Button o)
+
+adaptInner
+  ∷ ∀ o o' f
+  . (o → o')
+  → H.Component HH.HTML f Unit (InnerMessage o) Slam
+  → InnerComponent o'
+adaptInner f = Proxy.proxy ∘ under ProComponent (PF.rmap (map f))
 
 type State o =
   Maybe
@@ -78,6 +110,8 @@ data Query i o a
 data Message o
   = Dismiss
   | Confirm o
+
+derive instance functorMessage ∷ Functor Message
 
 type InnerQuery o = Proxy.ProxyQ (Const Void) Unit (InnerMessage o)
 type HTML i o = H.ParentHTML (Query i o) (InnerQuery o) Unit Slam
@@ -143,7 +177,7 @@ renderButtons pending = go <<< L.reverse <<< L.fromFoldable
         ]
 
 renderButton ∷ ∀ i o. Boolean → Button o → HTML i o
-renderButton pending { label, class_, action, disabled } =
+renderButton pending (Button { label, class_, action, disabled }) =
   HH.button
     [ HP.classes [ CN.btn, class_ ]
     , HP.type_ HP.ButtonButton

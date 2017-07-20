@@ -15,64 +15,112 @@ limitations under the License.
 -}
 
 module SlamData.FileSystem.Dialog.Download.Component
-  ( component
-  , module SlamData.FileSystem.Dialog.Download.Component.Query
+  ( Query
+  , Message
+  , initialButtons
+  , component
   ) where
 
 import SlamData.Prelude
 
-import Control.UI.Browser (newTab)
-
-import Data.Lens (_Left, _Right, (%~))
-
-import DOM.Classy.Event as DOM
-
+import Control.Monad.State (state)
+import Data.Lens (_Left, _Right, (.~))
 import Halogen as H
 import Halogen.HTML as HH
-
-import SlamData.Download.Model as D
-import SlamData.FileSystem.Dialog.Component.Message (Message(..))
-import SlamData.FileSystem.Dialog.Download.Component.Query (Query(..))
-import SlamData.FileSystem.Dialog.Download.Component.Render (render)
-import SlamData.FileSystem.Dialog.Download.Component.State (Input, State, _options, initialState, validate)
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
+import SlamData.Dialog.Component as Dialog
+import SlamData.Download.Model as DM
+import SlamData.Download.Render as DR
+import SlamData.FileSystem.Dialog.Download.Component.State as S
+import SlamData.FileSystem.Resource as R
 import SlamData.Monad (Slam)
+import SlamData.Render.ClassName as CN
 
-component ∷ H.Component HH.HTML Query Input Message Slam
-component =
+data Query a = Modify (∀ r. DM.DownloadModel r → DM.DownloadModel r) a
+
+type Message = Dialog.InnerMessage (DM.DownloadModel ())
+
+initialButtons ∷ R.Resource → Dialog.Buttons (DM.DownloadModel ())
+initialButtons = S.buttonsFromState ∘ S.initialState
+
+component ∷ R.Resource → H.Component HH.HTML Query Unit Message Slam
+component res =
   H.component
-    { initialState: initialState
+    { initialState: const (S.initialState res)
     , render
     , eval
     , receiver: const Nothing
     }
 
-eval ∷ Query ~> H.ComponentDSL State Query Message Slam
-eval = case _ of
-  TargetTyped s next → do
-    H.modify $ validate ∘ (_ { targetName = D.validFilename s })
-    pure next
-  ToggleCompress next → do
-    H.modify $ validate ∘ \st -> st { compress = not st.compress }
-    pure next
-  SetOutput ty next → do
-    let
-      options = case ty of
-        D.CSV → Left ∘ either id (const D.initialCSVOptions)
-        D.JSON → Right ∘ either (const D.initialJSONOptions) id
-    H.modify $ validate ∘ (_options %~ options)
-    pure next
-  ModifyCSVOpts fn next → do
-    H.modify $ validate ∘ (_options ∘ _Left %~ fn)
-    pure next
-  ModifyJSONOpts fn next → do
-    H.modify $ validate ∘ (_options ∘ _Right %~ fn)
-    pure next
-  PreventDefaultAndNewTab url ev next → do
-    H.liftEff $ DOM.preventDefault ev
-    H.liftEff $ newTab url
-    pure next
-  RaiseDismiss next → do
-    H.raise Dismiss
-    pure next
-  SetAuthHeaders as next → do
-    H.modify (_ { authHeaders = as }) $> next
+render ∷ S.State → H.ComponentHTML Query
+render state@{ options, targetName } =
+  HH.div_
+    [ HH.div
+        [ HP.classes [ CN.formGroup, CN.downloadSource ] ]
+        [ HH.label_
+            [ HH.span_ [ HH.text "Source" ]
+            , HH.text (R.resourcePath state.resource)
+            ]
+        ]
+    , DR.fldName
+        (DM.shouldCompress state)
+        options
+        targetName
+        (\name → Modify (_ { targetName = name }))
+    , renderOptions state
+    , renderError state
+    ]
+
+renderOptions ∷ S.State → H.ComponentHTML Query
+renderOptions { options } =
+  HH.div
+    [ HP.classes [ CN.formGroup ] ]
+    [ HH.ul
+        [ HP.classes [ CN.nav, CN.navTabs ] ]
+        [ HH.li
+            (guard (isLeft options) $> HP.class_ CN.active)
+            [ HH.a
+                [ HE.onClick $ HE.input_ (Modify (setOutput DM.CSV)) ]
+                [ HH.text "CSV" ]
+            ]
+        , HH.li
+            (guard (isRight options) $> HP.class_ CN.active)
+            [ HH.a
+                [ HE.onClick $ HE.input_ (Modify (setOutput DM.JSON)) ]
+                [ HH.text "JSON" ]
+            ]
+        ]
+    , either renderOptionsCSV renderOptionsJSON options
+    ]
+
+setOutput ∷ ∀ r. DM.OutputType → DM.DownloadModel r → DM.DownloadModel r
+setOutput ty st = case ty, st.options of
+  DM.CSV, Left _ → st
+  DM.CSV, _ → st { options = Left DM.initialCSVOptions }
+  DM.JSON, Right _ → st
+  DM.JSON, _ → st { options = Right DM.initialJSONOptions }
+
+renderOptionsCSV ∷ DM.CSVOptions → H.ComponentHTML Query
+renderOptionsCSV =
+  DR.optionsCSV \lens v →
+    Modify \st → st { options = st.options # _Left ∘ lens .~ v }
+
+renderOptionsJSON ∷ DM.JSONOptions → H.ComponentHTML Query
+renderOptionsJSON =
+  DR.optionsJSON \lens v →
+    Modify \st → st { options = st.options # _Right ∘ lens .~ v }
+
+renderError ∷ S.State → H.ComponentHTML Query
+renderError { error } = case error of
+  Nothing → HH.text ""
+  Just err →
+    HH.div
+      [ HP.classes [ CN.alert, CN.alertDanger ] ]
+      [ HH.text err ]
+
+eval ∷ Query ~> H.ComponentDSL S.State Query Message Slam
+eval (Modify f next) = do
+  newState ← state (\st → let st' = S.validate (f st) in st' × st')
+  H.raise (Dialog.Change (S.buttonsFromState newState))
+  pure next

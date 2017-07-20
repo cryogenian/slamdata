@@ -27,7 +27,6 @@ import CSS as CSS
 import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Fork (fork)
 import Control.Monad.Rec.Class (tailRecM, Step(Done, Loop))
-import Control.UI.Browser (setLocation, locationString, clearValue)
 import Control.UI.Browser as Browser
 import Control.UI.Browser.Event as Be
 import Control.UI.File as Cf
@@ -44,6 +43,7 @@ import Data.String as S
 import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
 import Halogen as H
+import Global as Global
 import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML as HH
 import Halogen.HTML.CSS as HCSS
@@ -54,10 +54,12 @@ import Quasar.Advanced.QuasarAF as QA
 import Quasar.Advanced.Types as QAT
 import Quasar.Data (QData(..))
 import Quasar.Mount as QM
+import Quasar.Paths as QP
 import SlamData.AdminUI.Component as AdminUI
 import SlamData.AdminUI.Types as AdminUI.Types
 import SlamData.Common.Sort (notSort)
 import SlamData.Config as Config
+import SlamData.Download.Model as DM
 import SlamData.Dialog.Component as NewDialog
 import SlamData.Dialog.Render as RenderDialog
 import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
@@ -96,7 +98,7 @@ import SlamData.LocalStorage.Keys as LSK
 import SlamData.Monad (Slam)
 import SlamData.Monad.License (notifyDaysRemainingIfNeeded)
 import SlamData.Notification.Component as NC
-import SlamData.Quasar (ldJSON) as API
+import SlamData.Quasar (ldJSON, reqHeadersToJSON, encodeURI) as API
 import SlamData.Quasar.Auth (authHeaders) as API
 import SlamData.Quasar.Class (liftQuasar)
 import SlamData.Quasar.Data (makeFile, save) as API
@@ -227,7 +229,7 @@ eval = case _ of
   Resort next → do
     st ← H.get
     searchValue ← H.query' CS.cpSearch unit (H.request Search.GetValue)
-    H.liftEff $ setLocation $ browseURL searchValue (notSort st.sort) st.salt st.path
+    H.liftEff $ Browser.setLocation $ browseURL searchValue (notSort st.sort) st.salt st.path
     pure next
   SetPath path next → do
     H.modify $ State._path .~ path
@@ -295,7 +297,7 @@ eval = case _ of
     isMounted >>= if _
        then
          createWorkspace state.path \mkUrl →
-           H.liftEff $ setLocation $ mkUrl New
+           H.liftEff $ Browser.setLocation $ mkUrl New
        else
          showDialogNew
            $ DialogT.Error
@@ -310,7 +312,7 @@ eval = case _ of
     pure next
   FileListChanged el next → do
     fileArr ← map Cf.fileListToArray $ (H.liftAff $ Cf.files el)
-    H.liftEff $ clearValue el
+    H.liftEff $ Browser.clearValue el
     -- TODO: notification? this shouldn't be a runtime exception anyway!
     -- let err ∷ Slam Unit
     --     err = throwError $ error "empty filelist"
@@ -318,10 +320,8 @@ eval = case _ of
     for_ (Array.head fileArr) uploadFileSelected
     pure next
   Download next → do
-    path ← H.gets _.path
-    download $ R.Directory path
+    showDialogNew ∘ DialogT.Download ∘ R.Directory =<< H.gets _.path
     pure next
-
   DismissSignInSubmenu next → do
     dismissSignInSubmenu
     pure next
@@ -391,8 +391,13 @@ eval = case _ of
     remove mount
     H.liftEff Browser.reload
     pure next
-  HandleNewDialog (NewDialog.Confirm (DialogT.DoDelete res)) next → do
-    remove res
+  HandleNewDialog (NewDialog.Confirm act) next → do
+    case act of
+      DialogT.DoDelete res →
+        remove res
+      DialogT.DoDownload opts → do
+        authHeaders ← lift API.authHeaders
+        H.liftEff $ Browser.newTab (DM.renderURL authHeaders opts)
     hideDialogNew
     pure next
   HandleNewDialog NewDialog.Dismiss next → do
@@ -421,7 +426,7 @@ eval = case _ of
         pure Nothing
       Search.Submit → do
         H.query' CS.cpSearch unit $ H.request Search.GetValue
-    H.liftEff $ setLocation $ browseURL value st.sort salt st.path
+    H.liftEff $ Browser.setLocation $ browseURL value st.sort salt st.path
     pure next
   HandleLicenseProblem problem next → do
     _ ← H.query' CS.cpNotify unit $ H.action $ NC.UpdateRenderMode NC.Hidden
@@ -452,19 +457,19 @@ handleItemMessage = case _ of
   Item.Selected →
     pure unit
   Item.Edit res → do
-    loc ← H.liftEff locationString
+    loc ← H.liftEff Browser.locationString
     for_ (preview R._Workspace res) \wp →
-      H.liftEff $ setLocation $ append (loc ⊕ "/") $ mkWorkspaceURL wp (Load Editable)
+      H.liftEff $ Browser.setLocation $ append (loc ⊕ "/") $ mkWorkspaceURL wp (Load Editable)
   Item.Open res → do
     { sort, salt, path } ← H.get
-    loc ← H.liftEff locationString
+    loc ← H.liftEff Browser.locationString
     for_ (preview R._filePath res) \fp →
       createWorkspace path \mkUrl →
-        H.liftEff $ setLocation $ mkUrl $ Exploring fp
+        H.liftEff $ Browser.setLocation $ mkUrl $ Exploring fp
     for_ (preview R._dirPath res) \dp →
-      H.liftEff $ setLocation $ browseURL Nothing sort salt dp
+      H.liftEff $ Browser.setLocation $ browseURL Nothing sort salt dp
     for_ (preview R._Workspace res) \wp →
-      H.liftEff $ setLocation $ append (loc ⊕ "/") $ mkWorkspaceURL wp (Load ReadOnly)
+      H.liftEff $ Browser.setLocation $ append (loc ⊕ "/") $ mkWorkspaceURL wp (Load ReadOnly)
   Item.Configure (R.Mount mount) → do
     configure mount
   Item.Configure _ →
@@ -477,7 +482,7 @@ handleItemMessage = case _ of
     showDialogNew (DialogT.Delete res)
   Item.Share res → do
     path ← H.gets _.path
-    loc ← map (_ ⊕ "/") $ H.liftEff locationString
+    loc ← map (_ ⊕ "/") $ H.liftEff Browser.locationString
     for_ (preview R._filePath res) \fp →
       createWorkspace path \mkUrl → do
         let url = append loc $ mkUrl $ Exploring fp
@@ -486,7 +491,7 @@ handleItemMessage = case _ of
       let url = append loc $ mkWorkspaceURL wp (Load ReadOnly)
       showDialogNew (DialogT.Share (R.resourceName res) url)
   Item.Download res →
-    download res
+    showDialogNew (DialogT.Download res)
 
 checkIsMount ∷ DirPath → DSL Unit
 checkIsMount path = do
@@ -681,12 +686,6 @@ configure m =
           ⊕ msg
       Right ge →
         GE.raiseGlobalError ge
-
-download ∷ R.Resource → DSL Unit
-download res = do
-  hs ← H.lift API.authHeaders
-  showDialog $ Dialog.Download res hs
-  pure unit
 
 getChildren
   ∷ (R.Resource → Boolean)

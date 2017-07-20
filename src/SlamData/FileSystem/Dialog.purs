@@ -24,6 +24,8 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import SlamData.Dialog.Component as Dialog
 import SlamData.Dialog.Message.Component as Message
+import SlamData.Download.Model as DM
+import SlamData.FileSystem.Dialog.Download.Component as Download
 import SlamData.FileSystem.Dialog.Share.Component as Share
 import SlamData.FileSystem.Resource as R
 import SlamData.Render.ClassName as CN
@@ -32,8 +34,11 @@ data Definition
   = Error String
   | Delete R.Resource
   | Share String String
+  | Download R.Resource
 
-data Action = DoDelete R.Resource
+data Action
+  = DoDelete R.Resource
+  | DoDownload (DM.DownloadModel ())
 
 dialog ∷ Definition → Dialog.DialogSpec Action
 dialog = case _ of
@@ -63,11 +68,11 @@ dialog = case _ of
     { title: "Share " <> fromMaybe name (Str.stripSuffix (Str.Pattern ".slam") name)
     , class_: HH.ClassName "sd-share-dialog"
     , dialog: Proxy.proxy (Share.component url)
-    , buttons:
-        pure
-          { label: "Dismiss"
-          , action: Dialog.Dismiss
-          , class_: CN.btnDefault
-          , disabled: false
-          }
+    , buttons: pure (Dialog.buttonDefault "Dismiss" Dialog.Dismiss)
+    }
+  Download res →
+    { title: "Download"
+    , class_: HH.ClassName "sd-download-dialog"
+    , dialog: Dialog.adaptInner DoDownload (Download.component res)
+    , buttons: map DoDownload <$> Download.initialButtons res
     }

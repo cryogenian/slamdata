@@ -19,23 +19,16 @@ module SlamData.FileSystem.Dialog.Component where
 import SlamData.Prelude
 
 import Data.Array (singleton)
-
 import DOM.Event.Types (MouseEvent)
-
 import Halogen as H
 import Halogen.Component.ChildPath as CP
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-
-import Network.HTTP.RequestHeader (RequestHeader)
-
 import Quasar.Advanced.Types as QAT
-
 import SlamData.Dialog.License (advancedLicenseExpired, advancedTrialLicenseExpired, licenseInvalid)
 import SlamData.FileSystem.Dialog.Component.Message (Message(..))
-import SlamData.FileSystem.Dialog.Download.Component as Download
 import SlamData.FileSystem.Dialog.Mount.Component as Mount
 import SlamData.FileSystem.Dialog.Rename.Component as Rename
 import SlamData.FileSystem.Resource (Resource, Mount)
@@ -43,13 +36,11 @@ import SlamData.License as License
 import SlamData.Monad (Slam)
 import SlamData.Render.ClassName as CN
 import SlamData.Workspace.Deck.Component.CSS as CSS
-
 import Utils.DOM as DOM
 
 data Dialog
   = Rename Resource
   | Mount Mount.Input
-  | Download Resource (Array RequestHeader)
   | LicenseProblem License.LicenseProblem
 
 type State = Maybe Dialog
@@ -65,11 +56,10 @@ data Query a
 
 type ChildQuery
   = Rename.Query
-  ⨁ Download.Query
   ⨁ Mount.Query
   ⨁ Const Void
 
-type ChildSlot = Unit ⊹ Unit ⊹ Unit ⊹ Void
+type ChildSlot = Unit ⊹ Unit ⊹ Void
 
 component ∷ H.Component HH.HTML Query Unit Message Slam
 component =
@@ -93,10 +83,8 @@ render state =
   dialog = case _ of
     Rename res →
       HH.slot' CP.cp1 unit Rename.component res (HE.input HandleChild)
-    Download resource headers →
-      HH.slot' CP.cp2 unit Download.component { resource, headers } (HE.input HandleChild)
     Mount input →
-      HH.slot' CP.cp3 unit Mount.component input (HE.input HandleChild)
+      HH.slot' CP.cp2 unit Mount.component input (HE.input HandleChild)
     LicenseProblem (License.Expired licenseType) →
       case licenseType of
         QAT.Advanced → advancedLicenseExpired
@@ -110,7 +98,7 @@ eval = case _ of
     _ ← H.query' CP.cp1 unit q
     pure next
   SaveMount reply → do
-    map (reply ∘ join) $ H.query' CP.cp3 unit $ H.request Mount.Save
+    map (reply ∘ join) $ H.query' CP.cp2 unit $ H.request Mount.Save
   Show d next → do
     H.put (Just d)
     pure next
