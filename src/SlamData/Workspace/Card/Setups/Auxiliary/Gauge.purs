@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Auxiliary.Graph where
+module SlamData.Workspace.Card.Setups.Auxiliary.Gauge where
 
 import SlamData.Prelude hiding (case_)
 
