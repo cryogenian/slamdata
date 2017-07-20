@@ -228,7 +228,7 @@ elaborateVar ∷ ∀ m. Elaborate m (String → m Sql.Sql)
 elaborateVar vari = do
   { varMap, varScope } ← ask
   if Set.member vari varScope
-    then defaultSub vari
+    then pure $ Sql.vari vari
     else maybe (defaultSub vari) substPtr $ VM.lookupPtr (VM.Var vari) varMap
 
 substPtr ∷ ∀ m. Elaborate m (VM.VarMapPtr → m Sql.Sql)

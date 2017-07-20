@@ -40,9 +40,10 @@ import SlamData.Workspace.Card.Eval.Common as CEC
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port.VarMap as VM
-import SlamData.Workspace.Card.Setups.Common.Eval (analyze)
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Error (PivotTableError(..), throwPivotTableError)
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
+import SlamData.Workspace.Card.Setups.Common.Eval (analyze)
+import SlamData.Workspace.Card.Setups.Common.Sql (numFuncs)
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Transform as T
 import SqlSquared (Sql)
@@ -70,9 +71,11 @@ eval options port = do
   let
     port' × sql = mkSql options var
   resource' ←
-    CEC.localEvalResource (Sql.Query mempty sql) varMap
+    CEC.localEvalResource (Sql.Query numFuncs sql) varMap
       >>= pivotTableError PivotTableQuasarError
-  pure (Port.PivotTable port' × VM.insert cardId (VM.Var Port.defaultResourceVar) (VM.Resource resource') varMap)
+  pure
+    $ Port.PivotTable port'
+    × VM.insert cardId (VM.Var Port.defaultResourceVar) (VM.Resource resource') varMap
 
 mkSql ∷ PTM.Model → VM.Var → Port.PivotTablePort × Sql
 mkSql options (VM.Var vari) =

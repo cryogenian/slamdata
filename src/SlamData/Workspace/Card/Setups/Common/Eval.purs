@@ -50,6 +50,7 @@ import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port.VarMap as VM
 import SlamData.Workspace.Card.Setups.Axis (Axes, buildAxes)
+import SlamData.Workspace.Card.Setups.Common.Sql (numFuncs)
 import SqlSquared as Sql
 import Utils (hush')
 
@@ -108,7 +109,7 @@ chartSetupEval buildSql buildPort m port = do
       let
         sql = buildSql r var
         port' = buildPort r axes
-      resource' ← CE.liftQ $ CEC.localEvalResource (Sql.Query mempty sql) varMap
+      resource' ← CE.liftQ $ CEC.localEvalResource (Sql.Query numFuncs sql) varMap
       pure (port' × VM.insert cardId (VM.Var Port.defaultResourceVar) (VM.Resource resource') varMap)
 
 analyze

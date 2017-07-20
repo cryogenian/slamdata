@@ -31,6 +31,8 @@ module SlamData.Quasar.Query
   , allFields
   , fields
   , jcursorToSql
+  , compileQuery
+  , viewQueryQuery
   , module Quasar.Error
   , module SlamData.Quasar.Class
   ) where
@@ -79,6 +81,16 @@ compile'
 compile' backendPath sql varMap =
   liftQuasar $ QF.compileQuery backendPath sql varMap
 
+compileQuery
+  ∷ ∀ m
+  . QuasarDSL m
+  ⇒ DirPath
+  → Sql.SqlQuery
+  → SM.StrMap String
+  → m (Either QError CompileResultR)
+compileQuery backendPath sql varMap =
+  compile' backendPath (Sql.printQuery sql) varMap
+
 query
   ∷ ∀ m
   . QuasarDSL m
@@ -106,6 +118,17 @@ queryEJsonVM
   → m (Either QError (Array EJS.EJson))
 queryEJsonVM path sql vm =
   liftQuasar $ QF.readQueryEJson path (printQuery sql) vm Nothing
+
+viewQueryQuery
+  ∷ ∀ m
+  . QuasarDSL m
+  ⇒ Monad m
+  ⇒ FilePath
+  → Sql.SqlQuery
+  → SM.StrMap String
+  → m (Either QError Unit)
+viewQueryQuery dest sql vars =
+  viewQuery' dest (Sql.printQuery sql) vars
 
 -- | Runs a query creating a view mount for the query.
 viewQuery
