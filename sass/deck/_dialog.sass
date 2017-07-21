@@ -1,4 +1,4 @@
-.dialog-container:not(.invisible), .sd-dialog-container
+.dialog-container:not(.invisible)
   display: flex
   flex-flow: column nowrap
   position: fixed
@@ -14,7 +14,7 @@
   background: rgba(0, 0, 0, 0.625)
 
 
-.dialog-container > .dialog, .dialog-container > form, .sd-dialog
+.dialog-container > .dialog, .dialog-container > form
   flex: 0 0 auto
   position: relative
   z-index: 9001
@@ -33,7 +33,7 @@
     padding-bottom: $padding-base-horizontal
     margin: 0
 
-  .deck-dialog-body, .sd-dialog-body
+  .deck-dialog-body
     position: relative;
     min-height: 4rem;
 
@@ -54,7 +54,7 @@
     .deck-dialog-cardpath-card:not(:last-child)
       margin-right: 0.4rem
 
-    .deck-dialog-footer, .sd-dialog-footer
+    .deck-dialog-footer
       flex: 0 0 auto
       padding: 1.6rem
 
@@ -76,7 +76,7 @@
       height: 16rem
       min-height: 6rem
 
-  .deck-dialog-footer, .sd-dialog-footer
+  .deck-dialog-footer
     flex: 0 0 auto
     padding-top: $padding-base-horizontal
     padding-right: 0rem
@@ -112,11 +112,6 @@
     padding: 0
 
 
-.sd-dialog-loading
-  text-align: center
-
-  > .sd-icon
-    font-size: 2.8rem
 
 
 .dialog-container .dialog.license-dialog
@@ -191,18 +186,3 @@
     padding-right: 0
     margin-bottom: 0.3rem
     text-align: center
-
-.sd-dialog-header
-  display: flex
-  justify-content: space-between
-
-  .sd-spinner
-    font-size: 150%
-    margin-top: 0.2rem
-
-.sd-dialog-footer
-  display: flex
-  justify-content: space-between
-
-.sd-dialog-footer-right
-  margin-left: auto

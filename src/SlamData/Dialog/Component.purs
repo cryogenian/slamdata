@@ -59,7 +59,8 @@ type InnerComponent o = Proxy.ProxyComponent (Const Void) Unit (InnerMessage o) 
 
 data InnerMessage o
   = SelfDismiss
-  | Change (Buttons o)
+  | TogglePending Boolean
+  | Change (Buttons o) -- TODO-gb: rename?
 
 derive instance functorInnerMessage ∷ Functor InnerMessage
 
@@ -195,6 +196,8 @@ eval mkInner = case _ of
     case msg of
       SelfDismiss →
         H.raise Dismiss
+      TogglePending b →
+        H.modify (map (_ { pending = b}))
       Change buttons →
         H.modify (map (_ { dialog { buttons = buttons } }))
     pure next

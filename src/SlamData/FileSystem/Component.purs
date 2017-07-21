@@ -43,7 +43,6 @@ import Data.String as S
 import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
 import Halogen as H
-import Global as Global
 import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML as HH
 import Halogen.HTML.CSS as HCSS
@@ -53,8 +52,7 @@ import Halogen.Query.EventSource as ES
 import Quasar.Advanced.QuasarAF as QA
 import Quasar.Advanced.Types as QAT
 import Quasar.Data (QData(..))
-import Quasar.Mount as QM
-import Quasar.Paths as QP
+import Quasar.Error as QE
 import SlamData.AdminUI.Component as AdminUI
 import SlamData.AdminUI.Types as AdminUI.Types
 import SlamData.Common.Sort (notSort)
@@ -74,13 +72,6 @@ import SlamData.FileSystem.Dialog as DialogT
 import SlamData.FileSystem.Dialog.Component as Dialog
 import SlamData.FileSystem.Dialog.Component.Message as DialogMessage
 import SlamData.FileSystem.Dialog.Mount.Component as Mount
-import SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State as Couchbase
-import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component.State as MarkLogic
-import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MongoDB
-import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
-import SlamData.FileSystem.Dialog.Mount.SparkFTP.Component.State as SparkFTP
-import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State as SparkHDFS
-import SlamData.FileSystem.Dialog.Mount.SparkLocal.Component.State as SparkLocal
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Listing.Item (Item(..), itemResource, sortItem)
 import SlamData.FileSystem.Listing.Item.Component as Item
@@ -98,12 +89,12 @@ import SlamData.LocalStorage.Keys as LSK
 import SlamData.Monad (Slam)
 import SlamData.Monad.License (notifyDaysRemainingIfNeeded)
 import SlamData.Notification.Component as NC
-import SlamData.Quasar (ldJSON, reqHeadersToJSON, encodeURI) as API
+import SlamData.Quasar (ldJSON) as API
 import SlamData.Quasar.Auth (authHeaders) as API
 import SlamData.Quasar.Class (liftQuasar)
 import SlamData.Quasar.Data (makeFile, save) as API
 import SlamData.Quasar.FS (children, delete, getNewName) as API
-import SlamData.Quasar.Mount (mountInfo) as API
+import SlamData.Quasar.Mount (mountInfo, saveMount) as API
 import SlamData.Render.ClassName as CN
 import SlamData.Render.Common (content, row)
 import SlamData.Wiring as Wiring
@@ -266,7 +257,7 @@ eval = case _ of
     pure next
   MakeMount next → do
     parent ← H.gets _.path
-    showDialog $ Dialog.Mount $ Mount.New { parent }
+    showDialogNew $ DialogT.Mount $ Mount.New { parent }
     pure next
   MakeFolder next → do
     result ← runExceptT do
@@ -351,54 +342,84 @@ eval = case _ of
         presentMountHint items path
         resort
         pure next
-  HandleDialog (DialogMessage.ResourceDelete res) next → do
-    remove res
-    hideDialog
-    pure next
   HandleDialog DialogMessage.Dismiss next →
     pure next
-  HandleDialog (DialogMessage.MountSave originalMount) next → do
-    mbMbMount ←
-      H.query' CS.cpDialog unit $ H.request Dialog.SaveMount
-    for_ (join mbMbMount) \newPath → do
-      hideDialog
-      path ← H.gets _.path
-      case originalMount of
-        -- Refresh if mount is current directory
-        -- path </> dir "" is equal to path
-        Nothing | R.Database path ≡ newPath || (R.Database $ path </> dir "") ≡ newPath →
-          H.liftEff Browser.reload
-        -- Add new item to list
-        Nothing →
-          void $ H.query' CS.cpListing unit $ H.action $ Listing.Add $ Item (R.Mount newPath)
-        -- Rename current mount at path
-        Just oldPath@(R.Database p) | path ≡ p && oldPath /= newPath → do
-          handleItemMessage (Item.Open $ R.Mount newPath)
-          void $ API.delete (R.Mount oldPath)
-        -- Rename mount in listing
-        Just oldPath | oldPath /= newPath → do
-          _ ← H.query' CS.cpListing unit $ H.action $ Listing.Remove $ Item (R.Mount oldPath)
-          _ ← H.query' CS.cpListing unit $ H.action $ Listing.Add $ Item (R.Mount newPath)
-          void $ API.delete (R.Mount oldPath)
-        Just oldPath → do
-          pure unit
-    resort
-    checkIsMount =<< H.gets _.path
-    checkIsUnconfigured
-    pure next
-  HandleDialog DialogMessage.MountDelete next → do
-    mount ← R.Mount ∘ R.Database <$> H.gets _.path
-    remove mount
-    H.liftEff Browser.reload
-    pure next
+  -- HandleDialog (DialogMessage.MountSave originalMount) next → do
+  --   mbMbMount ←
+  --     -- eval (Save k) = do
+  --     --   { new, parent, name } ← H.get
+  --     --   let name' = fromMaybe "" name
+  --     --   let parent' = fromMaybe rootDir parent
+  --     --   newName ←
+  --     --     if new then Api.getNewName parent' name' else pure (pure name')
+  --     --   case newName of
+  --     --     Left err → do
+  --     --       handleQError err
+  --     --       pure $ k Nothing
+  --     --     Right newName' → do
+  --     --       result ← querySettings (H.request (SQ.Submit parent' newName'))
+  --     --       mount ← case result of
+  --     --         Just (Right m) → pure (Just m)
+  --     --         Just (Left err) → do
+  --     --           handleQError err
+  --     --           pure Nothing
+  --     --         Nothing → pure Nothing
+  --     --       H.modify (MCS._saving .~ false)
+  --     --       pure $ k mount
+  --     H.query' CS.cpDialog unit $ H.request Dialog.SaveMount
+  --   for_ (join mbMbMount) \newPath → do
+  --     hideDialog
+  --     path ← H.gets _.path
+  --     case originalMount of
+  --       -- Refresh if mount is current directory
+  --       -- path </> dir "" is equal to path
+  --       Nothing | R.Database path ≡ newPath || (R.Database $ path </> dir "") ≡ newPath →
+  --         H.liftEff Browser.reload
+  --       -- Add new item to list
+  --       Nothing →
+  --         void $ H.query' CS.cpListing unit $ H.action $ Listing.Add $ Item (R.Mount newPath)
+  --       -- Rename current mount at path
+  --       Just oldPath@(R.Database p) | path ≡ p && oldPath /= newPath → do
+  --         handleItemMessage (Item.Open $ R.Mount newPath)
+  --         void $ API.delete (R.Mount oldPath)
+  --       -- Rename mount in listing
+  --       Just oldPath | oldPath /= newPath → do
+  --         _ ← H.query' CS.cpListing unit $ H.action $ Listing.Remove $ Item (R.Mount oldPath)
+  --         _ ← H.query' CS.cpListing unit $ H.action $ Listing.Add $ Item (R.Mount newPath)
+  --         void $ API.delete (R.Mount oldPath)
+  --       Just oldPath → do
+  --         pure unit
+  --   resort
+  --   checkIsMount =<< H.gets _.path
+  --   checkIsUnconfigured
+  --   pure next
+  -- HandleDialog DialogMessage.MountDelete next → do
+  --   mount ← R.Mount ∘ R.Database <$> H.gets _.path
+  --   remove mount
+  --   H.liftEff Browser.reload
+  --   pure next
   HandleNewDialog (NewDialog.Confirm act) next → do
     case act of
-      DialogT.DoDelete res →
+      DialogT.DoDelete res → do
         remove res
+        hideDialogNew
       DialogT.DoDownload opts → do
         authHeaders ← lift API.authHeaders
         H.liftEff $ Browser.newTab (DM.renderURL authHeaders opts)
-    hideDialogNew
+        hideDialogNew
+      DialogT.DoMountAction (DialogT.SaveMount path mount reply) → do
+        API.saveMount path mount >>= case _ of
+          Left err →
+            case GE.fromQError err of
+              Left msg →
+                lift $ reply $ "There was a problem saving the mount: " <> msg
+              Right ge →
+                GE.raiseGlobalError ge
+          Right _ →
+            hideDialogNew
+      DialogT.DoMountAction (DialogT.DeleteMount path) → do
+        remove $ R.Mount (either R.Database R.View path)
+        hideDialogNew
     pure next
   HandleNewDialog NewDialog.Dismiss next → do
     hideDialogNew
@@ -644,48 +665,35 @@ resort = do
       void $ H.query' CS.cpListing unit $ H.action $ Listing.SortBy (sortItem isSearching sort)
 
 configure ∷ R.Mount → DSL Unit
-configure m =
+configure m = do
+  let anyPath = R.mountPath m
   API.mountInfo anyPath >>= case m, _ of
     R.View path, Left err → raiseError err
     R.Database path, Left err
       | path /= rootDir → raiseError err
-      | otherwise →
-          showDialog $ Dialog.Mount Mount.Root
-    R.View path, Right config →
-      showDialog $ Dialog.Mount
-        $ Mount.Edit
-          { parent: either parentDir parentDir anyPath
-          , name: Just $ getNameStr anyPath
-          , settings: fromConfig config
-          }
-    R.Database path, Right config →
-      showDialog $ Dialog.Mount
-        $ Mount.Edit
-          { parent: if path ≡ rootDir then Nothing else either parentDir parentDir anyPath
-          , name: if path ≡ rootDir then Nothing else Just $ getNameStr anyPath
-          , settings: fromConfig config
-          }
+      | otherwise → showMountDialog Mount.Root
+    R.View path, Right mount →
+      showMountDialog $ Mount.Edit
+        { parent: either parentDir parentDir anyPath
+        , name: Just $ getNameStr anyPath
+        , mount
+        }
+    R.Database path, Right mount →
+      showMountDialog $ Mount.Edit
+        { parent: if path ≡ rootDir then Nothing else either parentDir parentDir anyPath
+        , name: if path ≡ rootDir then Nothing else Just $ getNameStr anyPath
+        , mount
+        }
   where
-    anyPath =
-      R.mountPath m
-
-    fromConfig = case _ of
-      QM.ViewConfig config → Mount.SQL2 (SQL2.stateFromViewInfo config)
-      QM.ModuleConfig config → Mount.SQL2 SQL2.initialState
-      QM.MongoDBConfig config → Mount.MongoDB (MongoDB.fromConfig config)
-      QM.CouchbaseConfig config → Mount.Couchbase (Couchbase.fromConfig config)
-      QM.MarkLogicConfig config → Mount.MarkLogic (MarkLogic.fromConfig config)
-      QM.SparkFTPConfig config → Mount.SparkFTP (SparkFTP.fromConfig config)
-      QM.SparkHDFSConfig config → Mount.SparkHDFS (SparkHDFS.fromConfig config)
-      QM.SparkLocalConfig config → Mount.SparkLocal (SparkLocal.fromConfig config)
-
+    raiseError ∷ QE.QError → DSL Unit
     raiseError err = case GE.fromQError err of
       Left msg →
         showDialogNew $ DialogT.Error
-          $ "There was a problem reading the mount settings: "
-          ⊕ msg
+          $ "There was a problem reading the mount settings: " <> msg
       Right ge →
         GE.raiseGlobalError ge
+    showMountDialog ∷ Mount.Input → DSL Unit
+    showMountDialog = showDialogNew ∘ DialogT.Mount
 
 getChildren
   ∷ (R.Resource → Boolean)

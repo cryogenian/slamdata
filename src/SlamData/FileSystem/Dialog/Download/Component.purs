@@ -23,9 +23,9 @@ module SlamData.FileSystem.Dialog.Download.Component
 
 import SlamData.Prelude
 
-import Control.Monad.State (state)
 import Data.Lens (_Left, _Right, (.~))
 import Halogen as H
+import Halogen.Component.Utils as HCU
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
@@ -121,6 +121,6 @@ renderError { error } = case error of
 
 eval ∷ Query ~> H.ComponentDSL S.State Query Message Slam
 eval (Modify f next) = do
-  newState ← state (\st → let st' = S.validate (f st) in st' × st')
+  newState ← HCU.modify (S.validate ∘ f)
   H.raise (Dialog.Change (S.buttonsFromState newState))
   pure next

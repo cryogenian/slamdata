@@ -15,48 +15,43 @@ limitations under the License.
 -}
 
 module SlamData.FileSystem.Dialog.Mount.MarkLogic.Component
-  ( comp
+  ( component
   , Query
-  , module SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery
+  , module Q
   , module S
   ) where
 
 import SlamData.Prelude
 
-import Data.Path.Pathy (dir, (</>))
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Quasar.Mount as QM
-import Quasar.Mount.MarkLogic (Format(..))
+import Quasar.Mount.MarkLogic as QMM
 import SlamData.FileSystem.Dialog.Mount.Common.Render as MCR
-import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..), SettingsMessage(..))
+import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery as Q
 import SlamData.FileSystem.Dialog.Mount.Common.State as MCS
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component.State as S
-import SlamData.FileSystem.Resource (Mount(..))
 import SlamData.Monad (Slam)
-import SlamData.Quasar.Error as QE
-import SlamData.Quasar.Mount as API
 import SlamData.Render.ClassName as CN
 
-type Query = SettingsQuery S.State
+type Query = Q.SettingsQuery S.State
+type Message = Q.SettingsMessage QMM.Config
 
 type HTML = H.ComponentHTML Query
 
-comp ∷ S.State → H.Component HH.HTML Query Unit SettingsMessage Slam
-comp initialState =
+component ∷ H.Component HH.HTML Query (Maybe QMM.Config) Message Slam
+component =
   H.component
-    { initialState: const initialState
+    { initialState: maybe S.initialState S.fromConfig
     , render
-    , eval
+    , eval: Q.eval (MCS.vToE ∘ S.toConfig)
     , receiver: const Nothing
     }
 
 render ∷ S.State → HTML
 render state =
-  HH.div
-    [ HP.class_ CN.mountMarkLogic ]
+  HH.div_
     [ MCR.section "Server" [ MCR.host state S._host' ]
     , MCR.section "Authentication"
         [ HH.div
@@ -67,42 +62,24 @@ render state =
         ]
     , MCR.section "Root"
         [ HH.div
-            [ HP.classes [CN.formGroup, CN.mountPath] ]
+            [ HP.class_ CN.formGroup ]
             [ MCR.label "Database" [ MCR.input state S._path [] ] ]
         , HH.div
             [ HP.class_ CN.mountFormat ]
             [ HH.label_ [ HH.span_ [ HH.text "Format" ] ]
-            , formatRadio "XML" XML
-            , formatRadio "JSON" JSON
+            , formatRadio "XML" QMM.XML
+            , formatRadio "JSON" QMM.JSON
             ]
         ]
     ]
-
   where
-  formatRadio lbl val =
-    HH.label_
-      [ HH.input
-          [ HP.type_ HP.InputRadio
-          , HP.name "mlformat"
-          , HP.checked (state.format ≡ val)
-          , HE.onValueChange (HE.input_ (ModifyState _ { format = val }))
-          ]
-      , HH.text lbl
-      ]
-
-
-eval ∷ Query ~> H.ComponentDSL S.State Query SettingsMessage Slam
-eval = case _ of
-  ModifyState f next → do
-    H.modify f
-    H.raise Modified
-    pure next
-  Validate k →
-    k <<< either Just (const Nothing) <<< MCS.vToE <<< S.toConfig <$> H.get
-  Submit parent name k →
-    k <$> runExceptT do
-      st ← lift H.get
-      config ← except $ lmap QE.msgToQError $ MCS.vToE $ S.toConfig st
-      let path = parent </> dir name
-      ExceptT $ API.saveMount (Left path) (QM.MarkLogicConfig config)
-      pure $ Database path
+    formatRadio lbl val =
+      HH.label_
+        [ HH.input
+            [ HP.type_ HP.InputRadio
+            , HP.name "mlformat"
+            , HP.checked (state.format ≡ val)
+            , HE.onValueChange (HE.input_ (Q.ModifyState _ { format = val }))
+            ]
+        , HH.text lbl
+        ]

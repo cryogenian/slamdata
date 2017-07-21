@@ -28,7 +28,6 @@ data Scheme
   | SparkLocal
 
 derive instance eqScheme ∷ Eq Scheme
-
 derive instance ordScheme ∷ Ord Scheme
 
 schemeToString :: Scheme -> String

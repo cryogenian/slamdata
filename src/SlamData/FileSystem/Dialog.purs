@@ -14,7 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.FileSystem.Dialog where
+module SlamData.FileSystem.Dialog
+  ( module SlamData.FileSystem.Dialog
+  , module Exports
+  ) where
 
 import SlamData.Prelude
 
@@ -26,12 +29,15 @@ import SlamData.Dialog.Component as Dialog
 import SlamData.Dialog.Message.Component as Message
 import SlamData.Download.Model as DM
 import SlamData.FileSystem.Dialog.Download.Component as Download
+import SlamData.FileSystem.Dialog.Mount.Component as Mount
+import SlamData.FileSystem.Dialog.Mount.Component (MountAction(..)) as Exports
 import SlamData.FileSystem.Dialog.Share.Component as Share
 import SlamData.FileSystem.Resource as R
 import SlamData.Render.ClassName as CN
 
 data Definition
   = Error String
+  | Mount Mount.Input
   | Delete R.Resource
   | Share String String
   | Download R.Resource
@@ -39,6 +45,7 @@ data Definition
 data Action
   = DoDelete R.Resource
   | DoDownload (DM.DownloadModel ())
+  | DoMountAction Mount.MountAction
 
 dialog ∷ Definition → Dialog.DialogSpec Action
 dialog = case _ of
@@ -75,4 +82,10 @@ dialog = case _ of
     , class_: HH.ClassName "sd-download-dialog"
     , dialog: Dialog.adaptInner DoDownload (Download.component res)
     , buttons: map DoDownload <$> Download.initialButtons res
+    }
+  Mount input →
+    { title: "Mount"
+    , class_: HH.ClassName "sd-mount-dialog"
+    , dialog: Dialog.adaptInner DoMountAction (Mount.component input)
+    , buttons: map DoMountAction <$> Mount.initialButtons input
     }

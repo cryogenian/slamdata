@@ -28,10 +28,9 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import Quasar.Advanced.Types as QAT
 import SlamData.Dialog.License (advancedLicenseExpired, advancedTrialLicenseExpired, licenseInvalid)
-import SlamData.FileSystem.Dialog.Component.Message (Message(..))
-import SlamData.FileSystem.Dialog.Mount.Component as Mount
+import SlamData.FileSystem.Dialog.Component.Message (Message)
 import SlamData.FileSystem.Dialog.Rename.Component as Rename
-import SlamData.FileSystem.Resource (Resource, Mount)
+import SlamData.FileSystem.Resource (Resource)
 import SlamData.License as License
 import SlamData.Monad (Slam)
 import SlamData.Render.ClassName as CN
@@ -40,7 +39,6 @@ import Utils.DOM as DOM
 
 data Dialog
   = Rename Resource
-  | Mount Mount.Input
   | LicenseProblem License.LicenseProblem
 
 type State = Maybe Dialog
@@ -50,16 +48,14 @@ data Query a
   | BackdropDismiss MouseEvent a
   | RaiseDismiss a
   | QueryRename (Rename.Query Unit) a
-  | SaveMount (Maybe Mount → a)
   | HandleChild Message a
   | AddDirsToRename (Array Resource) a
 
 type ChildQuery
   = Rename.Query
-  ⨁ Mount.Query
   ⨁ Const Void
 
-type ChildSlot = Unit ⊹ Unit ⊹ Void
+type ChildSlot = Unit ⊹ Void
 
 component ∷ H.Component HH.HTML Query Unit Message Slam
 component =
@@ -83,8 +79,6 @@ render state =
   dialog = case _ of
     Rename res →
       HH.slot' CP.cp1 unit Rename.component res (HE.input HandleChild)
-    Mount input →
-      HH.slot' CP.cp2 unit Mount.component input (HE.input HandleChild)
     LicenseProblem (License.Expired licenseType) →
       case licenseType of
         QAT.Advanced → advancedLicenseExpired
@@ -97,8 +91,6 @@ eval = case _ of
   QueryRename q next → do
     _ ← H.query' CP.cp1 unit q
     pure next
-  SaveMount reply → do
-    map (reply ∘ join) $ H.query' CP.cp2 unit $ H.request Mount.Save
   Show d next → do
     H.put (Just d)
     pure next
@@ -111,9 +103,7 @@ eval = case _ of
     H.put Nothing
     pure next
   HandleChild m next → do
-    case m of
-      Dismiss → H.put Nothing
-      _ → H.raise m
+    H.put Nothing
     pure next
   AddDirsToRename dirs next → do
     _ ← H.query' CP.cp1 unit $ H.action $ Rename.AddDirs dirs

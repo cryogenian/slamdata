@@ -15,78 +15,55 @@ limitations under the License.
 -}
 
 module SlamData.FileSystem.Dialog.Mount.SQL2.Component
-  ( comp
+  ( component
   , Query
-  , module SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery
-  , module MCS
+  , module Q
+  , module S
   ) where
 
 import SlamData.Prelude
 
-import Data.Array (filter)
-import Data.Path.Pathy as Pt
-import Data.StrMap as Sm
-
 import Ace.Editor as Editor
 import Ace.EditSession as Session
-import Ace.Halogen.Component (AceQuery(..), Autocomplete(..), aceComponent)
+import Ace.Halogen.Component as Ace
 import Ace.Types (Editor)
-
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Elements.Keyed as HHEK
-
-import SlamData.Monad (Slam)
+import Halogen.HTML.Events as HE
+import Quasar.Mount.View as QMV
 import SlamData.FileSystem.Dialog.Mount.Common.Render (propList, section)
-import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..), SettingsMessage(..))
-import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as MCS
-import SlamData.FileSystem.Resource as R
-import SlamData.Quasar.Query as API
+import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery as Q
+import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as S
+import SlamData.Monad (Slam)
 
-type Query = SettingsQuery MCS.State
+type Query = Q.SettingsQuery S.State
+type Message = Q.SettingsMessage QMV.Config
 
-comp ∷ MCS.State → H.Component HH.HTML Query Unit SettingsMessage Slam
-comp initialState =
+component ∷ H.Component HH.HTML Query (Maybe QMV.Config) Message Slam
+component =
   H.parentComponent
-    { initialState: const initialState
+    { initialState: maybe S.initialState S.fromConfig
     , render
-    , eval
+    , eval: Q.eval S.toConfig
     , receiver: const Nothing
     }
 
-render ∷ MCS.State → H.ParentHTML Query AceQuery Unit Slam
-render state@{ initialQuery } =
+render ∷ S.State → H.ParentHTML Query Ace.AceQuery Unit Slam
+render state@{ query } =
   HHEK.div_
     [ "mount-sql2-query" × section "SQL² query"
         [ HH.slot
             unit
-            (aceComponent (aceSetup initialQuery) (Just Live))
+            (Ace.aceComponent (aceSetup query) (Just Ace.Live))
             unit
-            (const (Just (H.action (ModifyState id))))
+            (HE.input (\(Ace.TextChanged q) → Q.ModifyState (_ { query = q })))
         ]
-    , "mount-sql2-vars" × section "Query variables" [ propList MCS._vars state ]
+    , "mount-sql2-vars" × section "Query variables" [ propList S._vars state ]
     ]
 
-eval ∷ Query ~> H.ParentDSL MCS.State Query AceQuery Unit SettingsMessage Slam
-eval = case _ of
-  ModifyState f next → do
-    H.modify (MCS.processState <<< f)
-    H.raise Modified
-    pure next
-  Validate k → do
-    sql ← fromMaybe "" <$> H.query unit (H.request GetText)
-    pure $ k if sql == "" then Just "Please enter a query" else Nothing
-  Submit parent name k → do
-    sql ← fromMaybe "" <$> H.query unit (H.request GetText)
-    vars ← Sm.fromFoldable <<< filter (not MCS.isEmptyVar) <$> H.gets _.vars
-    let destPath = parent Pt.</> Pt.file name
-        view = R.View $ destPath
-        dest = R.Mount view
-    result ← API.viewQuery' destPath sql vars
-    pure $ k $ map (const view) result
-
-aceSetup ∷ Maybe String → Editor → Slam Unit
-aceSetup initialQuery editor = H.liftEff do
+aceSetup ∷ String → Editor → Slam Unit
+aceSetup query editor = H.liftEff do
   Editor.setMinLines 6 editor
   Editor.setMaxLines 10000 editor
   Editor.setAutoScrollEditorIntoView true editor
@@ -95,6 +72,4 @@ aceSetup initialQuery editor = H.liftEff do
   Editor.setEnableBasicAutocompletion true editor
   session ← Editor.getSession editor
   Session.setMode "ace/mode/sql" session
-  case initialQuery of
-    Just q → void $ Editor.setValue q Nothing editor
-    Nothing → pure unit
+  void $ Editor.setValue query Nothing editor
