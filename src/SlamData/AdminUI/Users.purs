@@ -110,11 +110,12 @@ crawlGroups userId = go (QA.GroupPath Pathy.rootDir)
           -- TODO(Christoph): We should display an Error here, but I'm not sure
           -- if we should still continue
           pure []
-        Right { allMembers, subGroups } | userId `Array.elem` allMembers → do
+        Right { allMembers, subGroups, members } | userId `Array.elem` allMembers → do
           -- We only consider the group hierarchy one level at a time, because we
           -- need to filter on group membership
           paths ← traverse go (Array.filter (isDirectSubgroup path) subGroups)
-          pure (Array.cons path (fold paths))
+          let addPath = if userId `Array.elem` members then Array.cons path else id
+          pure (addPath (fold paths))
         Right _ →
           -- The user did not exist within this part of the group hierarchy
           pure []
