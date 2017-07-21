@@ -45,6 +45,7 @@ import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType (AccessType(..))
 import SlamData.Workspace.Card.Cache.Error as CCaE
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.CardType.VizType as VT
 import SlamData.Workspace.Card.CardType.Select as Sel
 import SlamData.Workspace.Card.Viz.Error as VE
 import SlamData.Workspace.Card.DownloadOptions.Error as CDOE
@@ -138,7 +139,8 @@ prettyPrintCardError state ce =
         # on CE._query (queryErrorMessage state)
         # on CE._search (searchErrorMessage state)
         # on CE._table (tableErrorMessage state)
-        # on CE._variables (variablesErrorMessage state))
+        # on CE._variables (variablesErrorMessage state)
+        # on CE._setupViz (const $ HH.text "") )
   where
   printQError qError =
     HH.div_
@@ -174,7 +176,10 @@ queryErrorMessage { accessType, expanded } err =
     Editable → renderDetails err
     ReadOnly →
       HH.div_
-        [ HH.p_ [ HH.text $ "A problem occurred in the " <> CT.name CT.aceSql <> " card, please notify the author of this workspace." ]
+        [ HH.p_
+          [ HH.text $ "A problem occurred in the "
+            <> CT.name CT.aceSql
+            <> " card, please notify the author of this workspace." ]
         , collapsible "Error details" (renderDetails err) expanded
         ]
   where
@@ -537,7 +542,7 @@ formInputStaticErrorMessage { accessType, expanded } err =
         [ HH.p_
           [ HH.text
             $ "A problem occurred in the "
-            <> CT.name CT.static
+            <> VT.name CT.static
             <> " card, please notify the author of this workspace." ]
         , collapsible "Error details" (renderDetails err) expanded
         ]
@@ -549,7 +554,7 @@ formInputStaticErrorMessage { accessType, expanded } err =
           [ pure $ errorTitle
             [ HH.text
               $ "An error occured when setting up the "
-              <> CT.name CT.static
+              <> VT.name CT.static
               <> " card." ]
           , pure $ HH.p_
               [ HH.text "No axis was selected" ]
@@ -562,7 +567,7 @@ formInputStaticErrorMessage { accessType, expanded } err =
           [ pure $ errorTitle
             [ HH.text
               $ "An error occured when setting up the "
-              <> CT.name CT.static
+              <> VT.name CT.static
               <> " card." ]
           , pure $ HH.p_
               [ HH.text "The selected axis was not present in the data." ]
@@ -582,7 +587,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
           [ HH.p_
             [ HH.text
               $ "A problem occurred in the "
-              <> CT.name (expand fit)
+              <> VT.name (expand fit)
               <> " card, please notify the author of this workspace." ]
           , collapsible "Error details" (renderDetails err) expanded
           ]
@@ -600,7 +605,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
           [ pure $ errorTitle
             [ HH.text
               $ "An error occured when setting up the "
-              <> CT.name (expand fit)
+              <> VT.name (expand fit)
               <> " card." ]
           , pure $ HH.p_
               [ HH.text "No axis was selected" ]
@@ -613,7 +618,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
           [ pure $ errorTitle
             [ HH.text
               $ "An error occured when setting up the "
-              <> CT.name (expand fit)
+              <> VT.name (expand fit)
               <> " card." ]
           , pure $ HH.p_
               [ HH.text "The selected resource was empty." ]
@@ -635,7 +640,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
             [ pure $ errorTitle
               [ HH.text
                 $ "An error occured when setting up the "
-                <> CT.name (expand formInputType)
+                <> VT.name (expand formInputType)
                 <> " card." ]
             , pure $ HH.p_
                 [ HH.text errorText ]
@@ -657,7 +662,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
             [ pure $ errorTitle
               [ HH.text
                 $ "An error occured when setting up the "
-                <> CT.name (expand formInputType)
+                <> VT.name (expand formInputType)
                 <> " card." ]
             , pure $ HH.p_
                 [ HH.text errorText ]
@@ -671,7 +676,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
           [ pure $ errorTitle
             [ HH.text
               $ "An error occured when setting up the "
-              <> CT.name (expand fit)
+              <> VT.name (expand fit)
               <> " card." ]
           , pure $ HH.p_
               [ HH.text "Labels must be unique. Please, use other axis." ]
@@ -734,7 +739,7 @@ pivotTableErrorMessage { accessType, expanded } err =
         [ HH.p_
           [ HH.text
             $ "A problem occurred in the "
-            <> CT.name CT.pivot
+            <> VT.name CT.pivot
             <> " card, please notify the author of this workspace." ]
         , collapsible "Error details" (renderDetails err) expanded
         ]
@@ -746,7 +751,7 @@ pivotTableErrorMessage { accessType, expanded } err =
           [ pure $ errorTitle
             [ HH.text
               $ "Encountered an error when setting up the "
-              <> CT.name CT.pivot
+              <> VT.name CT.pivot
               <> " card." ]
           , pure $ HH.p_
               [ HH.text "No column was selected to be displayed."
@@ -760,7 +765,7 @@ pivotTableErrorMessage { accessType, expanded } err =
           [ pure $ errorTitle
             [ HH.text
               $ "An error occurred in the "
-              <> CT.name CT.pivot
+              <> VT.name CT.pivot
               <> " card." ]
           , pure $ HH.p_
               [ HH.text "The Quasar Analytics engine returned the following error:"

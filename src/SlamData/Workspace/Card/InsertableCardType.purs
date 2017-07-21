@@ -36,8 +36,6 @@ data InsertableCardType
   | OpenCard
   | QueryCard
   | SearchCard
-  | SetupChartCard
-  | SetupFormCard
   | SetupDownloadCard
   | SetupMarkdownCard
   | SetupVariablesCard
@@ -47,13 +45,11 @@ data InsertableCardType
   | TroubleshootCard
   | TabsCard
   | StructureEditorCard
-  | SetupGeoChartCard
   | ShowVizCard
+  | SetupVizCard
 
 data InsertableCardIOType
-  = Chart
-  | GeoChart
-  | Form
+  = Viz
   | Data
   | Download
   | Markdown
@@ -72,19 +68,17 @@ inputs =
   , OpenCard × [ None, Variables ]
   , QueryCard × [ None, Data, Variables ]
   , SearchCard × [ Data ]
-  , SetupChartCard × [ Data ]
-  , SetupGeoChartCard × [ Data ]
   , SetupDownloadCard × [ Data ]
-  , SetupFormCard × [ Data ]
   , SetupMarkdownCard × [ None, Variables ]
   , SetupVariablesCard × [ None ]
   , ShowDownloadCard × [ Download ]
   , ShowMarkdownCard × [ Markdown ]
   , TableCard × [ Data ]
-  , TroubleshootCard × [ Chart, Form, Data, Download, Markdown, Variables ]
+  , TroubleshootCard × [ Viz, Data, Download, Markdown, Variables ]
   , TabsCard × [ None ]
   , StructureEditorCard × [ Data ]
-  , ShowVizCard × [ GeoChart, Chart, Form ]
+  , ShowVizCard × [ Viz ]
+  , SetupVizCard × [ Data ]
   ]
 
 -- Cards only have one output type, treat this as a Map or turn it into one.
@@ -95,8 +89,7 @@ outputs =
   , OpenCard × Data
   , QueryCard × Data
   , SearchCard × Data
-  , SetupChartCard × Chart
-  , SetupFormCard × Form
+  , SetupVizCard × Viz
   , SetupDownloadCard × Download
   , SetupMarkdownCard × Markdown
   , SetupVariablesCard × Variables
@@ -223,9 +216,7 @@ fromMaybePort input = maybe None fromPort input
 
 printIOType ∷ InsertableCardIOType → String
 printIOType = case _ of
-  Form → "a form"
-  Chart → "a chart"
-  GeoChart → "geo chart"
+  Viz → "a visualization"
   Data → "data"
   Download → "a download"
   Markdown → "markdown"
@@ -236,9 +227,8 @@ printIOType = case _ of
 
 printIOType' ∷ InsertableCardIOType → Maybe String
 printIOType' = case _ of
-  Form → Just "the form"
-  Chart → Just "the chart"
   Data → Just "the data"
+  Viz → Just "the visualization"
   Download → Just "the download"
   Markdown → Just "the markdown"
   Variables → Just "the variables"
@@ -259,14 +249,14 @@ fromPort = case _ of
   Port.ResourceKey _ → Data
   Port.DownloadOptions _ → Download
   Port.SlamDown _ → Markdown
-  Port.ChartInstructions _ → Chart
-  Port.PivotTable _ → Chart
-  Port.SetupLabeledFormInput _ → Form
-  Port.SetupInput _ → Form
+  Port.ChartInstructions _ → Viz
+  Port.PivotTable _ → Viz
+  Port.SetupLabeledFormInput _ → Viz
+  Port.SetupInput _ → Viz
   Port.Variables → Variables
-  Port.ValueMetric _ → Chart
-  Port.CategoricalMetric _ → Form
-  Port.GeoChart _ → GeoChart
+  Port.ValueMetric _ → Viz
+  Port.CategoricalMetric _ → Viz
+  Port.GeoChart _ → Viz
   Port.Terminal → Terminal
   _ → None
 
@@ -277,9 +267,7 @@ toCardType = case _ of
   OpenCard → Just CT.open
   QueryCard → Just CT.aceSql
   SearchCard → Just CT.search
-  SetupChartCard → Nothing
-  SetupGeoChartCard → Nothing
-  SetupFormCard → Nothing
+  SetupVizCard → Just CT.setupViz
   SetupDownloadCard → Just CT.downloadOptions
   SetupMarkdownCard → Just CT.aceMarkdown
   SetupVariablesCard → Just CT.variables
@@ -292,10 +280,7 @@ toCardType = case _ of
   StructureEditorCard → Just CT.structureEditor
 
 print ∷ InsertableCardType → String
-print = case _ of
-  SetupChartCard → "Setup Chart"
-  SetupFormCard → "Setup Form"
-  a → foldMap CT.name $ toCardType a
+print = foldMap CT.name ∘ toCardType
 
 aAn ∷ String → String
 aAn s =
@@ -335,9 +320,7 @@ printAction = case _ of
   OpenCard → Nothing
   QueryCard → Nothing
   SearchCard → Just "search"
-  SetupChartCard → Just "set up a chart for"
-  SetupGeoChartCard → Just "set up geo chart for"
-  SetupFormCard → Just "set up a form for"
+  SetupVizCard → Just "set up a visualization for"
   SetupDownloadCard → Just "setup a download for"
   SetupMarkdownCard → Nothing
   SetupVariablesCard → Nothing
@@ -351,35 +334,9 @@ printAction = case _ of
 
 fromCardType ∷ CardType → InsertableCardType
 fromCardType = case_
-  # fromChart
   # fromSimple
   # fromAce
-  # fromInput
-  # fromSelect
-  # fromStatic
-  # fromGeo
   where
-  fromChart ∷ ∀ r. (Variant r → InsertableCardType) → CT.Chart r → InsertableCardType
-  fromChart cb = cb
-    # on CT._pie setupChartThunk
-    # on CT._bar setupChartThunk
-    # on CT._line setupChartThunk
-    # on CT._area setupChartThunk
-    # on CT._scatter setupChartThunk
-    # on CT._radar setupChartThunk
-    # on CT._funnel setupChartThunk
-    # on CT._graph setupChartThunk
-    # on CT._heatmap setupChartThunk
-    # on CT._sankey setupChartThunk
-    # on CT._gauge setupChartThunk
-    # on CT._boxplot setupChartThunk
-    # on CT._metric setupChartThunk
-    # on CT._pivot setupChartThunk
-    # on CT._punchCard setupChartThunk
-    # on CT._candlestick setupChartThunk
-    # on CT._parallel setupChartThunk
-  setupChartThunk _ = SetupChartCard
-
   fromSimple ∷ ∀ r. (Variant r → InsertableCardType) → CT.Simple r → InsertableCardType
   fromSimple cb = cb
     # on CT._cache (const CacheCard)
@@ -395,35 +352,12 @@ fromCardType = case_
     # on CT._tabs (const TabsCard)
     # on CT._structureEditor (const StructureEditorCard)
     # on CT._viz (const ShowVizCard)
+    # on CT._setupViz (const SetupVizCard)
 
   fromAce ∷ ∀ r. (Variant r → InsertableCardType) → CT.Ace r → InsertableCardType
   fromAce cb = cb
     # on CT._aceSql (const QueryCard)
     # on CT._aceMarkdown (const SetupMarkdownCard)
-
-  fromInput ∷ ∀ r. (Variant r → InsertableCardType) → CT.Input r → InsertableCardType
-  fromInput cb = cb
-    # on CT._text setupFormInputThunk
-    # on CT._numeric setupFormInputThunk
-    # on CT._date setupFormInputThunk
-    # on CT._time setupFormInputThunk
-    # on CT._datetime setupFormInputThunk
-  fromSelect ∷ ∀ r. (Variant r → InsertableCardType) → CT.Select r → InsertableCardType
-  fromSelect cb = cb
-    # on CT._dropdown setupFormInputThunk
-    # on CT._radio setupFormInputThunk
-    # on CT._checkbox setupFormInputThunk
-  fromStatic ∷ ∀ r. (Variant r → InsertableCardType) → CT.Static r → InsertableCardType
-  fromStatic cb = cb # on CT._static setupFormInputThunk
-
-  setupFormInputThunk _ = SetupFormCard
-
-  fromGeo ∷ ∀ r. (Variant r → InsertableCardType) → CT.Geo r → InsertableCardType
-  fromGeo cb = cb
-    # on CT._geoMarker setupGeoThunk
-    # on CT._geoHeatmap setupGeoThunk
-  setupGeoThunk _ = SetupGeoChartCard
-
 
 all ∷ Array InsertableCardType
 all =
@@ -431,10 +365,8 @@ all =
   , QueryCard
   , SearchCard
   , TableCard
-  , SetupChartCard
   , ShowVizCard
-  , SetupFormCard
-  , SetupGeoChartCard
+  , SetupVizCard
   , SetupMarkdownCard
   , ShowMarkdownCard
   , DraftboardCard

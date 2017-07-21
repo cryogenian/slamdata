@@ -20,12 +20,12 @@ import SlamData.Prelude
 
 import ECharts.Theme (Theme)
 
-import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.CardType.VizType as VT
 
 type State =
   { dimensions ∷ { width ∷ Int, height ∷ Int }
   , theme ∷ Maybe (Maybe Theme)
-  , vizType ∷ Maybe CT.VizType
+  , vizType ∷ Maybe VT.VizType
   }
 
 initialState ∷ State

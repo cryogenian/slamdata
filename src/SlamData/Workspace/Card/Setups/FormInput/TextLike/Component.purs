@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.FormInput.TextLike.Component
+module SlamData.Workspace.Card.Setups.FormInput.TextLike.Component where {-
   ( textLikeSetupComponent
   ) where
 
@@ -181,3 +181,4 @@ setupEval proj = case _ of
   updatePicker l q = case _ of
     BCI.Open opts → H.modify (ST.showPicker q opts)
     BCI.Choose a → H.modify (l ∘ S._value .~ a) *> raiseUpdate proj
+-}

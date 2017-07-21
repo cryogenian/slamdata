@@ -34,7 +34,7 @@ import SlamData.Workspace.Card.Setups.DimensionMap.DSL as DSL
 import SlamData.Workspace.Card.Setups.DimensionMap.Projection as Pr
 
 lm ∷ ∀ v. LM.Module VT.VizType v
-lm = LM.openModule \a b → CT.eq_ (expand a) (expand b)
+lm = LM.openModule \a b → VT.eq_ (expand a) (expand b)
 
 type Package = DSL.Package (Set.Set J.JCursor) ()
 

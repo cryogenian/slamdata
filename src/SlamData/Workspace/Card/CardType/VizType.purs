@@ -18,6 +18,10 @@ module SlamData.Workspace.Card.CardType.VizType where
 
 import SlamData.Prelude
 
+import Data.Argonaut as J
+import Data.Codec as C
+import Data.Codec.Argonaut as CA
+import SlamData.Render.Icon as I
 import SlamData.Workspace.Card.CardType.Chart as Cht
 import SlamData.Workspace.Card.CardType.Geo as Geo
 import SlamData.Workspace.Card.CardType.Input as Inp
@@ -29,3 +33,44 @@ type VizType =
 
 all ∷ Array VizType
 all = Cht.all ⊕ Geo.all ⊕ Inp.all ⊕ Sel.all ⊕ Sta.all
+
+eq_ ∷ ∀ b. HeytingAlgebra b ⇒ VizType → VizType → b
+eq_ = case2_
+  # Cht.eq_
+  # Geo.eq_
+  # Inp.eq_
+  # Sel.eq_
+  # Sta.eq_
+
+print ∷ VizType → String
+print = case_
+  # Cht.print
+  # Geo.print
+  # Inp.print
+  # Sel.print
+  # Sta.print
+
+parse ∷ String → String ⊹ VizType
+parse s =
+  Cht.parse s
+  <|> Geo.parse s
+  <|> Inp.parse s
+  <|> Sel.parse s
+  <|> Sta.parse s
+
+codec ∷ CA.JsonCodec VizType
+codec = C.basicCodec dec enc
+  where
+  dec j = lmap CA.TypeMismatch $ parse =<< J.decodeJson j
+  enc = J.fromString ∘ print
+
+icon ∷ VizType → I.IconHTML
+icon = case_
+  # Cht.icon
+  # Geo.icon
+  # Inp.icon
+  # Sel.icon
+  # Sta.icon
+
+name ∷ VizType → String
+name = case_ # Cht.name # Geo.name # Inp.name # Sel.name # Sta.name

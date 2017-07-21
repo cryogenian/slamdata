@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.FormInput.Numeric.Component
-  ( numericSetupComponent
+module SlamData.Workspace.Card.Setups.FormInput.Numeric.Component where
+{-  ( numericSetupComponent
   ) where
 
 import SlamData.Workspace.Card.CardType as CT
@@ -25,3 +25,4 @@ import SlamData.Workspace.Card.Setups.FormInput.TextLike.Component (textLikeSetu
 numericSetupComponent ∷ CC.CardOptions → CC.CardComponent
 numericSetupComponent =
   textLikeSetupComponent CT.numeric _.value
+-}

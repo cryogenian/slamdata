@@ -16,7 +16,6 @@ limitations under the License.
 
 module SlamData.Workspace.Card.CardType
   ( CardType
-  , VizType
   , name
   , cardClasses
   , icon
@@ -41,66 +40,46 @@ import SlamData.Prelude
 
 import Data.Argonaut as J
 import Data.String as Str
-
 import Halogen.HTML as H
-
 import SlamData.Render.Icon as I
-import SlamData.Workspace.Card.CardType.Simple ( _search, search, _markdown, markdown, _table, table, _download, download, _variables, variables, _troubleshoot, troubleshoot, _open, open, _downloadOptions, downloadOptions, _tabs, tabs, _structureEditor, structureEditor, _cache, cache, _draftboard, draftboard, _viz, viz, SimpleR, Simple, contractToSimple)
-import SlamData.Workspace.Card.CardType.Simple as Sim
 import SlamData.Workspace.Card.CardType.Ace ( _aceMarkdown, aceMarkdown, _aceSql, aceSql, mode, AceR, Ace, contractToAce)
 import SlamData.Workspace.Card.CardType.Ace as Ace
 import SlamData.Workspace.Card.CardType.Chart ( _pie, pie, _line, line, _bar, bar, _area, area, _scatter, scatter, _radar, radar, _funnel, funnel, _graph, graph, _heatmap, heatmap, _sankey, sankey, _gauge, gauge, _boxplot, boxplot, _metric, metric, _pivot, pivot, _punchCard, punchCard, _candlestick, candlestick, _parallel, parallel, ChartR, Chart, contractToChart)
 import SlamData.Workspace.Card.CardType.Chart as Cht
 import SlamData.Workspace.Card.CardType.Geo ( _geoMarker, geoMarker, _geoHeatmap, geoHeatmap, GeoR, Geo, contractToGeo)
 import SlamData.Workspace.Card.CardType.Geo as Geo
-import SlamData.Workspace.Card.CardType.Static ( _static, static, StaticR, Static, contractToStatic)
-import SlamData.Workspace.Card.CardType.Static as Sta
-import SlamData.Workspace.Card.CardType.Select ( _dropdown, dropdown, _radio, radio, _checkbox, checkbox, SelectR, Select, contractToSelect)
-import SlamData.Workspace.Card.CardType.Select as Sel
 import SlamData.Workspace.Card.CardType.Input ( _text, text, _numeric, numeric, _date, date, _time, time, _datetime, datetime, InputR, Input, contractToInput)
 import SlamData.Workspace.Card.CardType.Input as Inp
+import SlamData.Workspace.Card.CardType.Select ( _dropdown, dropdown, _radio, radio, _checkbox, checkbox, SelectR, Select, contractToSelect)
+import SlamData.Workspace.Card.CardType.Select as Sel
+import SlamData.Workspace.Card.CardType.Simple ( _search, search, _markdown, markdown, _table, table, _download, download, _variables, variables, _troubleshoot, troubleshoot, _open, open, _downloadOptions, downloadOptions, _tabs, tabs, _structureEditor, structureEditor, _cache, cache, _draftboard, draftboard, _viz, viz, SimpleR, Simple, contractToSimple, setupViz, _setupViz)
+import SlamData.Workspace.Card.CardType.Simple as Sim
+import SlamData.Workspace.Card.CardType.Static ( _static, static, StaticR, Static, contractToStatic)
+import SlamData.Workspace.Card.CardType.Static as Sta
 
 type CardType =
-  Variant
-  ( SimpleR
-    ( AceR
-      ( ChartR
-        ( GeoR
-          ( SelectR
-            ( InputR
-              ( StaticR () ) ) ) ) ) ) )
-
-type VizType =
-  Variant ( ChartR ( GeoR ( SelectR ( InputR ( StaticR () ) ) ) ) )
+  Variant ( SimpleR ( AceR () ) )
 
 all ∷ Array CardType
-all =
-  Sim.all ⊕ Ace.all ⊕ Cht.all ⊕ Geo.all ⊕ Sel.all ⊕ Inp.all ⊕ Sta.all
+all = Sim.all ⊕ Ace.all
 
 eq_ ∷ ∀ b. HeytingAlgebra b ⇒ CardType → CardType → b
 eq_ = case2_
   # Ace.eq_
   # Sim.eq_
-  # Cht.eq_
-  # Geo.eq_
-  # Sta.eq_
-  # Sel.eq_
-  # Inp.eq_
 
 print ∷ CardType → String
 print = case_
   # Ace.print
   # Sim.print
-  # Cht.print
-  # Geo.print
-  # Sta.print
-  # Sel.print
-  # Inp.print
 
 encode ∷ CardType → J.Json
 encode r =
   J.encodeJson
-  $ (case_ # Sim.print # Ace.print # Cht.encode # Sel.encode # Geo.encode # Sta.encode # Inp.encode $ r)
+  $ ( case_
+      # Sim.print
+      # Ace.print
+      $ r )
 
 parse ∷ String → String ⊹ CardType
 parse s =
@@ -114,31 +93,41 @@ parse s =
   <|> (Left $  "unknow card type '" ⊕ s ⊕ "'")
   where
   parseChart n =
-    lmap (\_ → "unknown card type '" ⊕ n ⊕ "'")
+    bimap
+      (const $ "unknown card type '" ⊕ n ⊕ "'")
+      (const setupViz)
       $ Cht.parse
       $ fromMaybe ""
       $ Str.stripSuffix (Str.Pattern "-options") n
 
   parseSelect n =
-    lmap (\_ → "unknown card type '" ⊕ n ⊕ "'")
+    bimap
+      (const $ "unknown card type '" ⊕ n ⊕ "'")
+      (const setupViz)
       $ Sel.parse
       $ fromMaybe ""
       $ Str.stripSuffix (Str.Pattern "-setup") n
 
   parseInput n =
-    lmap (\_ → "unknown card type '" ⊕ n ⊕ "'")
+    bimap
+      (const $ "unknown card type '" ⊕ n ⊕ "'")
+      (const setupViz)
       $ Inp.parse
       $ fromMaybe ""
       $ Str.stripSuffix (Str.Pattern "-setup") n
 
   parseStatic n =
-    lmap (\_ → "unknown card type '" ⊕ n ⊕ "'")
+    bimap
+      (const $ "unknown card type '" ⊕ n ⊕ "'")
+      (const setupViz)
       $ Sta.parse
       $ fromMaybe ""
       $ Str.stripSuffix (Str.Pattern "-setup") n
 
   parseGeo n =
-    lmap (\_ → "unknown card type '" ⊕ n ⊕ "'")
+    bimap
+      (const $ "unknown card type '" ⊕ n ⊕ "'")
+      (const setupViz)
       $ Geo.parse
       $ fromMaybe ""
       $ Str.stripSuffix (Str.Pattern "-geo-setup") n
@@ -147,30 +136,19 @@ decode ∷ J.Json → String ⊹ CardType
 decode = J.decodeJson >=> parse
 
 name ∷ CardType → String
-name = case_ # Sim.name # Sel.name # Cht.name # Inp.name # Geo.name # Sta.name # Ace.name
+name = case_ # Sim.name # Ace.name
 
 icon ∷ CardType → I.IconHTML
-icon =
-  case_ # Sim.icon # Ace.icon # Cht.icon # Sel.icon # Inp.icon # Sta.icon # Geo.icon
+icon = case_ # Sim.icon # Ace.icon
 
 consumerInteractable ∷ CardType → Boolean
 consumerInteractable = case_
   # Sim.consumerInteractable
-  # Cht.consumerInteractable
-  # Sel.consumerInteractable
-  # Inp.consumerInteractable
-  # Sta.consumerInteractable
-  # Geo.consumerInteractable
   # Ace.consumerInteractable
 
 cardClasses ∷ CardType → Array H.ClassName
 cardClasses = case_
   # Sim.cardClasses
-  # Cht.cardClasses
-  # Sel.cardClasses
-  # Inp.cardClasses
-  # Sta.cardClasses
-  # Geo.cardClasses
   # Ace.cardClasses
 
 contractToPivot

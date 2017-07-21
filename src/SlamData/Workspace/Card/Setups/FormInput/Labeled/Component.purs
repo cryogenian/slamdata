@@ -14,7 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.FormInput.Labeled.Component
+module SlamData.Workspace.Card.Setups.FormInput.Labeled.Component where
+{-
   ( labeledSetupComponent
   ) where
 
@@ -206,3 +207,4 @@ setupEval = case _ of
   updatePicker l q = case _ of
     BCI.Open opts → H.modify (ST.showPicker q opts)
     BCI.Choose a → H.modify (l ∘ S._value .~ a) *> raiseUpdate
+-}

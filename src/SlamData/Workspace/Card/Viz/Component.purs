@@ -22,6 +22,7 @@ import Halogen.HTML.Properties as HP
 import SlamData.Render.ClassName as CN
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.CardType.VizType as VT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Model as Card
@@ -62,7 +63,7 @@ render state =
   chartDimensions ∷ { width ∷ Int, height ∷ Int }
   chartDimensions = state.dimensions { height = state.dimensions.height - 60 }
 
-  dispatchVizType ∷ CT.VizType → Array HTML
+  dispatchVizType ∷ VT.VizType → Array HTML
   dispatchVizType vt
     | isJust $ CT.contractToInput vt = renderInput
     | isJust $ CT.contractToStatic vt = renderMetric
@@ -237,7 +238,7 @@ resizeGeo = void do
       height = state.dimensions.height - padding
   H.query' CS.cpGeo unit $ H.action $ GR.SetDimensions { width, height }
 
-lodByChartType ∷ CT.VizType → DSL LOD.LevelOfDetails
+lodByChartType ∷ VT.VizType → DSL LOD.LevelOfDetails
 lodByChartType vt
   | isJust $ CT.contractToPivot vt =
       pure LOD.High

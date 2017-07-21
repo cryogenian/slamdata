@@ -36,6 +36,7 @@ import SlamData.Workspace.Card.Setups.FormInput.Labeled.Error as FILE
 import SlamData.Workspace.Card.Setups.FormInput.Static.Error as FISE
 import SlamData.Workspace.Card.Table.Error as CTE
 import SlamData.Workspace.Card.Variables.Error as CVE
+import SlamData.Workspace.Card.Setups.Viz.Error as SVE
 import Utils (throwVariantError)
 
 type CardError = Variant
@@ -53,6 +54,7 @@ type CardError = Variant
   , search ∷ CSE.SearchError
   , table ∷ CTE.TableError
   , variables ∷ CVE.VariablesError
+  , setupViz ∷ SVE.Error
   )
 
 _qerror = SProxy ∷ SProxy "qerror"
@@ -69,6 +71,7 @@ _query = SProxy ∷ SProxy "query"
 _search = SProxy ∷ SProxy "search"
 _table = SProxy ∷ SProxy "table"
 _variables = SProxy ∷ SProxy "variables"
+_setupViz = SProxy ∷ SProxy "setupViz"
 
 showCardError ∷ CardError → String
 showCardError =
@@ -87,6 +90,7 @@ showCardError =
     # on _search (\err → "(SearchCardError " <> show err <> ")")
     # on _table (\err → "(TableCardError " <> show err <> ")")
     # on _variables (\err → "(VariablesCardError " <> show err <> ")")
+    # on _setupViz (\err → "(SetupVizError " <> SVE.showError err <> ")")
 
 cardToGlobalError ∷ CardError → Maybe GE.GlobalError
 cardToGlobalError =
@@ -105,7 +109,7 @@ cardToGlobalError =
     # on _search CSE.searchToGlobalError
     # on _table CTE.tableToGlobalError
     # on _variables (const Nothing)
-
+    # on _setupViz (const Nothing)
 
 -- TODO(Christoph): use this warn constraint to track down unstructured error messages
 -- throw ∷ ∀ m a. MonadThrow CardError m ⇒ Warn "You really don't want to" ⇒ String → m a

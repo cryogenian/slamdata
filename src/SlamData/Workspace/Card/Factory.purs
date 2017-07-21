@@ -44,7 +44,7 @@ import SlamData.Workspace.Card.Viz.Component as Viz
 import Unsafe.Coerce (unsafeCoerce)
 
 hole ∷ ∀ a. a
-hole = unsafeCoerce unit
+hole = unsafeCoerce 1
 
 cardComponent ∷ CT.CardType → CardOptions → CardComponent
 cardComponent = case_
@@ -60,34 +60,7 @@ cardComponent = case_
   # on CT._open (const openComponent)
   # on CT._downloadOptions (const DOpts.component)
   # on CT._draftboard (const draftboardComponent)
-  # on CT._metric (const hole)
-  # on CT._sankey (const hole)
-  # on CT._gauge (const hole)
-  # on CT._graph (const hole)
-  # on CT._pie (const hole)
-  # on CT._bar (const hole)
-  # on CT._line (const hole)
-  # on CT._area (const hole)
-  # on CT._scatter (const hole)
-  # on CT._radar (const hole)
-  # on CT._pivot (const hole)
-  # on CT._funnel (const hole)
-  # on CT._boxplot (const hole)
-  # on CT._heatmap (const hole)
-  # on CT._punchCard (const hole)
-  # on CT._candlestick (const hole)
-  # on CT._parallel (const hole)
-  # on CT._dropdown (const hole)
-  # on CT._radio (const hole)
-  # on CT._checkbox (const hole)
-  # on CT._numeric (const hole)
-  # on CT._date (const hole)
-  # on CT._time (const hole)
-  # on CT._datetime (const hole)
-  # on CT._text (const hole)
   # on CT._tabs (const tabsComponent)
   # on CT._structureEditor (const StructureEditor.component)
-  # on CT._geoMarker (const hole)
-  # on CT._geoHeatmap (const hole)
-  # on CT._static (const hole)
   # on CT._viz  (const Viz.component)
+  # on CT._setupViz (const hole)

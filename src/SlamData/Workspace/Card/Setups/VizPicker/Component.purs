@@ -21,19 +21,15 @@ import SlamData.Prelude
 import CSS as CSS
 
 import Data.Equivalence (Equivalence(..))
-
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.Component.ChildPath as CP
 import Halogen.HTML.CSS as HCSS
 import Halogen.HTML.Events as HE
-
 import SlamData.ActionList.Component as AL
 import SlamData.ActionList.Action as AA
 import SlamData.ActionList.Filter.Component as ALF
-
 import SlamData.Monad (Slam)
-
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.VizType as VT
 import SlamData.Workspace.Card.Setups.Axis as Ax
@@ -132,20 +128,20 @@ render state =
   ]
   where
   eq_ ∷ Action → Action → Boolean
-  eq_ (Set a) (Set b) = CT.eq_ (expand a) (expand b)
-  eq_ (Explain a) (Explain b) = CT.eq_ (expand a) (expand b)
+  eq_ (Set a) (Set b) = VT.eq_ (expand a) (expand b)
+  eq_ (Explain a) (Explain b) = VT.eq_ (expand a) (expand b)
   eq_ _ _ = false
 
 description ∷ Action → String
 description = case _ of
-  Set vt → "Set vizualization type to " ⊕ (CT.name $ expand vt)
-  Explain vt → "Find why " ⊕ (CT.name $ expand vt) ⊕ " is unavailable for this data set"
+  Set vt → "Set vizualization type to " ⊕ (VT.name $ expand vt)
+  Explain vt → "Find why " ⊕ (VT.name $ expand vt) ⊕ " is unavailable for this data set"
 
 
 toAction ∷ Action → AA.Action Action
 toAction vt = AA.mkDo
-  { name: CT.name $ expand $ vizType vt
-  , icon: Just $ CT.icon $ expand $ vizType vt
+  { name: VT.name $ expand $ vizType vt
+  , icon: Just $ VT.icon $ expand $ vizType vt
   , highlighted: isSet vt
   , disabled: false
   , description: description vt

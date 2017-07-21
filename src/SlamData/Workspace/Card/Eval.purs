@@ -45,32 +45,7 @@ import SlamData.Workspace.Card.Open.Eval as Open
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Query.Eval as Query
 import SlamData.Workspace.Card.Search.Eval as Search
-import SlamData.Workspace.Card.Setups.Chart.Area.Eval as BuildArea
-import SlamData.Workspace.Card.Setups.Chart.Bar.Eval as BuildBar
-import SlamData.Workspace.Card.Setups.Chart.Boxplot.Eval as BuildBoxplot
-import SlamData.Workspace.Card.Setups.Chart.Candlestick.Eval as BuildCandlestick
-import SlamData.Workspace.Card.Setups.Chart.Funnel.Eval as BuildFunnel
-import SlamData.Workspace.Card.Setups.Chart.Gauge.Eval as BuildGauge
-import SlamData.Workspace.Card.Setups.Chart.Graph.Eval as BuildGraph
-import SlamData.Workspace.Card.Setups.Chart.Heatmap.Eval as BuildHeatmap
-import SlamData.Workspace.Card.Setups.Chart.Line.Eval as BuildLine
-import SlamData.Workspace.Card.Setups.Chart.Metric.Eval as BuildMetric
-import SlamData.Workspace.Card.Setups.Chart.Parallel.Eval as BuildParallel
-import SlamData.Workspace.Card.Setups.Chart.Pie.Eval as BuildPie
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Eval as BuildPivotTable
-import SlamData.Workspace.Card.Setups.Chart.PunchCard.Eval as BuildPunchCard
-import SlamData.Workspace.Card.Setups.Chart.Radar.Eval as BuildRadar
-import SlamData.Workspace.Card.Setups.Chart.Sankey.Eval as BuildSankey
-import SlamData.Workspace.Card.Setups.Chart.Scatter.Eval as BuildScatter
-import SlamData.Workspace.Card.Setups.FormInput.Date.Eval as SetupDate
-import SlamData.Workspace.Card.Setups.FormInput.Datetime.Eval as SetupDatetime
-import SlamData.Workspace.Card.Setups.FormInput.Labeled.Eval as SetupLabeled
-import SlamData.Workspace.Card.Setups.FormInput.Numeric.Eval as SetupNumeric
-import SlamData.Workspace.Card.Setups.FormInput.Static.Eval as SetupStatic
-import SlamData.Workspace.Card.Setups.FormInput.Text.Eval as SetupText
-import SlamData.Workspace.Card.Setups.FormInput.Time.Eval as SetupTime
-import SlamData.Workspace.Card.Setups.Geo.Heatmap.Eval as SetupGeoHeatmap
-import SlamData.Workspace.Card.Setups.Geo.Marker.Eval as SetupGeoMarker
+import SlamData.Workspace.Card.Setups.Viz.Eval as SetupViz
 import SlamData.Workspace.Card.Table.Eval as Table
 import SlamData.Workspace.Card.Variables.Eval as VariablesE
 import SlamData.Workspace.Card.Viz.Eval as Viz
@@ -142,35 +117,7 @@ evalCard trans port varMap = map (_ `SM.union` varMap) <$> case trans, port of
   Cache path, _ → Cache.eval path =<< extractResource varMap
   Open res, _ → Open.evalOpen res varMap
   Variables model, _ → VariablesE.eval model
-  BuildMetric model, _ → tapResource (BuildMetric.eval model) varMap
-  BuildSankey model, _ → BuildSankey.eval model =<< extractResource varMap
-  BuildGauge model, _ → BuildGauge.eval model =<< extractResource varMap
-  BuildGraph model, _ → BuildGraph.eval model =<< extractResource varMap
-  BuildPie model, _ → BuildPie.eval model =<< extractResource varMap
-  BuildRadar model, _ → BuildRadar.eval model =<< extractResource varMap
-  BuildArea model, _ → BuildArea.eval model =<< extractResource varMap
-  BuildLine model, _ → BuildLine.eval model =<< extractResource varMap
-  BuildBar model, _ → BuildBar.eval model =<< extractResource varMap
-  BuildScatter model, _ → BuildScatter.eval model =<< extractResource varMap
-  BuildFunnel model, _ → BuildFunnel.eval model =<< extractResource varMap
-  BuildHeatmap model, _ → BuildHeatmap.eval model =<< extractResource varMap
-  BuildBoxplot model, _ → BuildBoxplot.eval model =<< extractResource varMap
-  BuildPivotTable model, _ → BuildPivotTable.eval model varMap =<< extractResource varMap
-  BuildPunchCard model, _ → BuildPunchCard.eval model =<< extractResource varMap
-  BuildCandlestick model, _ → BuildCandlestick.eval model =<< extractResource varMap
-  BuildParallel model, _ → BuildParallel.eval model =<< extractResource varMap
-  SetupCheckbox model, _ → tapResource (SetupLabeled.eval model CT.checkbox) varMap
-  SetupRadio model, _ → tapResource (SetupLabeled.eval model CT.radio) varMap
-  SetupDropdown model, _ → tapResource (SetupLabeled.eval model CT.dropdown) varMap
-  SetupText model, _ → tapResource (SetupText.eval model) varMap
-  SetupNumeric model, _ → tapResource (SetupNumeric.eval model) varMap
-  SetupDate model, _ → tapResource (SetupDate.eval model) varMap
-  SetupTime model, _ → tapResource (SetupTime.eval model) varMap
-  SetupDatetime model, _ → tapResource (SetupDatetime.eval model) varMap
-  SetupStatic model, _ → tapResource (SetupStatic.eval model) varMap
-  SetupGeoMarker model, _ → SetupGeoMarker.eval model =<< extractResource varMap
-  SetupGeoHeatmap model, _ → SetupGeoHeatmap.eval model =<< extractResource varMap
-
+  SetupViz model, _ → SetupViz.eval model =<< extractResource varMap
   DownloadOptions model, _ → tapResource (DOptions.eval model) varMap
   e, i → CE.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i
 
@@ -180,6 +127,7 @@ modelToEval = case _ of
     # on CT._aceSql (const $ Query model.text)
     # on CT._aceMarkdown (const $ Markdown model.text)
     $ aceT
+  Model.SetupViz model → SetupViz model
   Model.Markdown model → MarkdownForm model
   Model.Search txt → Search txt
   Model.Cache fp → Cache fp
@@ -187,37 +135,9 @@ modelToEval = case _ of
   Model.Variables model → Variables model
   Model.DownloadOptions model → DownloadOptions model
   Model.Draftboard _ → Composite
-  Model.BuildMetric model  → BuildMetric model
-  Model.BuildSankey model → BuildSankey model
-  Model.BuildGauge model → BuildGauge model
-  Model.BuildGraph model → BuildGraph model
-  Model.BuildPie model → BuildPie model
-  Model.BuildRadar model → BuildRadar model
-  Model.BuildArea model → BuildArea model
-  Model.BuildLine model → BuildLine model
-  Model.BuildBar model → BuildBar model
-  Model.BuildScatter model → BuildScatter model
-  Model.BuildFunnel model → BuildFunnel model
-  Model.BuildHeatmap model → BuildHeatmap model
-  Model.BuildBoxplot model → BuildBoxplot model
-  Model.BuildPivotTable model → BuildPivotTable model
-  Model.BuildPunchCard model → BuildPunchCard model
-  Model.BuildCandlestick model → BuildCandlestick model
-  Model.BuildParallel model → BuildParallel model
   Model.Viz m → default (Viz m) # on VizM._pivot PivotTable $ m
-  Model.SetupDropdown model → SetupDropdown model
-  Model.SetupStatic model → SetupStatic model
-  Model.SetupText model → SetupText model
-  Model.SetupNumeric model → SetupNumeric model
-  Model.SetupCheckbox model → SetupCheckbox model
-  Model.SetupRadio model → SetupRadio model
-  Model.SetupDate model → SetupDate model
-  Model.SetupTime model → SetupTime model
-  Model.SetupDatetime model → SetupDatetime model
   Model.Tabs _ → Terminal
   Model.Table model → Table model
-  Model.SetupGeoMarker model → SetupGeoMarker model
-  Model.SetupGeoHeatmap model → SetupGeoHeatmap model
   _ → Pass
 
 -- TODO(Christoph): Get rid of this monstrosity of an error message

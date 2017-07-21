@@ -18,16 +18,19 @@ module SlamData.Workspace.Card.Setups.DimensionMap.Projection where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor)
+import Data.Codec.Argonaut as CA
+import Data.Codec.Argonaut.Common as CAC
+import Data.Argonaut (JCursor, class EncodeJson, class DecodeJson)
 import Data.Int as Int
 import Data.Lens (wander, lens)
 import Data.Lens.At (class At)
 import Data.Lens.Index (class Index)
 import Data.List as L
 import Data.StrMap as SM
-
+import Data.String.Gen as SG
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
+import Test.StrongCheck.Gen as Gen
 
 newtype Projection = Projection
   { dimension ∷ JCursor → D.LabeledJCursor
@@ -60,11 +63,28 @@ isLabelless (Projection {labelless}) = labelless
 newtype ProjectionMap a = ProjectionMap (SM.StrMap a)
 
 derive instance newtypeProjectionMap ∷ Newtype (ProjectionMap a) _
+derive newtype instance eqProjectionMap ∷ Eq a ⇒ Eq (ProjectionMap a)
+derive newtype instance encodeProjectionMap ∷ EncodeJson a ⇒ EncodeJson (ProjectionMap a)
+derive newtype instance decodeProjectionMap ∷ DecodeJson a ⇒ DecodeJson (ProjectionMap a)
+
+projectionMapCodec ∷ ∀ a. CA.JsonCodec a → CA.JsonCodec (ProjectionMap a)
+projectionMapCodec aCodec = _Newtype $ CAC.strMap aCodec
+
+dimMapCodec ∷ CA.JsonCodec DimMap
+dimMapCodec = projectionMapCodec D.codecLabeledJCursor
 
 toStrMap ∷ ∀ a. ProjectionMap a → SM.StrMap a
 toStrMap (ProjectionMap sm) = sm
 
 type DimMap = ProjectionMap D.LabeledJCursor
+
+genProjectionMap ∷ ∀ a. Gen.Gen a → Gen.Gen (ProjectionMap a)
+genProjectionMap genV = map (ProjectionMap ∘ SM.fromFoldable) $ Gen.arrayOf pair
+  where
+  pair = Tuple <$> SG.genAsciiString <*> genV
+
+genDimMap ∷ Gen.Gen DimMap
+genDimMap = genProjectionMap D.genLabeledJCursor
 
 empty ∷ ∀ a. ProjectionMap a
 empty = ProjectionMap SM.empty

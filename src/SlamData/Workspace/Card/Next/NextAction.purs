@@ -50,66 +50,6 @@ pluckCardType ∷ NextAction → CardType
 pluckCardType (Insert ct) = ct
 pluckCardType (FindOutHowToInsert ct) = ct
 
-geoChartSubmenu
-  ∷ ∀ r
-  . (CT.Geo r → Action.Action NextAction)
-  → Action.Action NextAction
-geoChartSubmenu mkAction =
-  Action.mkDrill
-    { name: "Setup Geo Chart"
-    , icon: Just $ I.IconHTML I.cardsSetupGeoChart
-    , description: "Select Setup Geo Chart card category"
-    , children: map mkAction Geo.all
-    }
-
-insertGeoChartSubmenu ∷ Action.Action NextAction
-insertGeoChartSubmenu =
-  geoChartSubmenu $ toAction ∘ Insert
-
-findOutHowToGeoChartSubmenu ∷ Action.Action NextAction
-findOutHowToGeoChartSubmenu =
-  geoChartSubmenu $ toAction ∘ FindOutHowToInsert
-
-chartSubmenu
-  ∷ ∀ r
-  . (CT.Chart r → Action.Action NextAction)
-  → Action.Action NextAction
-chartSubmenu mkAction =
-  Action.mkDrill
-    { name: "Setup Chart"
-    , icon: Just $ I.IconHTML I.cardsSetupChart
-    , description: "Select Setup Chart card category"
-    , children: map mkAction Cht.all
-    }
-
-insertChartSubmenu ∷ Action.Action NextAction
-insertChartSubmenu =
-  chartSubmenu $ toAction ∘ Insert
-
-findOutHowToChartSubmenu ∷ Action.Action NextAction
-findOutHowToChartSubmenu =
-  chartSubmenu $ toAction ∘ FindOutHowToInsert
-
-formInputSubmenu
-  ∷ ∀ r
-  . (Variant (CT.StaticR (CT.SelectR (CT.InputR r))) → Action.Action NextAction)
-  → Action.Action NextAction
-formInputSubmenu mkAction =
-  Action.mkDrill
-    { name: "Setup Form"
-    , icon: Just $ I.IconHTML I.cardsSetupFormInput
-    , description: "Select Setup Form card category"
-    , children: map mkAction $ Sta.all ⊕ Inp.all ⊕ Sel.all
-    }
-
-insertFormInputSubmenu ∷ Action.Action NextAction
-insertFormInputSubmenu =
-  formInputSubmenu $ toAction ∘ Insert
-
-findOutHowToFormInputSubmenu ∷ Action.Action NextAction
-findOutHowToFormInputSubmenu =
-  formInputSubmenu $ toAction ∘ FindOutHowToInsert
-
 toAction ∷ NextAction → Action.Action NextAction
 toAction na =
   Action.mkDo
@@ -130,16 +70,10 @@ description = case _ of
 
 insert ∷ InsertableCardType → Array (Action.Action NextAction)
 insert = case _ of
-  ICT.SetupChartCard → A.singleton insertChartSubmenu
-  ICT.SetupFormCard → A.singleton insertFormInputSubmenu
-  ICT.SetupGeoChartCard → A.singleton insertGeoChartSubmenu
   iCardType → foldMap (A.singleton ∘ toAction ∘ Insert) $ ICT.toCardType iCardType
 
 findOutHowToInsert ∷ InsertableCardType → Array (Action.Action NextAction)
 findOutHowToInsert = case _ of
-  ICT.SetupChartCard → A.singleton findOutHowToChartSubmenu
-  ICT.SetupFormCard → A.singleton findOutHowToFormInputSubmenu
-  ICT.SetupGeoChartCard → A.singleton findOutHowToGeoChartSubmenu
   iCardType → foldMap (A.singleton ∘ toAction ∘ FindOutHowToInsert) $ ICT.toCardType iCardType
 
 fromInsertableCard

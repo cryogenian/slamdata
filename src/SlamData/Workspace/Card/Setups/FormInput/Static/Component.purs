@@ -17,8 +17,9 @@ limitations under the License.
 -- In fact this is BuildChart.Metric but working with other fields.
 -- One option is to remove this and make metric working with everything.
 -- And control aggregation like if it's value axis then aggregate, otherwise just take first value.
-module SlamData.Workspace.Card.Setups.FormInput.Static.Component
-  ( staticSetupComponent
+module SlamData.Workspace.Card.Setups.FormInput.Static.Component where
+{-
+       ( staticSetupComponent
   ) where
 
 import SlamData.Prelude
@@ -153,3 +154,4 @@ setupEval = case _ of
   updatePicker l q = case _ of
     BCI.Open opts → H.modify (ST.showPicker q opts)
     BCI.Choose a → H.modify (l ∘ S._value .~ a) *> raiseUpdate
+-}

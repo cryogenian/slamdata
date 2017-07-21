@@ -21,6 +21,8 @@ import SlamData.Prelude
 import Control.Alternative (class Alternative)
 
 import Data.Argonaut as J
+import Data.Codec as C
+import Data.Codec.Argonaut as CA
 import Data.Variant as V
 import Data.Functor.Variant (VariantF, FProxy)
 import Data.Newtype (under)
@@ -31,6 +33,7 @@ import Halogen.Component.Profunctor as HPR
 import Halogen.Component.Proxy as HCP
 
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.CardType.VizType as VT
 import SlamData.Workspace.Card.Setups.Auxiliary.Area as Area
 import SlamData.Workspace.Card.Setups.Auxiliary.Bar as Bar
 import SlamData.Workspace.Card.Setups.Auxiliary.Funnel as Funnel
@@ -75,6 +78,9 @@ eq_ = V.case_
   # V.on CT._scatter (\r → V.on CT._scatter (Scatter.eq_ r) ff)
   # V.on CT._geoHeatmap (\r → V.on CT._geoHeatmap (GeoHeatmap.eq_ r) ff)
   # V.on CT._geoMarker (\r → V.on CT._geoMarker (GeoMarker.eq_ r) ff)
+
+codec ∷ CA.JsonCodec State
+codec = C.basicCodec (\j → lmap CA.TypeMismatch $ decode j) encode
 
 encode ∷ State → J.Json
 encode = V.case_
@@ -185,8 +191,8 @@ geoHeatmap = HCP.proxy $ injAux CT._geoHeatmap GeoHeatmap.component
 geoMarker ∷ ∀ m. UnifiedAux m
 geoMarker = HCP.proxy $ injAux CT._geoMarker GeoMarker.component
 
-cardTypeAux ∷ ∀ m f. Alternative f ⇒ CT.CardType → f (UnifiedAux m)
-cardTypeAux = V.default empty
+vizTypeAux ∷ ∀ m f. Alternative f ⇒ VT.VizType → f (UnifiedAux m)
+vizTypeAux = V.default empty
   # V.on CT._area (const $ pure area)
   # V.on CT._bar (const $ pure bar)
   # V.on CT._funnel (const $ pure funnel)

@@ -39,6 +39,7 @@ _draftboard = SProxy ∷ SProxy "draftboard"
 _tabs = SProxy ∷ SProxy "tabs"
 _structureEditor = SProxy ∷ SProxy "structureEditor"
 _viz = SProxy ∷ SProxy "viz"
+_setupViz = SProxy ∷ SProxy "setupViz"
 
 viz ∷ ∀ r. Variant (viz ∷ Unit|r)
 viz = inj _viz unit
@@ -79,6 +80,9 @@ tabs = inj _tabs unit
 structureEditor ∷ ∀ r. Variant (structureEditor ∷ Unit|r)
 structureEditor = inj _structureEditor unit
 
+setupViz ∷ ∀ r. Variant (setupViz ∷ Unit|r)
+setupViz = inj _setupViz unit
+
 type SimpleR r =
   ( search ∷ Unit
   , markdown ∷ Unit
@@ -93,6 +97,7 @@ type SimpleR r =
   , tabs ∷ Unit
   , structureEditor ∷ Unit
   , viz ∷ Unit
+  , setupViz ∷ Unit
   | r)
 
 type Simple r = Variant (SimpleR r)
@@ -111,6 +116,7 @@ all =
   , draftboard
   , tabs
   , structureEditor
+  , setupViz
   , viz
   ]
 
@@ -129,6 +135,7 @@ eq_ cb r = cb (contractSimple r)
   # on _draftboard (on _draftboard tt ff r)
   # on _tabs (on _tabs tt ff r)
   # on _structureEditor (on _structureEditor tt ff r)
+  # on _setupViz (on _setupViz tt ff r)
   where
   contractSimple ∷ ∀ ω. Simple ω → Variant ω
   contractSimple = unsafeCoerce
@@ -149,6 +156,7 @@ print cb = cb
   # on _cache (const "cache")
   # on _open (const "open")
   # on _tabs (const "tabs")
+  # on _setupViz (const "setupViz")
 
 parse ∷ ∀ r. String → String ⊹ Simple r
 parse = case _ of
@@ -168,6 +176,7 @@ parse = case _ of
   "chart" → pure viz
   "form-input" → pure viz
   "geo-chart" → pure viz
+  "setupViz" → pure setupViz
   ty → Left $ ty ⊕ " is unknown basic card type"
 
 name ∷ ∀ r. (Variant r → String) → Simple r → String
@@ -185,6 +194,7 @@ name cb = cb
   # on _draftboard (const "Setup Dashboard")
   # on _tabs (const "Setup Tabs")
   # on _structureEditor (const "Structure Editor")
+  # on _setupViz (const "Setup Visualization")
 
 icon ∷ ∀ r. (Variant r → I.IconHTML) → Simple r → I.IconHTML
 icon cb = cb
@@ -201,6 +211,7 @@ icon cb = cb
   # on _draftboard (const $ I.IconHTML I.cardsDashboard)
   # on _tabs (const $ I.IconHTML I.cardsTabs)
   # on _structureEditor (const $ I.IconHTML I.cardsStructureEditor)
+  # on _setupViz (const $ I.IconHTML I.cardsSetupChart)
 
 cardClasses ∷ ∀ r. (Variant r → Array H.ClassName) → Simple r → Array H.ClassName
 cardClasses cb = cb
@@ -217,6 +228,7 @@ cardClasses cb = cb
   # on _draftboard (\_ → [ H.ClassName "sd-card-draftboard" ])
   # on _structureEditor (\_ → [ H.ClassName "sd-structure-editor" ])
   # on _tabs (\_ → [ H.ClassName "sd-card-tabs" ])
+  # on _setupViz (\_ → [ H.ClassName "sd-card-chart-options" ] )
 
 consumerInteractable ∷ ∀ r. (Variant r → Boolean) → Simple r → Boolean
 consumerInteractable cb = cb
@@ -233,6 +245,7 @@ consumerInteractable cb = cb
   # on _draftboard tt
   # on _tabs tt
   # on _structureEditor ff
+  # on _setupViz tt
 
 contractToSimple ∷ ∀ r. Contractable r (SimpleR ()) ⇒ Variant r → Maybe (Simple ())
 contractToSimple = contract

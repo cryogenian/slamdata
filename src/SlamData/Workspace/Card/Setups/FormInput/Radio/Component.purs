@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.FormInput.Radio.Component
-  ( radioSetupComponent
+module SlamData.Workspace.Card.Setups.FormInput.Radio.Component where
+{-  ( radioSetupComponent
   ) where
 
 import SlamData.Workspace.Card.CardType as CT
@@ -24,3 +24,4 @@ import SlamData.Workspace.Card.Setups.FormInput.Labeled.Component (labeledSetupC
 
 radioSetupComponent ∷ CC.CardOptions → CC.CardComponent
 radioSetupComponent = labeledSetupComponent CT.radio
+-}

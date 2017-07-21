@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.FormInput.Datetime.Component
-  ( datetimeSetupComponent
+module SlamData.Workspace.Card.Setups.FormInput.Datetime.Component where
+{-  ( datetimeSetupComponent
   ) where
 
 import SlamData.Workspace.Card.CardType as CT
@@ -25,3 +25,4 @@ import SlamData.Workspace.Card.Setups.FormInput.TextLike.Component (textLikeSetu
 datetimeSetupComponent ∷ CC.CardOptions → CC.CardComponent
 datetimeSetupComponent =
   textLikeSetupComponent CT.datetime _.datetime
+-}

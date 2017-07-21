@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.PivotTable.Component
-  ( pivotTableBuilderComponent
+module SlamData.Workspace.Card.Setups.Chart.PivotTable.Component where
+{-  ( pivotTableBuilderComponent
   ) where
 
 import SlamData.Prelude
@@ -505,3 +505,4 @@ rootAxes ax =
   || onlyTop ax.datetime
   where
   onlyTop = eq [ J.JCursorTop ] ∘ Array.fromFoldable
+-}
