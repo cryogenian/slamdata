@@ -93,6 +93,12 @@ addColumnIsPresent =
     $ XPath.anywhere
     $ XPaths.addColumnAction
 
+logoIsPresent ∷ SlamFeature Unit
+logoIsPresent =
+  expectPresented
+    $ XPath.anywhere
+    $ XPaths.browseRootFolder
+
 checkableFieldInLastMdCard ∷ String → String → Boolean → SlamFeature Unit
 checkableFieldInLastMdCard labelText inputType checked =
   annotate ("Found expected checkable fields "

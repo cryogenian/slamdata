@@ -7,6 +7,7 @@ import Data.Time.Duration (Milliseconds(..))
 import Selenium.Monad (attempt, later, tryRepeatedlyTo)
 import Test.Feature as Feature
 import Test.Feature.Log (annotate)
+import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Interactions.Deck (nameDeck)
 import Test.SlamData.Feature.Monad (Connector(..), SlamFeature, getConfig, getConnector)
 import Test.SlamData.Feature.XPaths as XPaths
@@ -32,6 +33,7 @@ browseRootFolder ∷ SlamFeature Unit
 browseRootFolder =
   annotate "Browsed to Root folder" do
     Feature.click $ XPath.anywhere XPaths.headerGripper
+    Expect.logoIsPresent
     Feature.click $ XPath.index (XPath.anywhere XPaths.browseRootFolder) 1
 
 browseTestFolder ∷ SlamFeature Unit
@@ -133,6 +135,7 @@ setupCouchbase = do
   eitherPresented <- attempt $ Feature.expectPresented $  XPath.anywhere $ XPath.anyWithText "testDb"
   case eitherPresented of
     Left _ -> do
+      Expect.file "zips"
       createFolder
       renameFile "Untitled Folder" "testDb"
       for_ ["flatViz", "olympics", "patients", "smallZips", "zips"] moveAllCouchbaseFiles
@@ -141,6 +144,7 @@ setupCouchbase = do
   accessFile "test-mount"
   accessFile "testDb"
   where moveAllCouchbaseFiles filename = do
+          Expect.file filename
           moveFile
             filename
             "/test-mount/"
@@ -155,6 +159,7 @@ setupMarklogic = do
   eitherPresented <- attempt $ Feature.expectPresented $  XPath.anywhere $ XPath.anyWithExactText "flatViz"
   case eitherPresented of
     Left _ -> do
+      Expect.file "zips.json"
       for_ ["flatViz", "olympics", "patients", "smallZips", "zips"] renameMarklogicFiles
     Right _ → pure unit
   where renameMarklogicFiles filename = do
