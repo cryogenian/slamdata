@@ -340,6 +340,10 @@ handleBackSide opts = case _ of
         if Array.length st.displayCards <= 1
           then H.lift $ Common.deleteDeck opts
           else Wiring.showDialog (Dialog.DeleteDeck opts)
+      Back.Theme → do
+        -- TODO @toastal
+        Wiring.showDialog $ Dialog.Theme opts st.theme
+        pure unit
       Back.Mirror → do
         let mirrorCard = (hush =<< DCS.activeCard st) <|> DCS.findLastRealCard st
         deck ← H.lift $ P.getDeck opts.deckId

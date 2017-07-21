@@ -18,23 +18,29 @@ module SlamData.Workspace.Deck.Model where
 
 import SlamData.Prelude
 import Data.Codec.Argonaut as CA
+import Data.Codec.Argonaut.Common as CAC
+import SlamData.Theme as Theme
 import SlamData.Workspace.Card.CardId as CID
 
 type Deck =
   { name ∷ String
+  , theme ∷ Maybe Theme.Theme
   , cards ∷ Array CID.CardId
   }
 
 emptyDeck ∷ Deck
 emptyDeck =
   { name: ""
+  , theme: Nothing
   , cards: mempty
   }
 
 codec ∷ CA.JsonCodec Deck
 codec = CA.object "Deck" $ CA.record
-  # CA.recordProp (SProxy :: SProxy "name") CA.string
-  # CA.recordProp (SProxy :: SProxy "cards") (CA.array CID.codec)
+  # CA.recordProp (SProxy ∷ SProxy "name") CA.string
+  # CA.recordProp (SProxy ∷ SProxy "theme") (CAC.maybe Theme.codec)
+  # CA.recordProp (SProxy ∷ SProxy "cards") (CA.array CID.codec)
 
 eqDeck ∷ Deck → Deck → Boolean
-eqDeck d1 d2 = d1.name ≡ d2.name && d1.cards ≡ d2.cards
+eqDeck d1 d2 =
+  d1.name ≡ d2.name && d1.cards ≡ d2.cards && d1.theme ≡ d2.theme
