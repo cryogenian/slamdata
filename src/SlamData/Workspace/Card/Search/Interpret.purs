@@ -64,12 +64,12 @@ defaultDistinctVar = VM.Var "distinct"
 --       ∘ (Sql._isDistinct .~ distinct)
 --       ∘ SU.all
 searchSql ∷ VM.Var → L.List (Sql.Projection Sql) → Sql → Boolean → Sql
-searchSql (VM.Var vari) prjs filter distinct =
+searchSql (VM.Var vari) prs filter isD =
   Sql.buildSelect
     $ (Sql._relations ?~ SU.variRelation vari)
     ∘ (Sql._filter ?~ filter)
-    ∘ (Sql._isDistinct .~ distinct)
-    ∘ (Sql._projections .~ prjs)
+    ∘ (Sql._isDistinct .~ isD)
+    ∘ (Sql._projections .~ prs)
 
 isDistinct ∷ SS.SearchQuery → Boolean
 isDistinct = F.any isDistinctTerm
