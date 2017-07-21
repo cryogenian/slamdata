@@ -25,6 +25,7 @@ import Halogen.HTML.Properties as HP
 import Quasar.Advanced.Types as QAT
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.Monad (Slam)
+import SlamData.Quasar.Security (removeUsersFromGroup)
 import SlamData.Render.ClassName as CN
 
 data Dialog
@@ -37,7 +38,7 @@ derive instance ordDialog ∷ Ord Dialog
 
 data Query a
   = Raise Message a
- | DeletePermission QAT.UserId QAT.GroupPath a
+  | DeletePermission QAT.UserId QAT.GroupPath a
 
 data Message
   = Confirm Dialog
@@ -83,6 +84,7 @@ component dlg =
       H.raise msg
       pure next
     DeletePermission userId groupPath next → do
+      _ ← removeUsersFromGroup groupPath [userId]
       pure next
 
 headerMessage ∷ Dialog → String
