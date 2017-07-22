@@ -197,25 +197,39 @@ render state =
           if state.menuOpen == Just HelpMenu then
             [ submenu
               [ hitem
-                  [ HP.href "http://docs.slamdata.com/en/v4.2/users-guide.html" ]
+                  [ HP.href "http://docs.slamdata.com/en/v4.2/users-guide.html"
+                  , HP.target "_blank"
+                  ]
                   [ HH.text "User guide" ]
               , hitem
-                  [ HP.href "http://docs.slamdata.com/en/v4.2/administration-guide.html" ]
+                  [ HP.href "http://docs.slamdata.com/en/v4.2/administration-guide.html"
+                  , HP.target "_blank"
+                  ]
                   [ HH.text "Administrator guide" ]
               , hitem
-                  [ HP.href "http://docs.slamdata.com/en/v4.2/developers-guide.html" ]
+                  [ HP.href "http://docs.slamdata.com/en/v4.2/developers-guide.html"
+                  , HP.target "_blank"
+                  ]
                   [ HH.text "Developer guide" ]
               , hitem
-                  [ HP.href "http://docs.slamdata.com/en/v4.2/helpful-tips.html" ]
+                  [ HP.href "http://docs.slamdata.com/en/v4.2/helpful-tips.html"
+                  , HP.target "_blank"
+                  ]
                   [ HH.text "Helpful tips" ]
               , hitem
-                  [ HP.href "http://docs.slamdata.com/en/v4.2/sql-squared-reference.html" ]
+                  [ HP.href "http://docs.slamdata.com/en/v4.2/sql-squared-reference.html"
+                  , HP.target "_blank"
+                  ]
                   [ HH.text "SQL² reference" ]
               , hitem
-                  [ HP.href "http://docs.slamdata.com/en/v4.2/slamdown-reference.html" ]
+                  [ HP.href "http://docs.slamdata.com/en/v4.2/slamdown-reference.html"
+                  , HP.target "_blank"
+                  ]
                   [ HH.text "SlamDown reference" ]
               , hitem
-                  [ HP.href "http://docs.slamdata.com/en/v4.2/troubleshooting-faq.html" ]
+                  [ HP.href "http://docs.slamdata.com/en/v4.2/troubleshooting-faq.html"
+                  , HP.target "_blank"
+                  ]
                   [ HH.text "Troubleshooting FAQ" ]
               , HH.li [ submenuItem ]
                   [ HH.button
