@@ -107,11 +107,11 @@ component' (ColumnOptions colSpec) colPath =
           ]
       , renderSelected selected
       , HH.div
-          [ HP.class_ (HH.ClassName "sd-miller-column-items") ]
+          [ HP.class_ (HH.ClassName "sd-miller-column-items")
+          , HE.onScroll \e → H.action ∘ HandleScroll <$> DOM.fromNode (DOM.currentTarget e)
+          ]
           [ HH.ul
-              [ HP.class_ (HH.ClassName "sd-miller-column-items-list")
-              , HE.onScroll \e → H.action ∘ HandleScroll <$> DOM.fromNode (DOM.currentTarget e)
-              ]
+              [ HP.class_ (HH.ClassName "sd-miller-column-items-list") ]
               $ A.fromFoldable (renderItem selected <$> items)
                   <> (guard (state == Loading) $> loadIndicator)
           ]
