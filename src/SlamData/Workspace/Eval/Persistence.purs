@@ -48,6 +48,7 @@ import SlamData.LocalStorage.Keys as LSK
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Error as QE
+import SlamData.Theme as Theme
 import SlamData.Wiring (Wiring)
 import SlamData.Wiring as Wiring
 import SlamData.Wiring.Cache as Cache
@@ -527,6 +528,12 @@ renameDeck deckId name = do
   Eval.publish cell (Deck.NameChange name)
   queueSaveDefault Nothing
   for_ cell.parent (queueEvalDefault ∘ Card.toAll)
+  pure unit
+
+themeDeck ∷ ∀ f m. Persist f m (Theme.Theme → m Unit)
+themeDeck theme = do
+  { eval } ← Wiring.expose
+  decks ← Cache.snapshot eval.decks
   pure unit
 
 addDeckToDraftboard ∷ ∀ f m. Persist f m (Card.Id → Pane.Cursor → m Deck.Id)
