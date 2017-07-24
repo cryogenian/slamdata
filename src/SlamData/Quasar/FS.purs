@@ -19,6 +19,7 @@ module SlamData.Quasar.FS
   , getNewName
   , move
   , listing
+  , listingPaginated
   , delete
   , messageIfFileNotFound
   , dirNotAccessible
@@ -99,8 +100,17 @@ listing
   ⇒ QuasarDSL m
   ⇒ DirPath
   → m (Either QError (Array R.Resource))
-listing p =
-  map (map toResource) <$> liftQuasar (QF.dirMetadata p)
+listing p = listingPaginated p Nothing
+
+listingPaginated
+  ∷ ∀ m
+  . Functor m
+  ⇒ QuasarDSL m
+  ⇒ DirPath
+  → Maybe QF.Pagination
+  → m (Either QError (Array R.Resource))
+listingPaginated p pagination =
+  map (map toResource) <$> liftQuasar (QF.dirMetadata p pagination)
   where
   toResource ∷ QFS.Resource → R.Resource
   toResource res = case res of
@@ -125,7 +135,7 @@ getNewName
   → String
   → m (Either QError String)
 getNewName parent name = do
-  result ← liftQuasar (QF.dirMetadata parent)
+  result ← liftQuasar (QF.dirMetadata parent Nothing)
   pure case result of
     Right items
       | exists name items → Right (getNewName' items 1)
@@ -458,7 +468,7 @@ dirNotAccessible
   ⇒ DirPath
   → m (Maybe QF.QError)
 dirNotAccessible path =
-  either Just (const Nothing) <$> liftQuasar (QF.dirMetadata path)
+  either Just (const Nothing) <$> liftQuasar (QF.dirMetadata path Nothing)
 
 fileNotAccessible
   ∷ ∀ m
