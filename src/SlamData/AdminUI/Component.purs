@@ -406,8 +406,7 @@ eval = case _ of
               Nothing
               Nothing
             pure unit
-      Dialog.Confirm (Dialog.ConfirmUserDeletion path) → do
-        pure unit
+      Dialog.Confirm (Dialog.ConfirmUserDeletion uid) → Users.deleteUser uid
       Dialog.Confirm (Dialog.EditUserPermissions _) → do
         pure unit
       Dialog.Dismiss → pure unit

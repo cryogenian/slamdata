@@ -28,7 +28,7 @@ import Halogen.HTML.Properties as HP
 import Quasar.Advanced.Types as QA
 import SlamData.AdminUI.Types as AT
 import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Quasar.Security (groupInfo)
+import SlamData.Quasar.Security (groupInfo, removeUsersFromGroup)
 import SlamData.Render.Common as R
 
 type User =
@@ -102,7 +102,11 @@ crawlGroups
   ⇒ QuasarDSL m
   ⇒ QA.UserId
   → m (Array QA.GroupPath)
-crawlGroups userId = go (QA.GroupPath Pathy.rootDir)
+crawlGroups userId =
+  map
+    -- Drop the root directory, because every User is member of it implicitly
+    (fromMaybe [] ∘ Array.tail)
+    (go (QA.GroupPath Pathy.rootDir))
   where
     go path =
       groupInfo path >>= case _ of
@@ -127,3 +131,9 @@ isDirectSubgroup (QA.GroupPath parent) (QA.GroupPath child) =
       false
     Just (childPrefix × _) →
       Pathy.identicalPath parent childPrefix
+
+deleteUser ∷ ∀ m. Monad m ⇒ QuasarDSL m ⇒ QA.UserId → m Unit
+deleteUser userId = do
+  groups ← crawlGroups userId
+  for_ groups \group →
+    removeUsersFromGroup group [userId]
