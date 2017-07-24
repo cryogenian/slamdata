@@ -16,6 +16,7 @@ limitations under the License.
 
 module SlamData.Quasar.FS
   ( children
+  , childrenPaginated
   , getNewName
   , move
   , listing
@@ -69,8 +70,17 @@ children
   ⇒ QuasarDSL m
   ⇒ DirPath
   → m (Either QError (Array R.Resource))
-children dir = runExceptT do
-  cs ← ExceptT $ listing dir
+children dir = childrenPaginated dir Nothing
+
+childrenPaginated
+  ∷ ∀ m
+  . Monad m
+  ⇒ QuasarDSL m
+  ⇒ DirPath
+  → Maybe QF.Pagination
+  → m (Either QError (Array R.Resource))
+childrenPaginated dir pagination = runExceptT do
+  cs ← ExceptT $ listingPaginated dir pagination
   let result = (R._root .~ dir) <$> cs
   -- TODO: do this somewhere more appropriate
   -- lift $ fromAff $ memoizeCompletionStrs dir result
