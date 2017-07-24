@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Graph.Eval
-  ( eval
+module SlamData.Workspace.Card.Setups.Chart.Graph.Eval where
+{-  ( eval
   , module SlamData.Workspace.Card.Setups.Chart.Graph.Model
   ) where
 
@@ -222,3 +222,4 @@ graphOptions axes r (links × nodes) = do
     when (isJust r.size) do
       E.symbolSize $ Int.floor node.size
       E.value node.value
+-}

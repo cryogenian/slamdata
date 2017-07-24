@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Funnel.Eval
-  ( eval
+module SlamData.Workspace.Card.Setups.Chart.Funnel.Eval where
+{-  ( eval
   , module SlamData.Workspace.Card.Setups.Chart.Funnel.Model
   ) where
 
@@ -176,3 +176,4 @@ buildOptions r funnelData = do
       E.value value
     traverse_ (E.top ∘ ET.Percent) y
     traverse_ (E.left ∘ ET.Percent) x
+-}

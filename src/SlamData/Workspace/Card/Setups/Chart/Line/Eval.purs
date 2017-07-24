@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Line.Eval
-  ( eval
+module SlamData.Workspace.Card.Setups.Chart.Line.Eval where
+{-  ( eval
   , module SlamData.Workspace.Card.Setups.Chart.Line.Model
   ) where
 
@@ -291,3 +291,4 @@ lineOptions axes r lineData = do
     E.axisType ET.Value
     E.axisLabel $ E.textStyle do
       E.fontFamily "Ubuntu, sans"
+-}

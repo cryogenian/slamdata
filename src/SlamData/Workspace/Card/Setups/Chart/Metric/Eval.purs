@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Metric.Eval
-  ( eval
+module SlamData.Workspace.Card.Setups.Chart.Metric.Eval where
+{-  ( eval
   , module SlamData.Workspace.Card.Setups.Chart.Metric.Model
   ) where
 
@@ -85,3 +85,4 @@ buildMetric r records =
   foldFn ∷ Json → Array Number
   foldFn js =
     getValues js $ r.value ^? D._value ∘ D._projection
+-}

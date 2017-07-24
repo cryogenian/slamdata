@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Scatter.Eval
-  ( eval
+module SlamData.Workspace.Card.Setups.Chart.Scatter.Eval where
+{-  ( eval
   , module SlamData.Workspace.Card.Setups.Chart.Scatter.Model
   ) where
 
@@ -257,3 +257,4 @@ buildOptions r scatterData = do
           E.addValue item.y
           E.addValue item.r
         when (isJust r.size) $ E.symbolSize item.size
+-}

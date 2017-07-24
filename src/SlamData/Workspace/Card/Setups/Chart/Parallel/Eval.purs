@@ -30,8 +30,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Parallel.Eval
-  ( eval
+module SlamData.Workspace.Card.Setups.Chart.Parallel.Eval where
+{-  ( eval
   , module SlamData.Workspace.Card.Setups.Chart.Parallel.Model
   ) where
 
@@ -138,3 +138,4 @@ pOptions _ r pData = do
   axes = enumeratedFor_ r.dims \(dimIx × dim) → E.addParallelAxis do
     E.dim dimIx
     E.name $ D.jcursorLabel dim
+-}

@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Bar.Eval
-  ( eval
+module SlamData.Workspace.Card.Setups.Chart.Bar.Eval where
+{-  ( eval
   , module SlamData.Workspace.Card.Setups.Chart.Bar.Model
   ) where
 
@@ -233,3 +233,4 @@ barOptions axes r barData = do
           for_ serie.name E.stack
         _, _ →
           E.stack "default stack"
+-}

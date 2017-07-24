@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Pie.Eval
-  ( eval
+module SlamData.Workspace.Card.Setups.Chart.Pie.Eval where
+{-  ( eval
   , module SlamData.Workspace.Card.Setups.Chart.Pie.Model
   ) where
 
@@ -214,3 +214,4 @@ buildOptions r pieData = do
           E.value value
           E.name $ foldMap (flip append ":") name ⊕ key
           BCE.assoc { key, value }
+-}

@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Boxplot.Eval
-  ( eval
+module SlamData.Workspace.Card.Setups.Chart.Boxplot.Eval where
+{-  ( eval
   , module SlamData.Workspace.Card.Setups.Chart.Boxplot.Model
   ) where
 
@@ -364,3 +364,4 @@ boxplotOptions r axes boxplotData = do
     E.splitLine $ E.lineStyle do
       E.width 1
     E.splitArea E.hidden
+-}

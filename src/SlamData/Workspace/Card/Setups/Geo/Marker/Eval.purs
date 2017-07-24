@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Geo.Marker.Eval
-  ( eval
+module SlamData.Workspace.Card.Setups.Geo.Marker.Eval where
+{-  ( eval
   , module SlamData.Workspace.Card.Setups.Geo.Marker.Model
   ) where
 
@@ -267,3 +267,4 @@ buildMarker r@{ osmURI } _ =
         | otherwise = Sm.values $ map LC.groupToLayer layGroups
 
     pure $ toSend × control
+-}

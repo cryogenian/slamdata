@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Heatmap.Eval
-  ( eval
+module SlamData.Workspace.Card.Setups.Chart.Heatmap.Eval where
+{-  ( eval
   , module SlamData.Workspace.Card.Setups.Chart.Heatmap.Model
   ) where
 
@@ -241,3 +241,4 @@ buildOptions axes r heatmapData = do
 
   sortY ∷ Array String → Array String
   sortY = A.sortBy $ Ax.compareWithAxisType ordinateAxisType
+-}

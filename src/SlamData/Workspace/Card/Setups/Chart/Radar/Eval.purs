@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Radar.Eval
-  ( eval
+module SlamData.Workspace.Card.Setups.Chart.Radar.Eval where
+{-  ( eval
   , module SlamData.Workspace.Card.Setups.Chart.Radar.Model
   ) where
 
@@ -226,3 +226,4 @@ buildOptions r radarData = do
       (E.singleValueRadius
        ∘ ET.SingleValueRadius
        ∘ ET.Percent) radius
+-}

@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Geo.Heatmap.Eval
-  ( eval
+module SlamData.Workspace.Card.Setups.Geo.Heatmap.Eval where
+{-  ( eval
   , module SlamData.Workspace.Card.Setups.Geo.Heatmap.Model
   ) where
 
@@ -184,3 +184,4 @@ buildGeoHeatmap m@{osmURI} axes =
 
 
     pure $ [ heatmap ] × [ ]
+-}

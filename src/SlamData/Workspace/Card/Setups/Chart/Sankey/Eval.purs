@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Sankey.Eval
-  ( eval
+module SlamData.Workspace.Card.Setups.Chart.Sankey.Eval where
+{-  ( eval
   , module SlamData.Workspace.Card.Setups.Chart.Sankey.Model
   ) where
 
@@ -115,3 +115,4 @@ sankeyOptions r sankeyData = do
     for_
       (A.nub $ (_.source <$> sankeyData) ⊕ (_.target <$> sankeyData))
       (E.addItem ∘ E.name)
+-}

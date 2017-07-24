@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Candlestick.Eval
-  ( eval
+module SlamData.Workspace.Card.Setups.Chart.Candlestick.Eval where
+{-  ( eval
   , module SlamData.Workspace.Card.Setups.Chart.Candlestick.Model
   ) where
 
@@ -194,3 +194,4 @@ kOptions axes r kData = do
         E.addValue close
         E.addValue low
         E.addValue high
+-}

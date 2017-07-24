@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Gauge.Eval
-  ( eval
+module SlamData.Workspace.Card.Setups.Chart.Gauge.Eval where
+{-  ( eval
   , module SlamData.Workspace.Card.Setups.Chart.Gauge.Model
   ) where
 
@@ -173,3 +173,4 @@ buildOptions r series = do
   where
   allValues ∷ Array Number
   allValues = map _.value $ A.concatMap _.items series
+-}

@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Area.Eval
-  ( eval
+module SlamData.Workspace.Card.Setups.Chart.Area.Eval where
+{-  ( eval
   , module SlamData.Workspace.Card.Setups.Chart.Area.Model
   ) where
 
@@ -216,3 +216,4 @@ areaOptions axes r areaData = do
     E.symbol ET.Circle
     E.smooth r.isSmooth
     when r.isStacked $ E.stack "stack"
+-}

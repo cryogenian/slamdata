@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.PunchCard.Eval
-  ( eval
+module SlamData.Workspace.Card.Setups.Chart.PunchCard.Eval where
+{-  ( eval
   , module SlamData.Workspace.Card.Setups.Chart.PunchCard.Model
   ) where
 
@@ -234,3 +234,4 @@ buildOptions axes r punchCardData = do
                 E.addValue $ Int.toNumber xIx
                 E.addValue $ Int.toNumber yIx
                 E.addValue val
+-}
