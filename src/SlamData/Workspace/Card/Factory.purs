@@ -40,11 +40,7 @@ import SlamData.Workspace.Card.Tabs.Component (tabsComponent)
 import SlamData.Workspace.Card.Troubleshoot.Component (troubleshootComponent)
 import SlamData.Workspace.Card.Variables.Component (variablesComponent)
 import SlamData.Workspace.Card.Viz.Component as Viz
-
-import Unsafe.Coerce (unsafeCoerce)
-
-hole ∷ ∀ a. a
-hole = unsafeCoerce 1
+import SlamData.Workspace.Card.Setups.Viz.Component as SetupViz
 
 cardComponent ∷ CT.CardType → CardOptions → CardComponent
 cardComponent = case_
@@ -63,4 +59,4 @@ cardComponent = case_
   # on CT._tabs (const tabsComponent)
   # on CT._structureEditor (const StructureEditor.component)
   # on CT._viz  (const Viz.component)
-  # on CT._setupViz (const hole)
+  # on CT._setupViz (const SetupViz.component)

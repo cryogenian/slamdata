@@ -30,7 +30,6 @@ import SlamData.ActionList.Component as AL
 import SlamData.ActionList.Action as AA
 import SlamData.ActionList.Filter.Component as ALF
 import SlamData.Monad (Slam)
-import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.VizType as VT
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.DimensionMap.Package as DP

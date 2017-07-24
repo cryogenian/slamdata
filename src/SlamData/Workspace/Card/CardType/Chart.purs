@@ -43,6 +43,7 @@ _pivot = SProxy ∷ SProxy "pivot"
 _punchCard = SProxy ∷ SProxy "punchCard"
 _candlestick = SProxy ∷ SProxy "candlestick"
 _parallel = SProxy ∷ SProxy "parallel"
+_pivotOptions = SProxy ∷ SProxy "pivotOptions"
 
 type ChartR r =
   ( pie ∷ Unit
@@ -62,13 +63,15 @@ type ChartR r =
   , punchCard ∷ Unit
   , candlestick ∷ Unit
   , parallel ∷ Unit
+  , pivotOptions ∷ Unit
   | r)
 
 type Chart r = Variant (ChartR r)
 
 all ∷ ∀ r. Array (Chart r)
 all =
-  [ pie
+  [ pivotOptions
+  , pie
   , line
   , bar
   , area
@@ -86,6 +89,9 @@ all =
   , candlestick
   , parallel
   ]
+
+pivotOptions ∷ ∀ r. Variant (pivotOptions ∷ Unit|r)
+pivotOptions = inj _pivotOptions unit
 
 pie ∷ ∀ r. Variant (pie ∷ Unit|r)
 pie = inj _pie unit
@@ -157,6 +163,7 @@ eq_ cb r = cb (contractChart r)
   # on _punchCard (on _punchCard tt ff r)
   # on _candlestick (on _candlestick tt ff r)
   # on _parallel (on _parallel tt ff r)
+  # on _pivotOptions (on _pivotOptions tt ff r)
   where
   contractChart ∷ ∀ ω. Chart ω → Variant ω
   contractChart = unsafeCoerce
@@ -180,6 +187,7 @@ print cb = cb
   # on _punchCard (const "punch-card")
   # on _candlestick (const "candlestick")
   # on _parallel (const "parallel")
+  # on _pivotOptions (const "pivotOptions")
 
 encode ∷ ∀ r. (Variant r → String) → Chart r → String
 encode cb = cb
@@ -200,6 +208,7 @@ encode cb = cb
   # on _punchCard (const "punch-card-options")
   # on _candlestick (const "candlestick-options")
   # on _parallel (const "parallel-options")
+  # on _pivotOptions (const "pivotOptions")
 
 icon ∷ ∀ r. (Variant r → I.IconHTML) → Chart r → I.IconHTML
 icon cb = cb
@@ -220,6 +229,7 @@ icon cb = cb
   # on _punchCard (const $ I.IconHTML I.buildChartPunchCard)
   # on _candlestick (const $ I.IconHTML I.buildChartCandlestick)
   # on _parallel (const $ I.IconHTML I.buildChartParallel)
+  # on _pivotOptions (const $ I.IconHTML I.buildChartPivotTable)
 
 
 parse ∷ ∀ r. String → String ⊹ Chart r
@@ -241,6 +251,7 @@ parse = case _ of
   "punch-card" → Right punchCard
   "candlestick" → Right candlestick
   "parallel" → Right parallel
+  "pivot-table" → Right pivotOptions
   ty → Left $ ty ⊕ " is unknown chart type"
 
 name ∷ ∀ r. (Variant r → String) → Chart r → String
@@ -262,6 +273,7 @@ name cb = cb
   # on _punchCard (const "Punch-card")
   # on _candlestick (const "Candlestick")
   # on _parallel (const "Parallel")
+  # on _pivotOptions (const "Pivot Table")
 
 consumerInteractable ∷ ∀ r. (Variant r → Boolean) → Chart r → Boolean
 consumerInteractable cb = cb
@@ -282,6 +294,7 @@ consumerInteractable cb = cb
   # on _punchCard ff
   # on _candlestick ff
   # on _parallel ff
+  # on _pivotOptions ff
 
 cardClasses ∷ ∀ r. (Variant r → Array H.ClassName) → Chart r → Array H.ClassName
 cardClasses cb = cb
@@ -302,6 +315,7 @@ cardClasses cb = cb
   # on _punchCard clss
   # on _candlestick clss
   # on _parallel clss
+  # on _pivotOptions clss
   where
   clss _ = [ H.ClassName "sd-card-chart-options" ]
 

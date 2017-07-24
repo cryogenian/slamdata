@@ -63,7 +63,7 @@ renderSelection state = case state ^. ST._selected of
       { options: ST.transforms state
       , selection: (\a → a × a) <$> ST.getTransform tp state
       , title: "Choose transformation"
-      , toLabel: \t -> { text: Tr.prettyPrintTransform t, icon: Nothing }
+      , toLabel: \t → { text: Tr.prettyPrintTransform t, icon: Nothing }
       , deselectable: Pr.isDeselectable tp
       , toSelection: const Nothing
       }

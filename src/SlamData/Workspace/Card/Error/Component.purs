@@ -30,14 +30,11 @@ import Data.List as L
 import Data.List.NonEmpty as NEL
 import Data.Path.Pathy as Path
 import Data.Variant (on)
-
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-
 import Quasar.Advanced.QuasarAF as QA
-
 import SlamData.GlobalError as GE
 import SlamData.Monad (Slam)
 import SlamData.Render.Icon as I
@@ -45,9 +42,8 @@ import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType (AccessType(..))
 import SlamData.Workspace.Card.Cache.Error as CCaE
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.CardType.VizType as VT
 import SlamData.Workspace.Card.CardType.Select as Sel
-import SlamData.Workspace.Card.Viz.Error as VE
+import SlamData.Workspace.Card.CardType.VizType as VT
 import SlamData.Workspace.Card.DownloadOptions.Error as CDOE
 import SlamData.Workspace.Card.Error (CardError, cardToGlobalError)
 import SlamData.Workspace.Card.Error as CE
@@ -60,8 +56,11 @@ import SlamData.Workspace.Card.Search.Error as CSE
 import SlamData.Workspace.Card.Setups.Chart.PivotTable.Error as CPTE
 import SlamData.Workspace.Card.Setups.FormInput.Labeled.Error as CFILE
 import SlamData.Workspace.Card.Setups.FormInput.Static.Error as CFISE
+import SlamData.Workspace.Card.Setups.Viz.Error as SVE
 import SlamData.Workspace.Card.Table.Error as CTE
 import SlamData.Workspace.Card.Variables.Error as CVE
+import SlamData.Workspace.Card.Viz.Error as VE
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as Pr
 
 import Text.Parsing.Parser (parseErrorMessage)
 
@@ -125,7 +124,7 @@ prettyPrintCardError state ce =
       HH.div_
         [ errorTitle [ HH.text (GE.print ge) ] ]
     Nothing →
-      ce # (case_
+      case_
         # on CE._qerror printQError
         # on CE._stringly printStringly
         # on CE._cache (cacheErrorMessage state)
@@ -140,7 +139,8 @@ prettyPrintCardError state ce =
         # on CE._search (searchErrorMessage state)
         # on CE._table (tableErrorMessage state)
         # on CE._variables (variablesErrorMessage state)
-        # on CE._setupViz (const $ HH.text "") )
+        # on CE._setupViz (setupVizErrorMessage state)
+        $ ce
   where
   printQError qError =
     HH.div_
@@ -839,6 +839,39 @@ variablesErrorMessage { accessType, expanded } err =
         , HH.code_ [ HH.text (show (unwrap fieldName)) ]
         , HH.text "."
         ]
+
+setupVizErrorMessage ∷ State → SVE.Error → HTML
+setupVizErrorMessage { accessType, expanded } err@{ vizType, missingProjections } = case accessType of
+  Editable →
+    renderDetails
+  ReadOnly →
+    HH.div_
+      [ HH.p_
+          $ pure
+          $ HH.text
+          $ "A problem occured in the "
+          ⊕ CT.name CT.setupViz
+          ⊕ " card, please notify the author of this workspace"
+      , collapsible "Error details" renderDetails expanded
+      ]
+  where
+  renderDetails =
+    HH.div_
+      [ errorTitle [ HH.text "An error occured during setting up the visualization" ]
+      , renderMore
+      ]
+  renderMore =
+    HH.div_
+      [ HH.text
+          $ "The "
+          ⊕ VT.name vizType
+          ⊕ " visualization need additional axes be selected: "
+      , HH.text
+          $ intercalate ", "
+          $ map Pr.getLabel missingProjections
+      ]
+
+
 
 -- | Renders a list of things with a separator and a final connective.
 -- | For example, a list of strings with the separator `","` and the

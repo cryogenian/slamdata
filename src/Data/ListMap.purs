@@ -56,7 +56,7 @@ member eq__ k lm = isJust $ lookup eq__ k lm
 
 insert ∷ ∀ k v. (k → k → Boolean) → k → v → ListMap k v → ListMap k v
 insert eq__ k v (ListMap lm) =
-  ListMap $ L.Cons (k × v) $ L.filter (eq__ k ∘ fst) lm
+  ListMap $ L.Cons (k × v) $ L.filter (not ∘ eq__ k ∘ fst) lm
 
 fromFoldable ∷ ∀ f k v. Foldable f ⇒ f (k × v) → ListMap k v
 fromFoldable = ListMap ∘ L.fromFoldable

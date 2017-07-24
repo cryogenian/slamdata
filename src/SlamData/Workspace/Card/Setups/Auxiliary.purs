@@ -26,12 +26,10 @@ import Data.Codec.Argonaut as CA
 import Data.Variant as V
 import Data.Functor.Variant (VariantF, FProxy)
 import Data.Newtype (under)
-
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.Component.Profunctor as HPR
 import Halogen.Component.Proxy as HCP
-
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.VizType as VT
 import SlamData.Workspace.Card.Setups.Auxiliary.Area as Area
@@ -46,7 +44,6 @@ import SlamData.Workspace.Card.Setups.Auxiliary.PunchCard as PunchCard
 import SlamData.Workspace.Card.Setups.Auxiliary.Scatter as Scatter
 import SlamData.Workspace.Card.Setups.Auxiliary.GeoHeatmap as GeoHeatmap
 import SlamData.Workspace.Card.Setups.Auxiliary.GeoMarker as GeoMarker
-
 import Test.StrongCheck.Gen as Gen
 
 type State = Variant

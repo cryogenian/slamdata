@@ -125,11 +125,13 @@ genMinMax = do
   { min: _, max: _ } <$> arbitrary <*> arbitrary
 
 encodeOsmURI ∷ OsmURI → J.Json
-encodeOsmURI {uri} = J.encodeJson $ URI.printURIRef $ onURIRef encodeURIComponent uri
+encodeOsmURI {uri} =
+  "uri" := ( URI.printURIRef $ onURIRef encodeURIComponent uri)
+  ~> J.jsonEmptyObject
 
 decodeOsmURI ∷ J.Json → String ⊹ OsmURI
-decodeOsmURI j = do
-  string ← J.decodeJson j
+decodeOsmURI = J.decodeJson >=> \obj → do
+  string ← obj .? "uri"
   uri ←
     map (onURIRef decodeURIComponent)
     $ lmap (\x → show x <> ":" <> string)

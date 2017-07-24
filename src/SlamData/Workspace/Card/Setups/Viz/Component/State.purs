@@ -23,7 +23,7 @@ import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.DimensionMap.Projection as Pr
 
 type State =
-  { vizType ∷ Maybe VT.VizType
+  { vizType ∷ VT.VizType
   , vizTypePickerExpanded ∷ Boolean
   , axes ∷ Maybe Ax.Axes
   , dimMaps ∷ LM.ListMap VT.VizType Pr.DimMap
@@ -32,7 +32,7 @@ type State =
 
 initialState ∷ State
 initialState =
-  { vizType: Nothing
+  { vizType: CT.pie
   , vizTypePickerExpanded: false
   , axes: Nothing
   , dimMaps: LM.fromFoldable $ map (_ × Pr.empty) VT.all

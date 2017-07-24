@@ -55,8 +55,8 @@ eq_ cb r = cb (contractGeo r)
 
 print ∷ ∀ r. (Variant r → String) → Geo r → String
 print cb = cb
-  # on _geoMarker (const "marker")
-  # on _geoHeatmap (const "heatmap")
+  # on _geoMarker (const "geo-marker")
+  # on _geoHeatmap (const "geo-heatmap")
 
 encode ∷ ∀ r. (Variant r → String) → Geo r → String
 encode cb = cb
@@ -75,8 +75,8 @@ name cb = cb
 
 parse ∷ ∀ r. String → String ⊹ Geo r
 parse = case _ of
-  "marker" → Right geoMarker
-  "heatmap" → Right geoHeatmap
+  "geo-marker" → Right geoMarker
+  "geo-heatmap" → Right geoHeatmap
   ty → Left $ ty ⊕ " is unknown geo chart card type"
 
 consumerInteractable ∷ ∀ r. (Variant r → Boolean) → Geo r → Boolean

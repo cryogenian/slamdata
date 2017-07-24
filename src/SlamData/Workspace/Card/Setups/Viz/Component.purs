@@ -11,14 +11,16 @@ import Data.Lens ((^?))
 import Data.ListMap as LM
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
 import Halogen.HTML.CSS as HCSS
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import SlamData.Render.Icon as I
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.CardType.VizType as VCT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Model as M
+import SlamData.Workspace.Card.Setups.Auxiliary as Aux
 import SlamData.Workspace.Card.Setups.DimensionMap.Component as DM
 import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as DQ
 import SlamData.Workspace.Card.Setups.DimensionMap.Package as DP
@@ -26,8 +28,6 @@ import SlamData.Workspace.Card.Setups.Viz.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Viz.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Viz.Component.State as ST
 import SlamData.Workspace.Card.Setups.VizPicker.Component as VT
-import SlamData.Workspace.Card.Setups.Auxiliary as Aux
-import SlamData.Workspace.Card.CardType.VizType as VCT
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
@@ -55,7 +55,7 @@ render state =
   ⊕ aux
   where
   icon ∷ Array HTML
-  icon = foldMap (pure ∘ I.unIconHTML ∘ VCT.icon) state.vizType
+  icon = (pure ∘ I.unIconHTML ∘ VCT.icon) state.vizType
 
   button =
     HH.button
@@ -65,22 +65,21 @@ render state =
           ]
       ]
       $ ( icon )
-      ⊕ ( foldMap (pure ∘ HH.p_ ∘ pure ∘ HH.text ∘ VCT.name) state.vizType )
+      ⊕ ( pure ∘ HH.p_ ∘ pure ∘ HH.text ∘ VCT.name $ state.vizType )
 
   picker =
     HH.slot' CS.cpPicker unit VT.component unit
       $ HE.input \e → right ∘ Q.HandlePicker e
   dims = fromMaybe [ ] do
-    vt ← state.vizType
-    package ← lm.lookup vt DP.packages
-    pure $
+    package ← lm.lookup state.vizType DP.packages
+    pure
       [ HH.slot' CS.cpDims unit DM.component package
         $ HE.input \e → right ∘ Q.HandleDims e
       ]
+
   aux = fromMaybe [ ] do
-    vt ← state.vizType
-    auxState ← lm.lookup vt state.auxes
-    comp ← Aux.vizTypeAux vt
+    auxState ← lm.lookup state.vizType state.auxes
+    comp ← Aux.vizTypeAux state.vizType
     pure
       $ A.singleton
       $ HH.div_
@@ -99,7 +98,7 @@ cardEval = case _ of
     st ← H.get
     pure $ k $ M.SetupViz
       { dimMaps: st.dimMaps
-      , vizType: fromMaybe CT.pie st.vizType
+      , vizType: st.vizType
       , auxes: st.auxes
       }
   CC.Load m next → do
@@ -107,7 +106,7 @@ cardEval = case _ of
       M.SetupViz r → do
         H.modify _
           { dimMaps = r.dimMaps
-          , vizType = Just r.vizType
+          , vizType = r.vizType
           }
         for_ (lm.lookup r.vizType r.dimMaps) \dimMap → do
           void $ H.query' CS.cpDims unit $ H.action $ DQ.Load dimMap
@@ -137,28 +136,25 @@ setupEval = case _ of
       VT.SetVizType v → do
         for_ (lm.lookup v st.dimMaps) \dimMap →
           void $ H.query' CS.cpDims unit $ H.action $ DQ.Load dimMap
-
-        H.modify _{ vizType = Just v }
+        H.modify _{ vizType = v }
         H.raise CC.modelUpdate
       _ → pure unit
     pure next
   Q.HandleDims msg next → do
     case msg of
       DQ.Update dimMap →
-        H.modify \st → st{ dimMaps =
-          maybe st.dimMaps (\vt → lm.insert vt dimMap st.dimMaps) st.vizType }
+        H.modify \st → st{ dimMaps = lm.insert st.vizType dimMap st.dimMaps }
     H.raise CC.modelUpdate
     pure next
   Q.ToggleVizPicker next → do
     state ← H.get
     H.modify _{ vizTypePickerExpanded = true
-              , vizType = Nothing
+              , vizType = (CT.pivotOptions ∷ VCT.VizType)
               }
     for_ state.axes \axes →
       void $ H.query' CS.cpPicker unit $ H.action $ VT.UpdateAxes axes
     pure next
   Q.HandleAux auxState next → do
-    H.modify \st → st { auxes =
-      maybe st.auxes (\vt → lm.insert vt auxState st.auxes) st.vizType }
+    H.modify \st → st { auxes = lm.insert st.vizType auxState st.auxes }
     H.raise CC.modelUpdate
     pure next
