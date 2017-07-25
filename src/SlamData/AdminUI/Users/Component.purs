@@ -20,9 +20,8 @@ module SlamData.AdminUI.Users.Component where
 
 import SlamData.Prelude
 
+import Control.Monad.Fork (fork)
 import Data.Array as Array
-import Data.List as L
-import Data.List as List
 import Data.Path.Pathy as Pathy
 import Data.String as String
 import Halogen as H
@@ -44,16 +43,24 @@ data Query a
   | SetFilter String a
   | DeleteUser QA.UserId a
   | EditUser QA.UserId a
+  | HandleGroupFilter (AC.Message String) a
+
+data GroupFilter
+  = NoFilter
+  | GroupFilter (Array QA.UserId)
+  | InvalidGroupFilter String
 
 data Message = RaiseDialog Dialog
 
 type State =
   { filter ∷ String
-  , users ∷ L.List QA.UserId
+  , users ∷ Maybe (Array QA.UserId)
+  , allGroups ∷ Maybe (Array QA.GroupPath)
+  , groupFilter ∷ GroupFilter
   }
 
 defaultState ∷ State
-defaultState = { filter: "", users: L.Nil }
+defaultState = { filter: "", users: Nothing, allGroups: Nothing, groupFilter: NoFilter }
 
 type ChildSlot = Unit
 
@@ -86,19 +93,35 @@ component =
                 ]
               , HH.button
                   [ HE.onClick (HE.input_ (SetFilter ""))]
-                [ R.clearFieldIcon "Clear search string" ]
+                  [ R.clearFieldIcon "Clear search string" ]
               , HH.button
                   [ HE.onClick (HE.input_ FetchUsers)]
-                [ R.busyFieldIcon "Clear search string" ]
-              , HH.slot unit (AC.component AC.defaultConfig) ["hello"] (const Nothing)
+                  [ R.busyFieldIcon "Clear search string" ]
+              , HH.slot
+                  unit
+                  (AC.component AC.defaultConfig)
+                  (maybe [] (Array.fromFoldable ∘ map QA.printGroupPath) state.allGroups)
+                  (HE.input HandleGroupFilter)
               ]
             ]
           , HH.ul
               [ HP.class_ (HH.ClassName "sd-admin-ui-users-list") ]
-              (Array.fromFoldable (map renderUser (List.filter userFilter state.users)))
+              case state.users of
+                -- TODO(Christoph): Show a spinner or something
+                Nothing →
+                  []
+                Just users →
+                  (map renderUser (Array.filter (userFilter && groupFilter) users))
           ]
         where
           userFilter uid = String.contains (String.Pattern state.filter) (QA.runUserId uid)
+          groupFilter userId = case state.groupFilter of
+            NoFilter →
+              true
+            InvalidGroupFilter _ →
+              false
+            GroupFilter userIds →
+              userId `Array.elem` userIds
 
           renderUser uid =
             HH.li
@@ -120,15 +143,16 @@ component =
               ]
       eval ∷ Query ~> DSL
       eval = case _ of
-        Init next → pure next
-        FetchUsers next →
-          groupInfo (QA.GroupPath Pathy.rootDir) >>= case _ of
-            Left _ →
-              -- TODO(Christoph): We should display an Error here
-              pure next
-            Right { allMembers } → do
-              H.modify (_ { users = List.fromFoldable allMembers })
-              pure next
+        Init next → do
+          _ ← fork do
+            allGroups ← fetchAllGroups
+            users ← allUsers
+            H.modify (_ { allGroups = Just allGroups, users = Just users })
+          pure next
+        FetchUsers next → do
+          users ← allUsers
+          H.modify (_ { users = Just users })
+          pure next
         SetFilter s next → do
           H.modify (_ { filter = s })
           pure next
@@ -139,6 +163,22 @@ component =
           groups ← crawlGroups userId
           H.raise (RaiseDialog (Dialog.EditUserPermissions { userId, groups }))
           pure next
+        HandleGroupFilter msg next → case msg of
+          AC.Changed "" → do
+            H.modify (_ { groupFilter = NoFilter })
+            pure next
+          AC.Changed s → do
+            allGroups ← H.gets _.allGroups
+            case QA.parseGroupPath s of
+              Right path
+                | Just groups ← allGroups
+                , path `Array.elem` groups → do
+                  users ← fetchTransitiveUsers path
+                  H.modify (_ { groupFilter = GroupFilter users })
+              _ → H.modify (_ { groupFilter = InvalidGroupFilter s })
+
+            pure next
+          AC.Selected _ → pure next
 
 allUsers
   ∷ ∀ m
@@ -152,6 +192,25 @@ allUsers = do
       pure []
     Right { allMembers } →
       pure allMembers
+
+fetchAllGroups
+  ∷ ∀ m
+  . Monad m
+  ⇒ QuasarDSL m
+  ⇒ m (Array QA.GroupPath)
+fetchAllGroups = do
+  result ← groupInfo (QA.GroupPath Pathy.rootDir)
+  pure (either (const []) _.subGroups result)
+
+fetchTransitiveUsers
+  ∷ ∀ m
+  . Monad m
+  ⇒ QuasarDSL m
+  ⇒ QA.GroupPath
+  → m (Array QA.UserId)
+fetchTransitiveUsers path = do
+  result ← groupInfo path
+  pure (either (const []) _.allMembers result)
 
 crawlGroups
   ∷ ∀ m

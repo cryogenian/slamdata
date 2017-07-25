@@ -1,8 +1,9 @@
 module SlamData.Autocomplete.Component where
 
-import SlamData.Prelude
+import Prelude
 
 import Control.Monad.Eff.Class (class MonadEff)
+import Control.MonadPlus (guard)
 import DOM (DOM)
 import DOM.Event.Event (preventDefault)
 import DOM.Event.KeyboardEvent (KeyboardEvent)
@@ -15,8 +16,13 @@ import DOM.Node.Element (clientHeight, setScrollTop)
 import DOM.Node.Node (childNodes)
 import DOM.Node.NodeList as NodeList
 import Data.Array (filter, length, mapWithIndex, null, (!!))
+import Data.Bifunctor (bimap)
+import Data.Const (Const(..))
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (un)
 import Data.String as String
+import Data.Traversable (traverse_)
+import Debug.Trace (traceA)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -26,6 +32,7 @@ import Unsafe.Coerce (unsafeCoerce)
 
 data Query item a
   = Init a
+  | UpdateItems (Array item) a
   | Input String a
   | Select item a
   | ItemClick item MouseEvent a
@@ -57,11 +64,11 @@ type State item =
   , inputText ∷ String
   }
 
-data Message = Selected
+data Message item = Changed String | Selected item
 type Input = Array
 
 type HTML item = H.ComponentHTML (Query item)
-type DSL item m = H.ComponentDSL (State item) (Query item) Message m
+type DSL item m = H.ComponentDSL (State item) (Query item) (Message item) m
 
 type Config item =
   { containerClass ∷ HH.ClassName
@@ -82,7 +89,7 @@ component
   ∷ ∀ item e m
   . MonadEff (dom ∷ DOM | e) m
   ⇒ Config item
-  → H.Component HH.HTML (Query item) (Input item) Message m
+  → H.Component HH.HTML (Query item) (Input item) (Message item) m
 component { containerClass, itemFilter, itemText, itemDisplay } =
   H.lifecycleComponent
    { initialState
@@ -90,7 +97,7 @@ component { containerClass, itemFilter, itemText, itemDisplay } =
    , eval
    , initializer: Just (H.action Init)
    , finalizer: Nothing
-   , receiver: const Nothing
+   , receiver: HE.input UpdateItems
    }
   where
     initialState =
@@ -135,9 +142,13 @@ component { containerClass, itemFilter, itemText, itemDisplay } =
     eval ∷ Query item ~> DSL item m
     eval = case _ of
      Init a → pure a
+     UpdateItems items a → do
+       H.modify (_ { items = items })
+       pure a
      Input input a → do
        H.modify (_ { inputText = input })
        { items } ← H.get
+       H.raise (Changed input)
        if null (filter (itemFilter input) items)
          then do
            close CuzNoMatches
@@ -149,11 +160,17 @@ component { containerClass, itemFilter, itemText, itemDisplay } =
      ItemClick item ev a → do
        when (MouseEvent.button ev == 0) do
          H.liftEff (preventDefault (MouseEvent.mouseEventToEvent ev))
-         H.modify (_ { inputText = itemText item })
+         let newInput = itemText item
+         H.modify (_ { inputText = newInput })
+         H.raise (Changed newInput)
+         H.raise (Selected item)
          close CuzSelect
        pure a
      Select item a → do
+       let newInput = itemText item
        H.modify (_ { inputText = itemText item })
+       H.raise (Changed newInput)
+       H.raise (Selected item)
        pure a
      Previous a → do
        { index } ← H.get
