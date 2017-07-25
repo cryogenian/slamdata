@@ -1,5 +1,5 @@
 {-
-Copyright 2016 SlamData, Inc.
+Copyright 2017 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,8 +17,10 @@ limitations under the License.
 module SlamData.Workspace.Deck.Model where
 
 import SlamData.Prelude
+import Data.Argonaut as J
 import Data.Codec.Argonaut as CA
-import Data.Codec.Argonaut.Common as CAC
+import Data.Codec.Argonaut.Compat as CAC
+import Data.Codec.Argonaut.Migration as CAM
 import SlamData.Theme as Theme
 import SlamData.Workspace.Card.CardId as CID
 
@@ -36,10 +38,18 @@ emptyDeck =
   }
 
 codec ∷ CA.JsonCodec Deck
-codec = CA.object "Deck" $ CA.record
-  # CA.recordProp (SProxy ∷ SProxy "name") CA.string
-  # CA.recordProp (SProxy ∷ SProxy "theme") (CAC.maybe Theme.codec)
-  # CA.recordProp (SProxy ∷ SProxy "cards") (CA.array CID.codec)
+codec = deckObj CA.<~< migrationCodec
+  where
+    deckObj ∷ CA.JsonCodec Deck
+    deckObj =
+      CA.object "Deck" $ CA.record
+        # CA.recordProp (SProxy ∷ SProxy "name") CA.string
+        # CA.recordProp (SProxy ∷ SProxy "theme") (CAC.maybe Theme.codec)
+        # CA.recordProp (SProxy ∷ SProxy "cards") (CA.array CID.codec)
+
+    migrationCodec ∷ CA.JsonCodec J.Json
+    migrationCodec =
+      CAM.addDefaultField "theme" (CA.encode (CAC.maybe CA.json) Nothing)
 
 eqDeck ∷ Deck → Deck → Boolean
 eqDeck d1 d2 =
