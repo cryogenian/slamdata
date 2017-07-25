@@ -19,8 +19,9 @@ module SlamData.AdminUI.Component.Query where
 import SlamData.Prelude
 
 import Quasar.Advanced.Types as QA
-import SlamData.AdminUI.Component.State (DatabaseState, GroupsState, MySettingsState, ServerState, TabIndex, UsersState)
+import SlamData.AdminUI.Component.State (DatabaseState, GroupsState, MySettingsState, ServerState, TabIndex)
 import SlamData.AdminUI.Dialog.Component as Dialog
+import SlamData.AdminUI.Users.Component as Users
 import SlamData.Workspace.MillerColumns.Component as Miller
 import Utils.DOM as DOM
 
@@ -34,18 +35,12 @@ data Query a
   | SetMySettings MySettingsState a
   | SetDatabase DatabaseState a
   | SetServer ServerState a
-  | SetUsers UsersState a
   | SetGroups GroupsState a
   | DefaultThemeChanged String a
   | HandleColumns (Miller.Message GroupItem QA.GroupPath) a
   | HandleColumnOrItem GroupMessage a
   | HandleDialog Dialog.Message a
-  | UQ (UsersQuery a)
-
-data UsersQuery a
-  = FetchUsers a
-  | DeleteUser QA.UserId a
-  | EditUser QA.UserId a
+  | HandleUsers Users.Message a
 
 data GroupItem = GroupItem { path ∷ QA.GroupPath, name ∷ String }
 

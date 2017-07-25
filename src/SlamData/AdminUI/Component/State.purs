@@ -20,7 +20,6 @@ import SlamData.Prelude
 
 import Data.List (List)
 import Data.List as L
-import Quasar.Advanced.Types as QA
 import SlamData.AdminUI.Dialog.Component as Dialog
 
 type State =
@@ -30,7 +29,6 @@ type State =
       { mySettings ∷ MySettingsState
       , database ∷ DatabaseState
       , server ∷ ServerState
-      , users ∷ UsersState
       , groups ∷ GroupsState
       }
   , dialog ∷ Maybe Dialog.Dialog
@@ -123,15 +121,6 @@ newtype ServerState = ServerState
 
 defaultServerState ∷ ServerState
 defaultServerState = ServerState { port: 27012, logFileLocation: "", enableCustomSSL: false }
-
-newtype UsersState = UsersState
-  { filter ∷ String
-  , users ∷ L.List QA.UserId
-  }
-derive instance newtypeUsersState ∷ Newtype UsersState _
-
-defaultUsersState ∷ UsersState
-defaultUsersState = UsersState { filter: "", users: L.Nil }
 
 newtype GroupsState = GroupsState { }
 derive instance newtypeGroupsState ∷ Newtype GroupsState _

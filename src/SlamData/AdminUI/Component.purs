@@ -22,7 +22,6 @@ import Data.Argonaut as J
 import Data.Array as Array
 import Data.Lens ((.=))
 import Data.Lens.Record (prop)
-import Data.List as List
 import Data.Newtype (over)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
@@ -34,13 +33,12 @@ import Quasar.Advanced.Types as QA
 import SlamData.AdminUI.Dialog.Component as Dialog
 import SlamData.AdminUI.Group as Group
 import SlamData.AdminUI.Types as AT
-import SlamData.AdminUI.Users (crawlGroups)
-import SlamData.AdminUI.Users as Users
+import SlamData.AdminUI.Users.Component as Users
 import SlamData.LocalStorage.Class as LS
 import SlamData.LocalStorage.Keys as LK
 import SlamData.Monad (Slam)
 import SlamData.Notification as Notification
-import SlamData.Quasar.Security (createGroup, deleteGroup, groupInfo)
+import SlamData.Quasar.Security (createGroup, deleteGroup)
 import SlamData.Workspace.MillerColumns.Component as Miller
 import Utils.DOM as DOM
 
@@ -54,7 +52,6 @@ component =
           { mySettings: AT.defaultMySettingsState
           , database: AT.defaultDatabaseState
           , server: AT.defaultServerState
-          , users: AT.defaultUsersState
           , groups: AT.defaultGroupsState
           }
       , dialog: Nothing
@@ -125,9 +122,7 @@ tabBody state =
           [ HP.class_ (HH.ClassName "server") ]
           (renderServerForm state.formState.server)
       AT.Users →
-        pure $ HH.div
-          [ HP.class_ (HH.ClassName "users") ]
-          (Users.renderForm state.formState.users)
+        [ HH.slot' AT.cpUsers unit Users.component unit (HE.input AT.HandleUsers) ]
       AT.Groups →
         pure $ HH.div
           [ HP.class_ (HH.ClassName "groups") ]
@@ -361,9 +356,6 @@ eval = case _ of
   AT.SetServer new next → do
     H.modify (_ { formState { server = new } })
     pure next
-  AT.SetUsers new next → do
-    H.modify (_ { formState { users = new } })
-    pure next
   AT.SetGroups new next → do
     H.modify (_ { formState { groups = new } })
     pure next
@@ -387,8 +379,6 @@ eval = case _ of
             (Just (Notification.Details (Exception.message err)))
             Nothing
             Nothing
-          pure unit
-          pure unit
       pure next
     AT.DeleteGroup { path } → do
       H.modify (_ { dialog = Just (Dialog.ConfirmGroupDeletion path) })
@@ -412,19 +402,6 @@ eval = case _ of
       Dialog.Dismiss → pure unit
     H.modify (_ { dialog = Nothing })
     pure next
-  AT.UQ uq → case uq of
-    AT.FetchUsers next → do
-      groupInfo (QA.GroupPath Pathy.rootDir) >>= case _ of
-        Left _ →
-          -- TODO(Christoph): We should display an Error here
-          pure next
-        Right { allMembers } → do
-          H.modify (\s → s { formState { users = AT.UsersState { filter: (unwrap s.formState.users).filter, users: List.fromFoldable allMembers } } })
-          pure next
-    AT.DeleteUser uid next → do
-      H.modify (_ { dialog = Just (Dialog.ConfirmUserDeletion uid) })
-      pure next
-    AT.EditUser userId next → do
-      groups ← crawlGroups userId
-      H.modify (_ { dialog = Just (Dialog.EditUserPermissions { userId, groups }) })
-      pure next
+  AT.HandleUsers (Users.RaiseDialog dlg) next → do
+    H.modify (_ { dialog = Just dlg })
+    pure next
