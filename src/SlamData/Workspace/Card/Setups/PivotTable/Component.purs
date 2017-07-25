@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.PivotTable.Component where
+module SlamData.Workspace.Card.Setups.PivotTable.Component where
 {-  ( pivotTableBuilderComponent
   ) where
 
@@ -42,10 +42,10 @@ import SlamData.Workspace.Card.Eval.State (_Axes)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Setups.ActionSelect.Component as AS
 import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.ChildSlot as PCS
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.Query (Query(..), ForDimension(..))
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.State as PS
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
+import SlamData.Workspace.Card.Setups.PivotTable.Component.ChildSlot as PCS
+import SlamData.Workspace.Card.Setups.PivotTable.Component.Query (Query(..), ForDimension(..))
+import SlamData.Workspace.Card.Setups.PivotTable.Component.State as PS
+import SlamData.Workspace.Card.Setups.PivotTable.Model as PTM
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.DimensionPicker.Column (flattenColumns, showColumn)
 import SlamData.Workspace.Card.Setups.DimensionPicker.Component as DPC

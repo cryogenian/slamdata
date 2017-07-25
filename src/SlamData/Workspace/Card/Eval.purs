@@ -91,7 +91,7 @@ evalCard trans port varMap = map (_ `SM.union` varMap) <$> case trans, port of
   PivotTable m, Port.PivotTable p → PivotTable.eval m p varMap
   Viz _, Port.PivotTable p →
     PivotTable.eval PTM.initialModel p varMap
-  Viz m, Port.SetupLabeledFormInput lp →
+  Viz m, Port.SetupSelect lp →
     default (pure $ Port.ResourceKey Port.defaultResourceVar × varMap)
       # on VizM._select (\model → Viz.evalLabeled model lp =<< extractResource varMap)
       $ m

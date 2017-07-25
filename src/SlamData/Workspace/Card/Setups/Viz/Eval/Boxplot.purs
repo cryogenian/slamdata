@@ -14,47 +14,41 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Boxplot.Eval where
-{-  ( eval
-  , module SlamData.Workspace.Card.Setups.Chart.Boxplot.Model
-  ) where
+module SlamData.Workspace.Card.Setups.Viz.Eval.Boxplot where
 
 import SlamData.Prelude
 
 import Color as C
-
 import Data.Argonaut (JArray, Json, decodeJson, (.?))
 import Data.Array ((!!))
 import Data.Array as A
-import Data.List as L
-import Data.List ((:))
-import Data.Lens ((.~))
-import Data.Map as M
 import Data.Int as Int
-import Data.Set as Set
+import Data.Lens ((.~))
+import Data.List ((:))
+import Data.List as L
+import Data.Map as M
 import Data.NonEmpty as NE
-
-import ECharts.Monad (DSL)
+import Data.Set as Set
 import ECharts.Commands as E
+import ECharts.Monad (DSL)
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
-
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Auxiliary as Aux
 import SlamData.Workspace.Card.Setups.Axis (Axes)
-import SlamData.Workspace.Card.Setups.Chart.Boxplot.Model (Model, ModelR)
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Chart.Common as SCC
-import SlamData.Workspace.Card.Setups.Chart.Common.Positioning (rectangularGrids, rectangularTitles, adjustRectangularPositions)
-import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
+import SlamData.Workspace.Card.Setups.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Common as SC
+import SlamData.Workspace.Card.Setups.Common.Positioning (rectangularGrids, rectangularTitles, adjustRectangularPositions)
+import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-
+import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
 import SqlSquared as Sql
-
 import Utils.Foldable (enumeratedFor_)
 
 type Item =
@@ -102,22 +96,29 @@ decodeItem = decodeJson >=> \obj → do
        , parallel
        }
 
-eval ∷ ∀ m v. BCE.ChartSetupEval ModelR m v
-eval m =
-  BCE.chartSetupEval
-    (\md fp →
-      addOrderBy $ SCC.buildBasicSql buildProjections (const Nothing) md fp
-    ) buildBoxplot m
+eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Resource → m Port.Out)
+eval dimMap aux =
+  BCE.chartSetupEval buildSql buildPort aux'
   where
-  fields ∷ ModelR → L.List Sql.Sql
-  fields r =
-    L.fromFoldable $ A.catMaybes
-      [ r.parallel <#> SCC.jcursorSql
-      , r.series <#> SCC.jcursorSql
-      , Just $ r.dimension # SCC.jcursorSql
-      ]
+  buildPort r axes = Port.ChartInstructions
+    { options: options dimMap axes r ∘ buildData
+    , chartType: CT.boxplot
+    }
+
+  buildSql md fp =
+    addOrderBy
+    $ SC.buildBasicSql (buildProjections dimMap) (const Nothing) md fp
+
+  aux' = Just unit
+
+  fields ∷ L.List Sql.Sql
+  fields =
+    SC.sqlProjection P.parallel dimMap
+    <|> SC.sqlProjection P.series dimMap
+    <|> SC.sqlProjection P.dimension dimMap
+
   orderBy ∷ Maybe (Sql.OrderBy Sql.Sql)
-  orderBy = m >>= \r → case fields r of
+  orderBy = case fields of
     L.Nil → Nothing
     x : xs → Just $ Sql.OrderBy $ Tuple Sql.ASC <$> NE.NonEmpty x xs
 
@@ -126,23 +127,16 @@ eval m =
     (Sql._Select ∘ Sql._orderBy .~ orderBy)
     ∘ (Sql._Select ∘ Sql._isDistinct .~ true)
 
-buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
-buildProjections r = L.fromFoldable
-  [ r.value # SCC.jcursorPrj # Sql.as "value"
-  , r.dimension # SCC.jcursorPrj # Sql.as "dimension"
-  , r.series # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "series"
-  , r.parallel # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "parallel"
+buildProjections ∷ ∀ a. P.DimMap → a → L.List (Sql.Projection Sql.Sql)
+buildProjections dimMap _ = L.fromFoldable $ A.concat
+  [ SC.dimensionProjection P.value dimMap "value"
+  , SC.dimensionProjection P.dimension dimMap "dimension"
+  , SC.dimensionProjection P.series dimMap "series"
+  , SC.dimensionProjection P.parallel dimMap "parallel"
   ]
 
-buildBoxplot ∷ ModelR → Axes → Port.Port
-buildBoxplot m axes =
-  Port.ChartInstructions
-    { options: boxplotOptions m axes ∘ buildBoxplotData
-    , chartType: CT.boxplot
-    }
-
-buildBoxplotData ∷ JArray → Array OnOneBoxplot
-buildBoxplotData =
+buildData ∷ JArray → Array OnOneBoxplot
+buildData =
   adjustRectangularPositions
   ∘ oneBoxplots
   ∘ foldMap (foldMap A.singleton ∘ decodeItem)
@@ -220,13 +214,14 @@ buildBoxplotData =
        outliers × Just {low, q1, q2, q3, high}
 
 
-boxplotOptions ∷ ModelR → Axes → Array OnOneBoxplot → DSL OptionI
-boxplotOptions r axes boxplotData = do
+options ∷ P.DimMap → Axes → Unit → Array OnOneBoxplot → DSL OptionI
+options dimMap axes _ boxplotData = do
   CCT.tooltip do
     E.triggerItem
 
   rectangularTitles boxplotData
-    $ maybe "" D.jcursorLabel r.parallel
+    $ maybe "" D.jcursorLabel
+    $ P.lookup P.parallel dimMap
 
   rectangularGrids boxplotData
 
@@ -270,13 +265,13 @@ boxplotOptions r axes boxplotData = do
 
     E.tooltip $ E.formatterItem \item →
       CCT.tableRows
-        [ D.jcursorLabel r.dimension × item.name
-        , "Upper" × CCT.formatNumberValueIx 4 item
-        , "Q3" × CCT.formatNumberValueIx 3 item
-        , "Median" × CCT.formatNumberValueIx 2 item
-        , "Q1" × CCT.formatNumberValueIx 1 item
-        , "Lower" × CCT.formatNumberValueIx 0 item
-        ]
+        $ foldMap (\d → [ D.jcursorLabel d × item.name ]) (P.lookup P.dimension dimMap)
+        ⊕ [ "Upper" × CCT.formatNumberValueIx 4 item
+          , "Q3" × CCT.formatNumberValueIx 3 item
+          , "Median" × CCT.formatNumberValueIx 2 item
+          , "Q1" × CCT.formatNumberValueIx 1 item
+          , "Lower" × CCT.formatNumberValueIx 0 item
+          ]
 
     E.buildItems
       $ for_ xAxisLabels \key → case M.lookup key serie.items of
@@ -364,4 +359,3 @@ boxplotOptions r axes boxplotData = do
     E.splitLine $ E.lineStyle do
       E.width 1
     E.splitArea E.hidden
--}

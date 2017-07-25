@@ -14,10 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Candlestick.Eval where
-{-  ( eval
-  , module SlamData.Workspace.Card.Setups.Chart.Candlestick.Model
-  ) where
+module SlamData.Workspace.Card.Setups.Viz.Eval.Candlestick where
 
 import SlamData.Prelude
 
@@ -26,28 +23,26 @@ import Data.Array as A
 import Data.List as L
 import Data.Lens ((^?))
 import Data.Map as M
-
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
-
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Workspace.Card.Setups.Chart.Candlestick.Model (ModelR, Model)
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Chart.Common as SCC
-import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
-import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
+import SlamData.Workspace.Card.Setups.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Common as SC
+import SlamData.Workspace.Card.Setups.Common.Positioning as BCP
+import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-
+import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
+import SlamData.Workspace.Card.Setups.Auxiliary as Aux
 import SqlSquared as Sql
-
 import Utils.Foldable (enumeratedFor_)
 
 type Item =
@@ -69,32 +64,31 @@ decodeItem = decodeJson >=> \obj → do
   parallel ← map Sem.maybeString $ obj .? "parallel"
   pure { dimension, high, low, open, close, parallel }
 
-eval ∷ ∀ m v. BCE.ChartSetupEval ModelR m v
-eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildCandlestick
-
-buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
-buildProjections r = L.fromFoldable
-  [ r.dimension # SCC.jcursorPrj # Sql.as "dimension"
-  , r.high # SCC.jcursorPrj # Sql.as "high" # SCC.applyTransform r.high
-  , r.low # SCC.jcursorPrj # Sql.as "low" # SCC.applyTransform r.low
-  , r.open # SCC.jcursorPrj # Sql.as "open" # SCC.applyTransform r.open
-  , r.close # SCC.jcursorPrj # Sql.as "close" # SCC.applyTransform r.close
-  , r.parallel # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "parallel"
-  ]
-
-buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
-buildGroupBy r =
-  SCC.groupBy $ L.fromFoldable $ A.catMaybes
-    [ r.parallel <#> SCC.jcursorSql
-    , Just $ r.dimension # SCC.jcursorSql
-    ]
-
-buildCandlestick ∷ ModelR → Axes → Port.Port
-buildCandlestick m axes =
-  Port.ChartInstructions
-    { options: kOptions axes m ∘ buildKData
+eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Resource → m Port.Out)
+eval dimMap aux =
+  BCE.chartSetupEval buildSql buildPort $ Just unit
+  where
+  buildPort r axes = Port.ChartInstructions
+    { options: options dimMap axes r ∘ buildData
     , chartType: CT.candlestick
     }
+
+  buildSql = SC.buildBasicSql (buildProjections dimMap) (buildGroupBy dimMap)
+
+buildProjections ∷ ∀ a. P.DimMap → a → L.List (Sql.Projection Sql.Sql)
+buildProjections dimMap _ = L.fromFoldable $ A.concat
+  [ SC.dimensionProjection P.dimension dimMap "dimension"
+  , SC.measureProjection P.high dimMap "high"
+  , SC.measureProjection P.low dimMap "low"
+  , SC.measureProjection P.open dimMap "open"
+  , SC.measureProjection P.close dimMap "close"
+  , SC.dimensionProjection P.parallel dimMap "parallel"
+  ]
+
+buildGroupBy ∷ ∀ a. P.DimMap → a → Maybe (Sql.GroupBy Sql.Sql)
+buildGroupBy dimMap _ = SC.groupBy
+  $ SC.sqlProjection P.parallel dimMap
+  <|> SC.sqlProjection P.dimension dimMap
 
 type HLOC a =
   { low ∷ a
@@ -115,8 +109,8 @@ type OnOneGrid =
   , items ∷ Series
   }
 
-buildKData ∷ JArray → Array OnOneGrid
-buildKData =
+buildData ∷ JArray → Array OnOneGrid
+buildData =
   BCP.adjustRectangularPositions
   ∘ oneGrids
   ∘ foldMap (foldMap A.singleton ∘ decodeItem)
@@ -138,21 +132,26 @@ buildKData =
     dimension × { high, low, open, close }
 
 
-kOptions ∷ Axes → ModelR → Array OnOneGrid → DSL OptionI
-kOptions axes r kData = do
+options ∷ P.DimMap → Axes → Unit → Array OnOneGrid → DSL OptionI
+options dimMap axes r kData = do
   CCT.tooltip do
     E.triggerItem
     E.formatterItem \fmt →
-      CCT.tableRows
-        [ D.jcursorLabel r.dimension × fmt.name
-        , D.jcursorLabel r.open × CCT.formatValueIx 0 fmt
-        , D.jcursorLabel r.close × CCT.formatValueIx 1 fmt
-        , D.jcursorLabel r.low × CCT.formatValueIx 2 fmt
-        , D.jcursorLabel r.high × CCT.formatValueIx 3 fmt
+      let
+        mkRow prj val = P.lookup prj dimMap # foldMap \dim →
+          [ D.jcursorLabel dim × val ]
+      in CCT.tableRows $ A.concat
+        [ mkRow P.dimension fmt.name
+        , mkRow P.open $ CCT.formatValueIx 0 fmt
+        , mkRow P.close $ CCT.formatValueIx 1 fmt
+        , mkRow P.low $ CCT.formatValueIx 2 fmt
+        , mkRow P.high $ CCT.formatValueIx 3 fmt
         ]
 
   BCP.rectangularTitles kData
-    $ maybe "" D.jcursorLabel r.parallel
+    $ maybe "" D.jcursorLabel
+    $ P.lookup P.parallel dimMap
+
   BCP.rectangularGrids kData
 
   E.colors colors
@@ -166,10 +165,10 @@ kOptions axes r kData = do
   xValues  = sortX ∘ foldMap A.singleton ∘ M.keys ∘ _.items
 
   xAxisType ∷ Ax.AxisType
-  xAxisType =
-    fromMaybe Ax.Category
-    $ Ax.axisType <$> (r.dimension ^? D._value ∘ D._projection) <*> pure axes
-
+  xAxisType = fromMaybe Ax.Category do
+    ljc ← P.lookup P.dimension dimMap
+    cursor ← ljc ^? D._value ∘ D._projection
+    pure $ Ax.axisType cursor axes
 
   sortX ∷ Array String → Array String
   sortX = A.sortBy $ Ax.compareWithAxisType xAxisType
@@ -194,4 +193,3 @@ kOptions axes r kData = do
         E.addValue close
         E.addValue low
         E.addValue high
--}

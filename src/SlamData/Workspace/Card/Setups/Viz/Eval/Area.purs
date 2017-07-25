@@ -14,10 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Area.Eval where
-{-  ( eval
-  , module SlamData.Workspace.Card.Setups.Chart.Area.Model
-  ) where
+module SlamData.Workspace.Card.Setups.Viz.Eval.Area where
 
 import SlamData.Prelude
 
@@ -29,28 +26,28 @@ import Data.Lens ((^?))
 import Data.List as L
 import Data.Map as M
 import Data.Set as Set
-
-import ECharts.Monad (DSL)
+import Data.Variant (prj)
 import ECharts.Commands as E
+import ECharts.Monad (DSL)
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
-
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Auxiliary as Aux
+import SlamData.Workspace.Card.Setups.Auxiliary.Area as Area
 import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Workspace.Card.Setups.Chart.Area.Model (Model, ModelR)
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors, getShadeColor)
-import SlamData.Workspace.Card.Setups.Chart.Common as SCC
-import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
-import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
+import SlamData.Workspace.Card.Setups.ColorScheme (colors, getShadeColor)
+import SlamData.Workspace.Card.Setups.Common.Positioning as BCP
+import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
+import SlamData.Workspace.Card.Setups.Common as SC
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-
+import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
 import SqlSquared as Sql
-
 import Utils.Foldable (enumeratedFor_)
 
 type Item =
@@ -74,32 +71,32 @@ decodeItem = decodeJson >=> \obj → do
        , series
        }
 
-eval ∷ ∀ m v. BCE.ChartSetupEval ModelR m v
-eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildArea
-
-buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
-buildProjections r = L.fromFoldable
-  [ r.value # SCC.jcursorPrj # Sql.as "measure" # SCC.applyTransform r.value
-  , r.dimension # SCC.jcursorPrj # Sql.as "dimension"
-  , r.series # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "series"
-  ]
-
-buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
-buildGroupBy r =
-  SCC.groupBy $ L.fromFoldable $ A.catMaybes
-    [ r.series <#> SCC.jcursorSql
-    , Just r.dimension <#> SCC.jcursorSql
-    ]
-
-buildArea ∷ ModelR → Ax.Axes → Port.Port
-buildArea m axes =
-  Port.ChartInstructions
-    { options: areaOptions axes m ∘ buildAreaData
+eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Resource → m Port.Out)
+eval dimMap aux =
+  BCE.chartSetupEval buildSql buildPort aux'
+  where
+  aux' = prj CT._area aux
+  buildSql = SC.buildBasicSql (buildProjections dimMap) (buildGroupBy dimMap)
+  buildPort r axes = Port.ChartInstructions
+    { options: options dimMap axes r ∘ buildData
     , chartType: CT.area
     }
 
-buildAreaData ∷ Array Json → Array AreaSeries
-buildAreaData =
+buildProjections ∷ ∀ a. P.DimMap → a → L.List (Sql.Projection Sql.Sql)
+buildProjections dimMap _ = L.fromFoldable $ A.concat
+  [ SC.measureProjection P.value dimMap "measure"
+  , SC.dimensionProjection P.dimension dimMap "dimension"
+  , SC.dimensionProjection P.series dimMap "series"
+  ]
+
+buildGroupBy ∷ ∀ a. P.DimMap → a → Maybe (Sql.GroupBy Sql.Sql)
+buildGroupBy dimMap _ = SC.groupBy
+  $ SC.sqlProjection P.series dimMap
+  <|> SC.sqlProjection P.dimension dimMap
+
+
+buildData ∷ Array Json → Array AreaSeries
+buildData =
   series ∘ foldMap (foldMap A.singleton ∘ decodeItem)
   where
   series ∷ Array Item → Array AreaSeries
@@ -112,19 +109,19 @@ buildAreaData =
   toPoint ∷ Item → String × Number
   toPoint { dimension, measure } = dimension × measure
 
-areaOptions ∷ Ax.Axes → ModelR → Array AreaSeries → DSL OptionI
-areaOptions axes r areaData = do
+options ∷ P.DimMap → Ax.Axes → Area.State → Array AreaSeries → DSL OptionI
+options dimMap axes r areaData = do
   let
-    cols =
-      [ { label: D.jcursorLabel r.dimension, value: CCT.formatValueIx 0 }
-      , { label: D.jcursorLabel r.value, value: CCT.formatValueIx 1 }
-      ]
-    opts = flip foldMap r.series \dim →
-      [ { label: D.jcursorLabel dim, value: _.seriesName
-        } ]
+    mkRow prj value  = P.lookup prj dimMap # foldMap \dim →
+      [ { label: D.jcursorLabel dim, value } ]
 
+    cols = A.fold
+      [ mkRow P.dimension (CCT.formatValueIx 0)
+      , mkRow P.value (CCT.formatValueIx 1)
+      , mkRow P.series _.seriesName
+      ]
   CCT.tooltip do
-    E.formatterItem (CCT.tableFormatter (pure ∘ _.color) (cols <> opts) ∘ pure)
+    E.formatterItem (CCT.tableFormatter (pure ∘ _.color) cols ∘ pure)
     E.triggerItem
     E.axisPointer do
       E.lineAxisPointer
@@ -174,9 +171,10 @@ areaOptions axes r areaData = do
 
   where
   xAxisType ∷ Ax.AxisType
-  xAxisType =
-    fromMaybe Ax.Category
-    $ Ax.axisType <$> (r.dimension ^? D._value ∘ D._projection) <*> pure axes
+  xAxisType = fromMaybe Ax.Category do
+    ljc ← P.lookup P.dimension dimMap
+    cursor ← ljc ^? D._value ∘ D._projection
+    pure $ Ax.axisType cursor axes
 
   xAxisConfig ∷ Ax.EChartsAxisConfiguration
   xAxisConfig = Ax.axisConfiguration xAxisType
@@ -216,4 +214,3 @@ areaOptions axes r areaData = do
     E.symbol ET.Circle
     E.smooth r.isSmooth
     when r.isStacked $ E.stack "stack"
--}

@@ -14,10 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Graph.Eval where
-{-  ( eval
-  , module SlamData.Workspace.Card.Setups.Chart.Graph.Model
-  ) where
+module SlamData.Workspace.Card.Setups.Viz.Eval.Graph where
 
 import SlamData.Prelude
 
@@ -28,26 +25,26 @@ import Data.Foreign as FR
 import Data.Function (on)
 import Data.Int as Int
 import Data.List as L
-
+import Data.Variant (prj)
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types as ET
 import ECharts.Types.Phantom as ETP
-
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis (Axes)
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Chart.Common as SCC
-import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
-import SlamData.Workspace.Card.Setups.Chart.Graph.Model (Model, ModelR)
+import SlamData.Workspace.Card.Setups.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Common as SC
+import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-
+import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
+import SlamData.Workspace.Card.Setups.Auxiliary as Aux
+import SlamData.Workspace.Card.Setups.Auxiliary.Graph as Graph
 import SqlSquared as Sql
-
 import Utils (hush')
 
 type Item =
@@ -74,34 +71,34 @@ decodeItem = decodeJson >=> \obj → do
   color ← map Sem.maybeString $ obj .? "color"
   pure { source, target, size, color }
 
-eval ∷ ∀ m v. BCE.ChartSetupEval ModelR m v
-eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildGraph
-
-buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
-buildProjections r = L.fromFoldable
-  [ r.source # SCC.jcursorPrj # Sql.as "source"
-  , r.target # SCC.jcursorPrj # Sql.as "target"
-  , r.size # maybe SCC.nullPrj (\s → SCC.applyTransform s $ SCC.jcursorPrj s) # Sql.as "size"
-  , r.color # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "color"
-  ]
-
-buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
-buildGroupBy r =
-  SCC.groupBy $ L.fromFoldable $ A.catMaybes
-    [ Just $ r.source # SCC.jcursorSql
-    , Just $ r.target # SCC.jcursorSql
-    , r.color <#> SCC.jcursorSql
-    ]
-
-buildGraph ∷ ModelR → Axes → Port.Port
-buildGraph m axes =
-  Port.ChartInstructions
-    { options: graphOptions axes m ∘ buildGraphData m
+eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Resource → m Port.Out)
+eval dimMap aux =
+  BCE.chartSetupEval buildSql buildPort aux'
+  where
+  aux' = prj CT._graph aux
+  buildSql = SC.buildBasicSql (buildProjections dimMap) (buildGroupBy dimMap)
+  buildPort r axes = Port.ChartInstructions
+    { options: options dimMap axes r ∘ buildData aux'
     , chartType: CT.graph
     }
 
-buildGraphData ∷ ModelR → JArray → GraphData
-buildGraphData r jarr =
+buildProjections ∷ ∀ a. P.DimMap → a → L.List (Sql.Projection Sql.Sql)
+buildProjections dimMap _ = L.fromFoldable $ A.concat
+  [ SC.dimensionProjection P.source dimMap "source"
+  , SC.dimensionProjection P.target dimMap "target"
+  , SC.measureProjection P.size dimMap "size"
+  , SC.dimensionProjection P.color dimMap "color"
+  ]
+
+buildGroupBy ∷ ∀ a. P.DimMap → a → Maybe (Sql.GroupBy Sql.Sql)
+buildGroupBy dimMap _ = SC.groupBy
+  $ SC.sqlProjection P.source dimMap
+  <|> SC.sqlProjection P.target dimMap
+  <|> SC.sqlProjection P.color dimMap
+
+
+buildData ∷ Maybe Graph.State → JArray → GraphData
+buildData mbR jarr =
   let
     items ∷ Array Item
     items = foldMap (foldMap A.singleton ∘ decodeItem) jarr
@@ -128,15 +125,18 @@ buildGraphData r jarr =
     distance ∷ Number
     distance = maxSize - minSize
 
+    rMinSize = maybe zero _.size.min mbR
+    rMaxSize = maybe zero _.size.max mbR
+
     sizeDistance ∷ Number
-    sizeDistance = r.maxSize - r.minSize
+    sizeDistance = rMaxSize - rMinSize
 
     relativeSize ∷ Number → Number
     relativeSize val
       | distance ≡ zero = val
       | val < 0.0 = 0.0
       | otherwise =
-        r.maxSize - sizeDistance / distance * (maxSize - val)
+        rMaxSize - sizeDistance / distance * (maxSize - val)
 
     itemToNodes
       ∷ { size ∷ Maybe Number, source ∷ String, target ∷ String, index ∷ Int }
@@ -156,8 +156,8 @@ buildGraphData r jarr =
   in
     items × (A.nubBy (eq `on` _.name) $ foldMap itemToNodes $ colorFn items)
 
-graphOptions ∷ Axes → ModelR → GraphData → DSL OptionI
-graphOptions axes r (links × nodes) = do
+options ∷ P.DimMap → Axes → Graph.State → GraphData → DSL OptionI
+options dimMap axes r (links × nodes) = do
   CCT.tooltip do
     E.triggerItem
     E.formatterItem \{name, value, "data": item, dataType} →
@@ -165,11 +165,11 @@ graphOptions axes r (links × nodes) = do
       else
         let
           mbVal = map show $ hush' $ FR.readNumber value
-          sourceLabel = D.jcursorLabel r.source
+          sourceLabel = foldMap D.jcursorLabel $ P.lookup P.source dimMap
           sourceTag
             | sourceLabel ≠ "" = sourceLabel
             | otherwise = "name"
-          measureLabel = foldMap D.jcursorLabel r.size
+          measureLabel = foldMap D.jcursorLabel $ P.lookup P.size dimMap
           measureTag
             | measureLabel ≠ "" = measureLabel
             | otherwise = "value"
@@ -217,9 +217,8 @@ graphOptions axes r (links × nodes) = do
     E.label do
       E.normal E.hidden
       E.emphasis E.hidden
-    when (isJust r.color)
+    when (P.member P.color dimMap)
       $ E.category node.category
-    when (isJust r.size) do
+    when (P.member P.size dimMap) do
       E.symbolSize $ Int.floor node.size
       E.value node.value
--}

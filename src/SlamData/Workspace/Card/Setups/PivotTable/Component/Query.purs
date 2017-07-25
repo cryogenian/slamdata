@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.Query where
+module SlamData.Workspace.Card.Setups.PivotTable.Component.Query where
 
 import Halogen.Component.Utils.Drag (DragEvent)
 

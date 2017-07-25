@@ -14,10 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Line.Eval where
-{-  ( eval
-  , module SlamData.Workspace.Card.Setups.Chart.Line.Model
-  ) where
+module SlamData.Workspace.Card.Setups.Viz.Eval.Line where
 
 import SlamData.Prelude
 
@@ -29,30 +26,40 @@ import Data.Lens ((^?))
 import Data.List as L
 import Data.Map as M
 import Data.Set as Set
-
+import Data.Variant (prj)
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
-
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Chart.Common as SCC
-import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
-import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
-import SlamData.Workspace.Card.Setups.Chart.Line.Model (Model, ModelR)
+import SlamData.Workspace.Card.Setups.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Common as SC
+import SlamData.Workspace.Card.Setups.Common.Positioning as BCP
+import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
+import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
+import SlamData.Workspace.Card.Setups.Auxiliary as Aux
+import SlamData.Workspace.Card.Setups.Auxiliary.Line as Line
 import SqlSquared as Sql
 
-eval ∷ ∀ m v. BCE.ChartSetupEval ModelR m v
-eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildLine
+eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Resource → m Port.Out)
+eval dimMap aux =
+  BCE.chartSetupEval buildSql buildPort aux'
+  where
+  aux' = prj CT._line aux
+  buildSql = SC.buildBasicSql (buildProjections dimMap) (buildGroupBy dimMap)
+  buildPort r axes = Port.ChartInstructions
+    { options: options dimMap axes r ∘ buildData aux'
+    , chartType: CT.line
+    }
 
 type LineSerie =
   { name ∷ Maybe String
@@ -82,38 +89,23 @@ decodeItem = decodeJson >=> \obj → do
   series ← Sem.maybeString <$> obj .? "series"
   pure { category, measure1, measure2, size, series }
 
-buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
-buildProjections r = L.fromFoldable
-  [ r.dimension # SCC.jcursorPrj # Sql.as "category"
-  , r.value # SCC.jcursorPrj # Sql.as "measure1" # SCC.applyTransform r.value
-  , r.size # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "size"
-  , r.series # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "series"
-  , secondValueF
+buildProjections ∷ ∀ a. P.DimMap → a → L.List (Sql.Projection Sql.Sql)
+buildProjections dimMap _ = L.fromFoldable $ A.concat
+  [ SC.dimensionProjection P.dimension dimMap "dimension"
+  , SC.measureProjection P.value dimMap "measure1"
+  , SC.measureProjection P.size dimMap "size"
+  , SC.measureProjection P.secondValue dimMap "measure2"
+  , SC.dimensionProjection P.series dimMap "series"
   ]
-  where
-  secondValueF = case r.secondValue of
-    Just sv → sv # SCC.jcursorPrj # Sql.as "measure2" # SCC.applyTransform sv
-    Nothing → SCC.nullPrj # Sql.as "measure2"
 
-buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
-buildGroupBy r =
-  SCC.groupBy $ L.fromFoldable $ A.catMaybes
-    [ r.series <#> SCC.jcursorSql
-    , Just r.dimension <#> SCC.jcursorSql
-    ]
+buildGroupBy ∷ ∀ a. P.DimMap → a → Maybe (Sql.GroupBy Sql.Sql)
+buildGroupBy dimMap _ = SC.groupBy
+  $ SC.sqlProjection P.series dimMap
+  <|> SC.sqlProjection P.dimension dimMap
 
-buildLine ∷ ModelR → Axes → Port.Port
-buildLine m axes =
-  Port.ChartInstructions
-    { options: lineOptions axes m ∘ buildLineData m
-    , chartType: CT.line
-    }
-
-buildLineData ∷ ModelR → Array Json → Array LineSerie
-buildLineData r =
-  foldMap (foldMap A.singleton ∘ decodeItem)
-    >>> lineSeries
-
+buildData ∷ Maybe Line.State → Array Json → Array LineSerie
+buildData mbR =
+  lineSeries ∘ foldMap (foldMap A.singleton ∘ decodeItem)
   where
   lineSeries ∷ Array Item → Array LineSerie
   lineSeries =
@@ -128,13 +120,16 @@ buildLineData r =
   items f = A.mapMaybe \i →
     Tuple i.category <$> case f i, i.size of
       Nothing, _ → Nothing
-      Just value, _ | r.optionalMarkers → Just { value, symbolSize: Int.floor r.minSize }
-      Just value, Nothing → Just { value, symbolSize: Int.floor r.minSize }
-      Just value, Just size → Just { value, symbolSize: Int.floor size }
+      Just value, _ | maybe false _.optionalMarkers mbR →
+        Just { value, symbolSize: fromMaybe zero $ Int.floor ∘ _.size.min <$> mbR }
+      Just value, Nothing →
+        Just { value, symbolSize: fromMaybe zero $ Int.floor ∘ _.size.min <$> mbR }
+      Just value, Just size →
+        Just { value, symbolSize: Int.floor size }
 
   adjustSymbolSizes ∷ ∀ f. Functor f ⇒ Foldable f ⇒ f LineItem → f LineItem
   adjustSymbolSizes is
-    | r.optionalMarkers = is
+    | maybe false _.optionalMarkers mbR = is
     | otherwise =
       let
         minValue ∷ Number
@@ -155,43 +150,48 @@ buildLineData r =
         distance =
           maxValue - minValue
 
+        maxSize ∷ Number
+        maxSize = maybe zero _.size.max mbR
+
+        minSize ∷ Number
+        minSize = maybe zero _.size.min mbR
+
         sizeDistance ∷ Number
-        sizeDistance =
-          r.maxSize - r.minSize
+        sizeDistance = maxSize - minSize
 
         relativeSize ∷ Int → Int
         relativeSize val
           | distance ≡ 0.0 = val
           | otherwise =
             Int.floor
-            $ r.maxSize
+            $ maxSize
             - sizeDistance / distance * (maxValue - Int.toNumber val)
       in
         map (\x → x{symbolSize = relativeSize x.symbolSize}) is
 
-lineOptions ∷ Axes → ModelR → Array LineSerie → DSL OptionI
-lineOptions axes r lineData = do
+options ∷ P.DimMap → Axes → Line.State → Array LineSerie → DSL OptionI
+options dimMap axes r lineData = do
   let
-    cols =
-      [ { label: D.jcursorLabel r.dimension, value: CCT.formatValueIx 0 }
-      , { label: D.jcursorLabel r.value, value: \x →
-           if isNothing r.secondValue ∨ x.seriesIndex `mod` 2 ≡ 0
-           then CCT.formatValueIx 1 x
-           else ""
-        }
+    mkRow prj value  = P.lookup prj dimMap # foldMap \dim →
+      [ { label: D.jcursorLabel dim, value } ]
+
+    cols = A.fold
+      [ mkRow P.dimension $ CCT.formatValueIx 0
+      , mkRow P.value \x →
+          if P.member P.secondValue dimMap ∧ x.seriesIndex `mod` 2 ≠ 0
+          then ""
+          else CCT.formatValueIx 1 x
+      , mkRow P.secondValue \x →
+          if x.seriesIndex `mod` 2 ≡ 0
+          then ""
+          else CCT.formatValueIx 1 x
+      , mkRow P.size CCT.formatSymbolSize
+      , mkRow P.series _.seriesName
       ]
-    opts = A.catMaybes
-      [ r.secondValue <#> \dim → { label: D.jcursorLabel dim, value: \x →
-                                    if x.seriesIndex `mod` 2 ≡ 0
-                                    then ""
-                                    else CCT.formatValueIx 1 x
-                                 }
-      , r.size <#> \dim → { label: D.jcursorLabel dim, value: CCT.formatSymbolSize }
-      , r.series <#> \dim → { label: D.jcursorLabel dim, value: _.seriesName }
-      ]
+
   CCT.tooltip do
     E.triggerItem
-    E.formatterItem (CCT.tableFormatter (pure ∘ _.color) (cols <> opts) ∘ pure)
+    E.formatterItem (CCT.tableFormatter (pure ∘ _.color) cols ∘ pure)
 
   E.colors colors
   E.grid BCP.cartesian
@@ -219,11 +219,10 @@ lineOptions axes r lineData = do
 
   where
   xAxisType ∷ Ax.AxisType
-  xAxisType =
-    fromMaybe Ax.Category
-    $ Ax.axisType
-    <$> (r.dimension ^? D._value ∘ D._projection)
-    <*> (pure axes)
+  xAxisType = fromMaybe Ax.Category do
+    ljc ← P.lookup P.dimension dimMap
+    cursor ← ljc ^? D._value ∘ D._projection
+    pure $ Ax.axisType cursor axes
 
   xAxisConfig ∷ Ax.EChartsAxisConfiguration
   xAxisConfig = Ax.axisConfiguration xAxisType
@@ -239,16 +238,16 @@ lineOptions axes r lineData = do
         lineData
 
   seriesNames ∷ Array String
-  seriesNames = case r.series of
-    Just _ → A.fromFoldable $ foldMap (_.name ⋙ foldMap Set.singleton) lineData
-    Nothing →
-      A.catMaybes
-        [ Just $ D.jcursorLabel r.value
-        , D.jcursorLabel <$> r.secondValue
-        ]
+  seriesNames
+    | P.member P.series dimMap = A.catMaybes
+       [ map D.jcursorLabel $ P.lookup P.value dimMap
+       , map D.jcursorLabel $ P.lookup P.secondValue dimMap
+       ]
+    | otherwise =
+        A.fromFoldable $ foldMap (_.name ⋙ foldMap Set.singleton) lineData
 
   needTwoAxes ∷ Boolean
-  needTwoAxes = isJust r.secondValue
+  needTwoAxes = P.member P.secondValue dimMap
 
   series ∷ ∀ i. DSL (line ∷ ETP.I|i)
   series = for_ lineData \lineSerie → do
@@ -263,11 +262,11 @@ lineOptions axes r lineData = do
               E.addValue value
             E.symbolSize symbolSize
       E.yAxisIndex 0
-      case r.series of
+      case P.lookup P.series dimMap of
         Just _ →
           for_ lineSerie.name E.name
         Nothing →
-          E.name $ D.jcursorLabel r.value
+          for_ (P.lookup P.value dimMap) $ E.name ∘ D.jcursorLabel
 
     when needTwoAxes $ E.line do
       E.buildItems $ for_ xValues \key →
@@ -280,15 +279,14 @@ lineOptions axes r lineData = do
               E.addValue value
             E.symbolSize symbolSize
       E.yAxisIndex 1
-      case r.series of
+      case P.lookup P.series dimMap of
         Just _ →
           for_ lineSerie.name E.name
         Nothing →
-          for_ r.secondValue (E.name ∘ D.jcursorLabel)
+          for_ (P.lookup P.secondValue dimMap) (E.name ∘ D.jcursorLabel)
 
   yAxis ∷ DSL ETP.YAxisI
   yAxis = do
     E.axisType ET.Value
     E.axisLabel $ E.textStyle do
       E.fontFamily "Ubuntu, sans"
--}

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.PivotTable.Eval
+module SlamData.Workspace.Card.Setups.PivotTable.Eval
   ( eval
   , module PTM
   ) where
@@ -37,8 +37,8 @@ import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis (buildAxes)
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Error (PivotTableError(..), throwPivotTableError)
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
+import SlamData.Workspace.Card.Setups.PivotTable.Error (PivotTableError(..), throwPivotTableError)
+import SlamData.Workspace.Card.Setups.PivotTable.Model as PTM
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Transform as T
 import SqlSquared (Sql)

@@ -26,37 +26,34 @@ import SlamData.Prelude
 import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.State (class MonadState, get, put)
 import Control.Monad.Writer.Class (class MonadTell)
-
-import Data.Lens ((^.), preview, (?~), (.~))
+import Data.Argonaut (Json)
+import Data.Lens ((^.), preview, (?~), (.~), (^?))
 import Data.List as L
 import Data.Map as Map
 import Data.Path.Pathy as Path
 import Data.Set as Set
 import Data.StrMap as SM
 import Data.Variant (on)
-import Data.Argonaut (Json)
-
 import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
-
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
-import SlamData.Workspace.Card.CardType.Select as Sel
 import SlamData.Workspace.Card.CardType.Input as Inp
+import SlamData.Workspace.Card.CardType.Select as Sel
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Common (validateResources)
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.State as CES
-import SlamData.Workspace.Card.Viz.Renderer.Select.Model as LR
+import SlamData.Workspace.Card.Eval.State as ES
+import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Viz.Model (Model)
 import SlamData.Workspace.Card.Viz.Renderer.Input.Model as TLR
-import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Semantics as Sem
-import SlamData.Workspace.Card.Eval.State as ES
-
+import SlamData.Workspace.Card.Viz.Renderer.Select.Model as LR
 import SqlSquared (Sql)
 import SqlSquared as Sql
 
@@ -113,7 +110,7 @@ evalLabeled
   ⇒ QuasarDSL m
   ⇒ ParQuasarDSL m
   ⇒ LR.Model
-  → Port.SetupLabeledFormInputPort
+  → Port.SetupSelectPort
   → Port.Resource
   → m Port.Out
 evalLabeled m p r = do
@@ -155,7 +152,8 @@ evalLabeled m p r = do
              ?~ ( Sql.binop Sql.In
                     ( Sql.binop Sql.FieldDeref
                         ( Sql.ident "res" )
-                        ( QQ.jcursorToSql p.cursor ))
+                        ( maybe (Sql.ident "*") QQ.jcursorToSql
+                          $ p.projection ^? D._value ∘ D._projection ))
                     ( Sql.set semantics )))
 
 
@@ -195,7 +193,8 @@ evalTextLike m p r = do
              ?~ ( Sql.binop Sql.Eq
                     ( Sql.binop Sql.FieldDeref
                         ( Sql.ident "res" )
-                        ( QQ.jcursorToSql p.cursor ))
+                        ( maybe (Sql.ident "*") QQ.jcursorToSql
+                          $ p.projection ^? D._value ∘ D._projection ))
                     $ selection p.formInputType ))
 
   eval sql r

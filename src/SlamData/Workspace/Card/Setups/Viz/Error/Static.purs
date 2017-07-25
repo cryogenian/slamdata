@@ -14,19 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.FormInput.Static.Error where
+module SlamData.Workspace.Card.Setups.Viz.Error.Static where
 
 import SlamData.Prelude
 import Utils (throwVariantError)
 
-data FormInputStaticError
-  = FIStaticNoAxis
-  | FIStaticMissingAxis String
 
-instance showFormInputStaticError ∷ Show FormInputStaticError where
+-- Things to consider: using variants for all errors not variant on top of ADT
+data Error
+  = NoAxis
+  | MissingAxis String
+
+instance showFormInputStaticError ∷ Show Error where
   show = case _ of
-    FIStaticNoAxis → "FIStaticNoAxis"
-    FIStaticMissingAxis axis → "(FIStaticMissingAxis " <> show axis <> ")"
+    NoAxis → "NoAxis"
+    MissingAxis axis → "(MissingAxis " <> show axis <> ")"
 
-throwFormInputStaticError ∷ forall v m a. MonadThrow (Variant (formInputStatic ∷ FormInputStaticError | v)) m ⇒ FormInputStaticError → m a
+throwFormInputStaticError
+  ∷ ∀ v m a
+  . MonadThrow (Variant (formInputStatic ∷ Error | v)) m
+  ⇒ Error
+  → m a
 throwFormInputStaticError = throwVariantError (SProxy :: SProxy "formInputStatic")

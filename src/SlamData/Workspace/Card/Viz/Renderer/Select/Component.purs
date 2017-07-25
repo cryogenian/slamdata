@@ -25,22 +25,21 @@ import Data.Map as Map
 import Data.Set as Set
 import Data.Time.Duration (Milliseconds(..))
 import Data.Variant (on)
-
 import DOM.Classy.Event as DOM
 import DOM.Event.Types (Event)
-
 import Halogen as H
 import Halogen.Component.Utils (sendAfter)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-
 import SlamData.Monad (Slam)
 import SlamData.Render.ClassName as CN
 import SlamData.Workspace.Card.CardType.Select as Sel
 import SlamData.Workspace.Card.Viz.Renderer.Select.Model as M
-import SlamData.Workspace.Card.Port (SetupLabeledFormInputPort)
+import SlamData.Workspace.Card.Port (SetupSelectPort)
 import SlamData.Workspace.Card.Setups.Semantics as Sem
+import SlamData.Workspace.Card.Setups.Dimension as D
+import Data.Lens ((^?))
 
 type State =
   { formInputType ∷ Sel.Select ()
@@ -68,7 +67,7 @@ optionList state =
     ⊕ compare (Sem.printSemantics a) (Sem.printSemantics b)
 
 data Query a
-  = Setup SetupLabeledFormInputPort a
+  = Setup SetupSelectPort a
   | ItemSelected Sem.Semantics a
   | SetSelected (Set.Set Sem.Semantics) a
   | Load M.Model a
@@ -179,7 +178,7 @@ eval = case _ of
             conf.selectedValues
       selected
         -- When cursor is changed we use default selection from input
-        | st.cursor ≠ conf.cursor =
+        | Just st.cursor ≠ (conf.projection ^? D._value ∘ D._projection) =
             selectedFromConf
         -- Same if user didn't interact with form input
         | Set.isEmpty st.selected =
@@ -188,16 +187,18 @@ eval = case _ of
         | otherwise =
             st.selected
 
+
     H.modify _
       { formInputType = conf.formInputType
       , selected = selected
       , valueLabelMap = conf.valueLabelMap
-      , label = if conf.name ≡ "" then Nothing else Just conf.name
-      , cursor = conf.cursor
-      }
+      , label = conf.projection ^? D._staticCategory
 
-    when (st.cursor ≠ conf.cursor)
-      $ void $ sendAfter (Milliseconds 200.0) RaiseUpdated
+      }
+    for_ (conf.projection ^? D._value ∘ D._projection) \cursor → do
+      H.modify _{ cursor = cursor }
+      when (st.cursor ≠ cursor)
+        $ void $ sendAfter (Milliseconds 200.0) RaiseUpdated
     pure next
   ItemSelected sem next → do
     st ← H.get

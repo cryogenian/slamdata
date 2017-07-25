@@ -185,7 +185,7 @@ evalCard = case _ of
       SetupInput p → void do
         H.modify _{ vizType = Just $ expand p.formInputType }
         H.query' CS.cpInput unit $ H.action $ IR.Setup p
-      SetupLabeledFormInput p → void do
+      SetupSelect p → void do
         H.modify _{ vizType = Just $ expand p.formInputType }
         H.query' CS.cpSelect unit $ H.action $ SR.Setup p
       CategoricalMetric m → void do

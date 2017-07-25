@@ -39,11 +39,10 @@ _sankey = SProxy ∷ SProxy "sankey"
 _gauge = SProxy ∷ SProxy "gauge"
 _boxplot = SProxy ∷ SProxy "boxplot"
 _metric = SProxy ∷ SProxy "metric"
-_pivot = SProxy ∷ SProxy "pivot"
 _punchCard = SProxy ∷ SProxy "punchCard"
 _candlestick = SProxy ∷ SProxy "candlestick"
 _parallel = SProxy ∷ SProxy "parallel"
-_pivotOptions = SProxy ∷ SProxy "pivotOptions"
+_pivot = SProxy ∷ SProxy "pivot"
 
 type ChartR r =
   ( pie ∷ Unit
@@ -59,18 +58,17 @@ type ChartR r =
   , gauge ∷ Unit
   , boxplot ∷ Unit
   , metric ∷ Unit
-  , pivot ∷ Unit
   , punchCard ∷ Unit
   , candlestick ∷ Unit
   , parallel ∷ Unit
-  , pivotOptions ∷ Unit
+  , pivot ∷ Unit
   | r)
 
 type Chart r = Variant (ChartR r)
 
 all ∷ ∀ r. Array (Chart r)
 all =
-  [ pivotOptions
+  [ pivot
   , pie
   , line
   , bar
@@ -84,14 +82,13 @@ all =
   , gauge
   , boxplot
   , metric
-  , pivot
   , punchCard
   , candlestick
   , parallel
   ]
 
-pivotOptions ∷ ∀ r. Variant (pivotOptions ∷ Unit|r)
-pivotOptions = inj _pivotOptions unit
+pivot ∷ ∀ r. Variant (pivot ∷ Unit|r)
+pivot = inj _pivot unit
 
 pie ∷ ∀ r. Variant (pie ∷ Unit|r)
 pie = inj _pie unit
@@ -132,9 +129,6 @@ boxplot = inj _boxplot unit
 metric ∷ ∀ r. Variant (metric ∷ Unit|r)
 metric = inj _metric unit
 
-pivot ∷ ∀ r. Variant (pivot ∷ Unit|r)
-pivot = inj _pivot unit
-
 punchCard ∷ ∀ r. Variant (punchCard ∷ Unit|r)
 punchCard = inj _punchCard unit
 
@@ -159,11 +153,10 @@ eq_ cb r = cb (contractChart r)
   # on _gauge (on _gauge tt ff r)
   # on _boxplot (on _boxplot tt ff r)
   # on _metric (on _metric tt ff r)
-  # on _pivot (on _pivot tt ff r)
   # on _punchCard (on _punchCard tt ff r)
   # on _candlestick (on _candlestick tt ff r)
   # on _parallel (on _parallel tt ff r)
-  # on _pivotOptions (on _pivotOptions tt ff r)
+  # on _pivot (on _pivot tt ff r)
   where
   contractChart ∷ ∀ ω. Chart ω → Variant ω
   contractChart = unsafeCoerce
@@ -183,11 +176,10 @@ print cb = cb
   # on _gauge (const "gauge")
   # on _boxplot (const "boxplot")
   # on _metric (const "metric")
-  # on _pivot (const "pivot")
   # on _punchCard (const "punch-card")
   # on _candlestick (const "candlestick")
   # on _parallel (const "parallel")
-  # on _pivotOptions (const "pivotOptions")
+  # on _pivot (const "pivot")
 
 encode ∷ ∀ r. (Variant r → String) → Chart r → String
 encode cb = cb
@@ -204,11 +196,10 @@ encode cb = cb
   # on _gauge (const "gauge-options")
   # on _boxplot (const "boxplot-options")
   # on _metric (const "metric-options")
-  # on _pivot (const "pivot-options")
   # on _punchCard (const "punch-card-options")
   # on _candlestick (const "candlestick-options")
   # on _parallel (const "parallel-options")
-  # on _pivotOptions (const "pivotOptions")
+  # on _pivot (const "pivot-options")
 
 icon ∷ ∀ r. (Variant r → I.IconHTML) → Chart r → I.IconHTML
 icon cb = cb
@@ -225,11 +216,10 @@ icon cb = cb
   # on _gauge (const $ I.IconHTML I.buildChartGauge)
   # on _boxplot (const $ I.IconHTML I.buildChartBoxplot)
   # on _metric (const $ I.IconHTML I.buildChartMetric)
-  # on _pivot (const $ I.IconHTML I.buildChartPivotTable)
   # on _punchCard (const $ I.IconHTML I.buildChartPunchCard)
   # on _candlestick (const $ I.IconHTML I.buildChartCandlestick)
   # on _parallel (const $ I.IconHTML I.buildChartParallel)
-  # on _pivotOptions (const $ I.IconHTML I.buildChartPivotTable)
+  # on _pivot (const $ I.IconHTML I.buildChartPivotTable)
 
 
 parse ∷ ∀ r. String → String ⊹ Chart r
@@ -251,7 +241,7 @@ parse = case _ of
   "punch-card" → Right punchCard
   "candlestick" → Right candlestick
   "parallel" → Right parallel
-  "pivot-table" → Right pivotOptions
+  "pivot-table" → Right pivot
   ty → Left $ ty ⊕ " is unknown chart type"
 
 name ∷ ∀ r. (Variant r → String) → Chart r → String
@@ -269,11 +259,10 @@ name cb = cb
   # on _gauge (const "Gauge")
   # on _boxplot (const "Boxplot")
   # on _metric (const "Metric")
-  # on _pivot (const "Pivot")
   # on _punchCard (const "Punch-card")
   # on _candlestick (const "Candlestick")
   # on _parallel (const "Parallel")
-  # on _pivotOptions (const "Pivot Table")
+  # on _pivot (const "Pivot Table")
 
 consumerInteractable ∷ ∀ r. (Variant r → Boolean) → Chart r → Boolean
 consumerInteractable cb = cb
@@ -290,11 +279,10 @@ consumerInteractable cb = cb
   # on _gauge ff
   # on _boxplot ff
   # on _metric ff
-  # on _pivot ff
   # on _punchCard ff
   # on _candlestick ff
   # on _parallel ff
-  # on _pivotOptions ff
+  # on _pivot ff
 
 cardClasses ∷ ∀ r. (Variant r → Array H.ClassName) → Chart r → Array H.ClassName
 cardClasses cb = cb
@@ -311,11 +299,10 @@ cardClasses cb = cb
   # on _gauge clss
   # on _boxplot clss
   # on _metric clss
-  # on _pivot clss
   # on _punchCard clss
   # on _candlestick clss
   # on _parallel clss
-  # on _pivotOptions clss
+  # on _pivot clss
   where
   clss _ = [ H.ClassName "sd-card-chart-options" ]
 

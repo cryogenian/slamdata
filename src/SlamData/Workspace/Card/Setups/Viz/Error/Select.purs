@@ -14,51 +14,50 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.FormInput.Labeled.Error where
+module SlamData.Workspace.Card.Setups.Viz.Error.Select where
 
 import SlamData.Prelude
 
 import SlamData.Workspace.Card.CardType.Select (Select, print)
-
 import Utils (throwVariantError)
 
-data FormInputLabeledError
-  = FILabeledNoAxisError (Select ())
-  | FILabeledEmptyResourceError (Select ())
-  | FILabeledTooManyEntries
+data Error
+  = NoAxis (Select ())
+  | EmptyResource (Select ())
+  | TooManyEntries
     { formInputType ∷ Select ()
     , maximum ∷ Int
     , entryCount ∷ Int
     }
-  | FILabeledTooManySelected
+  | TooManySelected
     { formInputType ∷ Select ()
     , maximum ∷ Int
     , selectedCount ∷ Int
     }
-  | FILabeledNonUniqueLabelError (Select ()) (Maybe String)
+  | NonUniqueLabel (Select ()) (Maybe String)
 
-instance showFormInputLabeledError ∷ Show FormInputLabeledError where
+instance showVizErrorSelect ∷ Show Error where
   show = case _ of
-    FILabeledNoAxisError fit → "(FILabeledNoAxisError " <> print case_ fit <> ")"
-    FILabeledEmptyResourceError fit → "(FILabeledEmptyResourceError " <> print case_ fit <> ")"
-    FILabeledTooManyEntries { formInputType, maximum, entryCount } →
-      "(FILabeledTooManyEntries "
+    NoAxis fit → "(NoAxis " <> print case_ fit <> ")"
+    EmptyResource fit → "(EmptyResource " <> print case_ fit <> ")"
+    TooManyEntries { formInputType, maximum, entryCount } →
+      "(TooManyEntries "
       <> "{ formInputType: " <> print case_ formInputType
       <> ", maximum: " <> show maximum
       <> ", entryCount: " <> show entryCount
       <> " })"
-    FILabeledTooManySelected { formInputType, maximum, selectedCount } →
-      "(FILabeledTooManySelected "
+    TooManySelected { formInputType, maximum, selectedCount } →
+      "(TooManySelected "
       <> "{ formInputType: " <> print case_ formInputType
       <> ", maximum: " <> show maximum
       <> ", selectedCount: " <> show selectedCount
       <> " })"
-    FILabeledNonUniqueLabelError fit label →
-      "(FILabeledNonUniqueLabelError " <> print case_ fit <> " " <> show label <> ")"
+    NonUniqueLabel fit label →
+      "(NonUniqueLabel " <> print case_ fit <> " " <> show label <> ")"
 
 throwFormInputLabeledError
   ∷ ∀ v m a
-  . MonadThrow (Variant (formInputLabeled ∷ FormInputLabeledError | v)) m
-  ⇒ FormInputLabeledError
+  . MonadThrow (Variant (formInputLabeled ∷ Error | v)) m
+  ⇒ Error
   → m a
 throwFormInputLabeledError = throwVariantError (SProxy :: SProxy "formInputLabeled")

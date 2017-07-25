@@ -14,9 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Common where
+module SlamData.Workspace.Card.Setups.Common where
 
 import SlamData.Prelude
+import Control.Alternative (class Alternative)
 import Data.Argonaut as J
 import Data.Lens ((.~))
 import Data.List as L
@@ -24,6 +25,7 @@ import Data.NonEmpty as NE
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Transform as T
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
 import SqlSquared as Sql
 import Utils.Path as PU
 import Utils.SqlSquared (tableRelation)
@@ -71,3 +73,40 @@ groupByToOrderBy (Sql.GroupBy { keys }) =
   case Tuple Sql.ASC <$> keys of
     head L.: tail → Just $ Sql.OrderBy $ NE.NonEmpty head tail
     _ → Nothing
+
+dimensionProjection
+  ∷ ∀ m
+  . Applicative m
+  ⇒ P.Projection
+  → P.DimMap
+  → String
+  → m (Sql.Projection Sql.Sql)
+dimensionProjection projection dimMap label =
+  P.lookup projection dimMap
+  # maybe nullPrj jcursorPrj
+  # Sql.as label
+  # pure
+
+
+sqlProjection
+  ∷ ∀ m
+  . Alternative m
+  ⇒ P.Projection
+  → P.DimMap
+  → m Sql.Sql
+sqlProjection projection dimMap =
+  P.lookup projection dimMap
+  <#> jcursorSql
+  # maybe empty pure
+
+
+measureProjection
+  ∷ ∀ m
+  . Applicative m
+  ⇒ P.Projection
+  → P.DimMap
+  → String
+  → m (Sql.Projection Sql.Sql)
+measureProjection projection dimMap label = pure case P.lookup projection dimMap of
+  Nothing → nullPrj # Sql.as label
+  Just sv → sv # jcursorPrj # Sql.as label # applyTransform sv

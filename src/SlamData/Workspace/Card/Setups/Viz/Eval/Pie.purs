@@ -14,10 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Pie.Eval where
-{-  ( eval
-  , module SlamData.Workspace.Card.Setups.Chart.Pie.Model
-  ) where
+module SlamData.Workspace.Card.Setups.Viz.Eval.Pie where
 
 import SlamData.Prelude
 
@@ -26,30 +23,36 @@ import Data.Array as A
 import Data.List as L
 import Data.Map as M
 import Data.Set as Set
-
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
-
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Axis (Axes)
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Chart.Common as SCC
-import SlamData.Workspace.Card.Setups.Chart.Common.Positioning (adjustRadialPositions, adjustDonutRadiuses, RadialPosition, WithDonutRadius, radialTitles)
-import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
-import SlamData.Workspace.Card.Setups.Chart.Pie.Model (Model, ModelR)
+import SlamData.Workspace.Card.Setups.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Common as SC
+import SlamData.Workspace.Card.Setups.Common.Positioning (adjustRadialPositions, adjustDonutRadiuses, RadialPosition, WithDonutRadius, radialTitles)
+import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-
+import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
+import SlamData.Workspace.Card.Setups.Auxiliary as Aux
 import SqlSquared as Sql
 
-eval ∷ ∀ m v. BCE.ChartSetupEval ModelR m v
-eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildPort
+eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Resource → m Port.Out)
+eval dimMap aux =
+  BCE.chartSetupEval buildSql buildPort $ Just unit
+  where
+  buildPort r axes = Port.ChartInstructions
+    { options: options dimMap axes r ∘ buildData
+    , chartType: CT.pie
+    }
+
+  buildSql = SC.buildBasicSql (buildProjections dimMap) (buildGroupBy dimMap)
 
 type OnePieSeries =
   RadialPosition
@@ -78,32 +81,23 @@ decodeItem = decodeJson >=> \obj → do
   parallel ← Sem.maybeString <$> obj .? "parallel"
   pure { category, measure, donut, parallel }
 
-buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
-buildProjections r =
-  L.fromFoldable
-    [ r.category # SCC.jcursorPrj # Sql.as "category"
-    , r.value # SCC.jcursorPrj # Sql.as "measure" # SCC.applyTransform r.value
-    , r.donut # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "donut"
-    , r.parallel # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "parallel"
-    ]
+buildProjections ∷ ∀ a. P.DimMap → a → L.List (Sql.Projection Sql.Sql)
+buildProjections dimMap _ = L.fromFoldable $ A.concat
+  [ SC.dimensionProjection P.category dimMap "category"
+  , SC.measureProjection P.value dimMap "measure"
+  , SC.dimensionProjection P.donut dimMap "donut"
+  , SC.dimensionProjection P.parallel dimMap "parallel"
+  ]
 
-buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
-buildGroupBy r =
-  SCC.groupBy $ L.fromFoldable $ A.catMaybes
-    [ r.parallel <#> SCC.jcursorSql
-    , r.donut <#> SCC.jcursorSql
-    , Just r.category <#> SCC.jcursorSql
-    ]
+buildGroupBy ∷ ∀ a. P.DimMap → a → Maybe (Sql.GroupBy Sql.Sql)
+buildGroupBy dimMap _ = SC.groupBy
+  $ SC.sqlProjection P.parallel dimMap
+  <|> SC.sqlProjection P.donut dimMap
+  <|> SC.sqlProjection P.category dimMap
 
-buildPort ∷ ModelR → Axes → Port.Port
-buildPort m _ =
-  Port.ChartInstructions
-    { options: buildOptions m ∘ buildData m
-    , chartType: CT.pie
-    }
 
-buildData ∷ ModelR → Array Json → Array OnePieSeries
-buildData r =
+buildData ∷ Array Json → Array OnePieSeries
+buildData =
   foldMap (foldMap A.singleton ∘ decodeItem)
     >>> onePies
     >>> adjustPositions
@@ -137,19 +131,20 @@ buildData r =
   toPoint ∷ Item → Tuple String Number
   toPoint { category, measure } = category × measure
 
-buildOptions ∷ ModelR → Array OnePieSeries → DSL OptionI
-buildOptions r pieData = do
+options ∷ ∀ a ax. P.DimMap → ax → a → Array OnePieSeries → DSL OptionI
+options dimMap _ _ pieData = do
   let
-    cols =
-      [ { label: D.jcursorLabel r.category, value: CCT.formatAssocProp "key" }
-      , { label: D.jcursorLabel r.value, value: CCT.formatAssocProp "value" }
-      ]
-    opts = A.catMaybes
-      [ r.donut <#> \dim → { label: D.jcursorLabel dim, value: _.seriesName }
+    mkRow prj value  = P.lookup prj dimMap # foldMap \dim →
+      [ { label: D.jcursorLabel dim, value } ]
+
+    cols = A.fold
+      [ mkRow P.category $ CCT.formatAssocProp "key"
+      , mkRow P.value $ CCT.formatAssocProp "value"
+      , mkRow P.donut _.seriesName
       ]
 
   CCT.tooltip do
-    E.formatterItem (CCT.tableFormatter (Just ∘ _.color) (cols <> opts) ∘ pure)
+    E.formatterItem (CCT.tableFormatter (Just ∘ _.color) cols ∘ pure)
     E.triggerItem
 
   E.colors colors
@@ -165,7 +160,8 @@ buildOptions r pieData = do
   E.series series
 
   radialTitles pieData
-    $ maybe "" D.jcursorLabel r.parallel
+    $ maybe "" D.jcursorLabel
+    $ P.lookup P.parallel dimMap
 
   where
   itemNames ∷ Array String
@@ -214,4 +210,3 @@ buildOptions r pieData = do
           E.value value
           E.name $ foldMap (flip append ":") name ⊕ key
           BCE.assoc { key, value }
--}

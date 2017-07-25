@@ -15,7 +15,7 @@ limitations under the License.
 -}
 
 
-module SlamData.Workspace.Card.Setups.Chart.PivotTable.Error where
+module SlamData.Workspace.Card.Setups.PivotTable.Error where
 
 import SlamData.Prelude
 

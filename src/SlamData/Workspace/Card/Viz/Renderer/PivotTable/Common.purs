@@ -23,7 +23,7 @@ import Data.Foldable as F
 import Data.Int as Int
 import Data.List (List, (:))
 import Data.List as List
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (ColumnDimension)
+import SlamData.Workspace.Card.Setups.PivotTable.Model (ColumnDimension)
 import SlamData.Workspace.Card.Setups.Dimension as D
 
 topField ∷ String → J.JCursor

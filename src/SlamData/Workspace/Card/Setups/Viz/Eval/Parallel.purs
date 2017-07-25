@@ -1,5 +1,5 @@
 {-
-Copyright 2016 SlamData, Inc.
+Copyright 2017 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,26 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-{-
-Copyright 2016 SlamData, Inc.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
--}
-
-module SlamData.Workspace.Card.Setups.Chart.Parallel.Eval where
-{-  ( eval
-  , module SlamData.Workspace.Card.Setups.Chart.Parallel.Model
-  ) where
+module SlamData.Workspace.Card.Setups.Viz.Eval.Parallel where
 
 import SlamData.Prelude
 
@@ -42,26 +23,21 @@ import Data.Array as A
 import Data.List as L
 import Data.StrMap as Sm
 import Data.String as S
-
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
-
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Axis (Axes)
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Chart.Common as SCC
-import SlamData.Workspace.Card.Setups.Chart.Parallel.Model (ModelR, Model)
+import SlamData.Workspace.Card.Setups.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Common as SC
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-
+import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
+import SlamData.Workspace.Card.Setups.Auxiliary as Aux
 import SqlSquared as Sql
-
-import Utils.Array (enumerate)
-import Utils.Foldable (enumeratedFor_)
 
 type Item =
   { series ∷ String
@@ -80,36 +56,33 @@ decodeItem = decodeJson >=> \obj → do
 
   pure { dims, series }
 
-eval ∷ ∀ m v. BCE.ChartSetupEval ModelR m v
-eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildParallel
-
-buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
-buildProjections r = L.fromFoldable
-  $ [ r.series # SCC.jcursorPrj # Sql.as "series" ]
-  ⊕ ( map mkProjection $ enumerate r.dims )
+eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Resource → m Port.Out)
+eval dimMap aux =
+  BCE.chartSetupEval buildSql buildPort $ Just unit
   where
-  mkProjection (ix × field) =
-    field # SCC.jcursorPrj # Sql.as ("measure" ⊕ show ix) # SCC.applyTransform field
-
-buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
-buildGroupBy r =
-  SCC.groupBy
-  $ pure
-  $ r.series # SCC.jcursorSql
-
-buildParallel ∷ ModelR → Axes → Port.Port
-buildParallel m axes =
-  Port.ChartInstructions
-    { options: pOptions axes m ∘ buildPData
+  buildPort r axes = Port.ChartInstructions
+    { options: options dimMap axes r ∘ buildData
     , chartType: CT.parallel
     }
 
-buildPData ∷ JArray → Array Item
-buildPData =
+  buildSql = SC.buildBasicSql (buildProjections dimMap) (buildGroupBy dimMap)
+
+buildProjections ∷ ∀ a. P.DimMap → a → L.List (Sql.Projection Sql.Sql)
+buildProjections dimMap _ = L.fromFoldable $ A.concat
+  $ [ SC.dimensionProjection P.series dimMap "series" ]
+  ⊕ ( foldMap mkProjection $ P.dims dimMap )
+  where
+  mkProjection (ix × _) = [ SC.measureProjection (P.dimIx ix) dimMap $ "measure" ⊕ show ix ]
+
+buildGroupBy ∷ ∀ a. P.DimMap → a → Maybe (Sql.GroupBy Sql.Sql)
+buildGroupBy dimMap _ = SC.groupBy $ SC.sqlProjection P.series dimMap
+
+buildData ∷ JArray → Array Item
+buildData =
   foldMap $ foldMap A.singleton ∘ decodeItem
 
-pOptions ∷ Axes → ModelR → Array Item → DSL OptionI
-pOptions _ r pData = do
+options ∷ ∀ a ax. P.DimMap → ax → a → Array Item → DSL OptionI
+options dimMap _ _ pData = do
   E.parallel do
     E.left $ ET.Percent 5.0
     E.right $ ET.Percent 18.0
@@ -135,7 +108,6 @@ pOptions _ r pData = do
       $ E.buildValues
       $ for_ serie.dims E.addValue
 
-  axes = enumeratedFor_ r.dims \(dimIx × dim) → E.addParallelAxis do
+  axes = for_ (P.dims dimMap) \(dimIx × dim) → E.addParallelAxis do
     E.dim dimIx
     E.name $ D.jcursorLabel dim
--}

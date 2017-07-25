@@ -53,9 +53,9 @@ import SlamData.Workspace.Card.Markdown.Error as CME
 import SlamData.Workspace.Card.Open.Error as COE
 import SlamData.Workspace.Card.Query.Error as CQE
 import SlamData.Workspace.Card.Search.Error as CSE
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Error as CPTE
-import SlamData.Workspace.Card.Setups.FormInput.Labeled.Error as CFILE
-import SlamData.Workspace.Card.Setups.FormInput.Static.Error as CFISE
+import SlamData.Workspace.Card.Setups.PivotTable.Error as CPTE
+import SlamData.Workspace.Card.Setups.Viz.Error.Select as CFILE
+import SlamData.Workspace.Card.Setups.Viz.Error.Static as CFISE
 import SlamData.Workspace.Card.Setups.Viz.Error as SVE
 import SlamData.Workspace.Card.Table.Error as CTE
 import SlamData.Workspace.Card.Variables.Error as CVE
@@ -533,7 +533,7 @@ chartErrorMessage { accessType, expanded } err =
           , pure $ printQErrorWithDetails qErr
           ]
 
-formInputStaticErrorMessage ∷ State → CFISE.FormInputStaticError → HTML
+formInputStaticErrorMessage ∷ State → CFISE.Error → HTML
 formInputStaticErrorMessage { accessType, expanded } err =
   case accessType of
     Editable → renderDetails err
@@ -548,7 +548,7 @@ formInputStaticErrorMessage { accessType, expanded } err =
         ]
   where
   renderDetails = case _ of
-    CFISE.FIStaticNoAxis →
+    CFISE.NoAxis →
       HH.div_
         $ join
           [ pure $ errorTitle
@@ -561,7 +561,7 @@ formInputStaticErrorMessage { accessType, expanded } err =
           , guard (accessType == Editable)
             $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
           ]
-    CFISE.FIStaticMissingAxis axis →
+    CFISE.MissingAxis axis →
       HH.div_
         $ join
           [ pure $ errorTitle
@@ -575,7 +575,7 @@ formInputStaticErrorMessage { accessType, expanded } err =
             $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
 
-formInputLabeledErrorMessage ∷ State → CFILE.FormInputLabeledError → HTML
+formInputLabeledErrorMessage ∷ State → CFILE.Error → HTML
 formInputLabeledErrorMessage { accessType, expanded } err =
   case accessType of
     Editable → renderDetails err
@@ -593,13 +593,13 @@ formInputLabeledErrorMessage { accessType, expanded } err =
           ]
   where
   extractType = case _ of
-    CFILE.FILabeledNoAxisError fit → fit
-    CFILE.FILabeledEmptyResourceError fit → fit
-    CFILE.FILabeledTooManyEntries { formInputType } → formInputType
-    CFILE.FILabeledTooManySelected { formInputType } → formInputType
-    CFILE.FILabeledNonUniqueLabelError fit _ → fit
+    CFILE.NoAxis fit → fit
+    CFILE.EmptyResource fit → fit
+    CFILE.TooManyEntries { formInputType } → formInputType
+    CFILE.TooManySelected { formInputType } → formInputType
+    CFILE.NonUniqueLabel fit _ → fit
   renderDetails = case _ of
-    CFILE.FILabeledNoAxisError fit →
+    CFILE.NoAxis fit →
       HH.div_
         $ join
           [ pure $ errorTitle
@@ -612,7 +612,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
           , guard (accessType == Editable)
             $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
           ]
-    CFILE.FILabeledEmptyResourceError fit →
+    CFILE.EmptyResource fit →
       HH.div_
         $ join
           [ pure $ errorTitle
@@ -625,7 +625,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
           , guard (accessType == Editable)
             $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
           ]
-    CFILE.FILabeledTooManyEntries { formInputType, maximum, entryCount } →
+    CFILE.TooManyEntries { formInputType, maximum, entryCount } →
       let
         errorText =
           "The " <> Sel.print case_ (expand formInputType)
@@ -647,7 +647,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
             , guard (accessType == Editable)
               $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
             ]
-    CFILE.FILabeledTooManySelected { formInputType, maximum, selectedCount } →
+    CFILE.TooManySelected { formInputType, maximum, selectedCount } →
       let
         errorText =
           "The " <> Sel.print case_ formInputType
@@ -670,7 +670,7 @@ formInputLabeledErrorMessage { accessType, expanded } err =
               $> HH.p_ [ HH.text "Go back to the previous card and select an axis to fix this error." ]
             ]
     -- TODO: Use the label argument for a better error message
-    CFILE.FILabeledNonUniqueLabelError fit label →
+    CFILE.NonUniqueLabel fit label →
       HH.div_
         $ join
           [ pure $ errorTitle

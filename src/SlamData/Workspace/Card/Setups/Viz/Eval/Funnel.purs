@@ -14,10 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Funnel.Eval where
-{-  ( eval
-  , module SlamData.Workspace.Card.Setups.Chart.Funnel.Model
-  ) where
+module SlamData.Workspace.Card.Setups.Viz.Eval.Funnel where
 
 import SlamData.Prelude
 
@@ -26,32 +23,40 @@ import Data.Array as A
 import Data.List as L
 import Data.Map as M
 import Data.Set as Set
-
+import Data.Variant (prj)
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
-
 import SlamData.Common.Align (Align(..))
 import SlamData.Common.Sort (Sort(..))
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Axis (Axes)
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Chart.Common as SCC
-import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
-import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
-import SlamData.Workspace.Card.Setups.Chart.Funnel.Model (Model, ModelR)
+import SlamData.Workspace.Card.Setups.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Common as SC
+import SlamData.Workspace.Card.Setups.Common.Positioning as BCP
+import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-
 import SqlSquared as Sql
+import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
+import SlamData.Workspace.Card.Setups.Auxiliary as Aux
+import SlamData.Workspace.Card.Setups.Auxiliary.Funnel as Funnel
 
-eval ∷ ∀ m v. BCE.ChartSetupEval ModelR m v
-eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildPort
+eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Resource → m Port.Out)
+eval dimMap aux =
+  BCE.chartSetupEval buildSql buildPort aux'
+  where
+  aux' = prj CT._funnel aux
+  buildSql = SC.buildBasicSql (buildProjections dimMap) (buildGroupBy dimMap)
+  buildPort r axes = Port.ChartInstructions
+    { options: options dimMap axes r ∘ buildData
+    , chartType: CT.funnel
+    }
 
 type FunnelSeries =
   { name ∷ Maybe String
@@ -76,29 +81,20 @@ decodeItem = decodeJson >=> \obj → do
   series ← Sem.maybeString <$> obj .? "series"
   pure { category, measure, series }
 
-buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
-buildProjections r = L.fromFoldable
-  [ r.category # SCC.jcursorPrj # Sql.as "category"
-  , r.value # SCC.jcursorPrj # Sql.as "measure" # SCC.applyTransform r.value
-  , r.series # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "series"
+buildProjections ∷ ∀ a. P.DimMap → a → L.List (Sql.Projection Sql.Sql)
+buildProjections dimMap _ = L.fromFoldable $ A.concat
+  [ SC.dimensionProjection P.category dimMap "category"
+  , SC.measureProjection P.value dimMap "measure"
+  , SC.dimensionProjection P.series dimMap "series"
   ]
 
-buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
-buildGroupBy r =
-  SCC.groupBy $ L.fromFoldable $ A.catMaybes
-    [ r.series <#> SCC.jcursorSql
-    , Just r.category <#> SCC.jcursorSql
-    ]
+buildGroupBy ∷ ∀ a. P.DimMap → a → Maybe (Sql.GroupBy Sql.Sql)
+buildGroupBy dimMap _ = SC.groupBy
+  $ SC.sqlProjection P.series dimMap
+  <|> SC.sqlProjection P.category dimMap
 
-buildPort ∷ ModelR → Axes → Port.Port
-buildPort m _ =
-  Port.ChartInstructions
-    { options: buildOptions m ∘ buildData m
-    , chartType: CT.funnel
-    }
-
-buildData ∷ ModelR → Array Json → Array FunnelSeries
-buildData r =
+buildData ∷ Array Json → Array FunnelSeries
+buildData =
   foldMap (foldMap A.singleton ∘ decodeItem)
     >>> series
     >>> BCP.adjustRectangularPositions
@@ -120,18 +116,20 @@ buildData r =
   toPoint ∷ Item → String × Number
   toPoint item = item.category × item.measure
 
-buildOptions ∷ ModelR → Array FunnelSeries → DSL OptionI
-buildOptions r funnelData = do
+options ∷ ∀ ax. P.DimMap → ax → Funnel.State → Array FunnelSeries → DSL OptionI
+options dimMap _ r funnelData = do
   let
-    cols =
-      [ { label: D.jcursorLabel r.category, value: _.name }
-      , { label: D.jcursorLabel r.value, value: CCT.formatForeign ∘ _.value }
+    mkRow prj value  = P.lookup prj dimMap # foldMap \dim →
+      [ { label: D.jcursorLabel dim, value } ]
+
+    cols = A.fold
+      [ mkRow P.category _.name
+      , mkRow P.value $ CCT.formatForeign ∘ _.value
+      , mkRow P.series _.seriesName
       ]
-    opts = flip foldMap r.series \dim →
-      [ { label: D.jcursorLabel dim, value: _.seriesName } ]
 
   CCT.tooltip do
-    E.formatterItem (CCT.tableFormatter (pure ∘ _.color) (cols <> opts) ∘ pure)
+    E.formatterItem (CCT.tableFormatter (pure ∘ _.color) cols ∘ pure)
     E.triggerItem
 
   E.legend do
@@ -143,7 +141,8 @@ buildOptions r funnelData = do
   E.colors colors
 
   BCP.rectangularTitles funnelData
-    $ maybe "" D.jcursorLabel r.series
+    $ maybe "" D.jcursorLabel
+    $ P.lookup P.series dimMap
   E.series series
 
   where
@@ -176,4 +175,3 @@ buildOptions r funnelData = do
       E.value value
     traverse_ (E.top ∘ ET.Percent) y
     traverse_ (E.left ∘ ET.Percent) x
--}

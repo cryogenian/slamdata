@@ -33,7 +33,7 @@ import SlamData.Workspace.Card.Setups.Auxiliary.Piece as P
 import SlamData.Workspace.Card.Setups.Auxiliary.Proxy (_reset, _colorScheme, _isColorSchemeReversed, _val)
 import SlamData.Workspace.Card.Setups.Auxiliary.Render as Render
 import SlamData.Workspace.Card.Setups.Auxiliary.Reset (ResetF, AuxComponent)
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (ColorScheme, colorSchemeSelect)
+import SlamData.Workspace.Card.Setups.ColorScheme (ColorScheme, colorSchemeSelect)
 
 import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen

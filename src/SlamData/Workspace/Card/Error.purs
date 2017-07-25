@@ -31,9 +31,9 @@ import SlamData.Workspace.Card.Markdown.Error as CMDE
 import SlamData.Workspace.Card.Open.Error as COE
 import SlamData.Workspace.Card.Query.Error as CQE
 import SlamData.Workspace.Card.Search.Error as CSE
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Error as CPT
-import SlamData.Workspace.Card.Setups.FormInput.Labeled.Error as FILE
-import SlamData.Workspace.Card.Setups.FormInput.Static.Error as FISE
+import SlamData.Workspace.Card.Setups.PivotTable.Error as CPT
+import SlamData.Workspace.Card.Setups.Viz.Error.Static as FISE
+import SlamData.Workspace.Card.Setups.Viz.Error.Select as FILE
 import SlamData.Workspace.Card.Table.Error as CTE
 import SlamData.Workspace.Card.Variables.Error as CVE
 import SlamData.Workspace.Card.Setups.Viz.Error as SVE
@@ -45,8 +45,8 @@ type CardError = Variant
   , cache ∷ CCE.CacheError
   , chart ∷ VE.ChartError
   , downloadOptions ∷ CDLOE.DownloadOptionsError
-  , formInputLabeled ∷ FILE.FormInputLabeledError
-  , formInputStatic ∷ FISE.FormInputStaticError
+  , formInputLabeled ∷ FILE.Error
+  , formInputStatic ∷ FISE.Error
   , markdown ∷ CMDE.MarkdownError
   , open ∷ COE.OpenError
   , pivotTable ∷ CPT.PivotTableError

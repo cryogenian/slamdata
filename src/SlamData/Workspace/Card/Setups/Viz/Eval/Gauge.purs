@@ -14,10 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Gauge.Eval where
-{-  ( eval
-  , module SlamData.Workspace.Card.Setups.Chart.Gauge.Model
-  ) where
+module SlamData.Workspace.Card.Setups.Viz.Eval.Gauge where
 
 import SlamData.Prelude
 
@@ -25,27 +22,37 @@ import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array as A
 import Data.Foldable as F
 import Data.List as L
-
+import Data.Variant (prj)
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
 import ECharts.Types.Phantom (OptionI)
-
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Chart.Common as SCC
-import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
-import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
-import SlamData.Workspace.Card.Setups.Chart.Gauge.Model (Model, ModelR)
+import SlamData.Workspace.Card.Setups.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Common as SC
+import SlamData.Workspace.Card.Setups.Common.Positioning as BCP
+import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-
 import SqlSquared as Sql
+import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
+import SlamData.Workspace.Card.Setups.Auxiliary as Aux
+import SlamData.Workspace.Card.Setups.Auxiliary.Gauge as Gauge
 
-eval ∷ ∀ m v. BCE.ChartSetupEval ModelR m v
-eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildPort
+
+eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Resource → m Port.Out)
+eval dimMap aux =
+  BCE.chartSetupEval buildSql buildPort aux'
+  where
+  aux' = prj CT._gauge aux
+  buildSql = SC.buildBasicSql (buildProjections dimMap) (buildGroupBy dimMap)
+  buildPort r axes = Port.ChartInstructions
+    { options: options dimMap axes r ∘ buildData
+    , chartType: CT.gauge
+    }
+
 
 type GaugeItem =
   { name ∷ Maybe String
@@ -71,29 +78,20 @@ decodeItem = decodeJson >=> \obj → do
   measure ← Sem.requiredNumber zero <$> obj .? "measure"
   pure { measure, parallel, multiple }
 
-buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
-buildProjections r = L.fromFoldable
-  [ r.value # SCC.jcursorPrj # Sql.as "measure" # SCC.applyTransform r.value
-  , r.multiple # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "multiple"
-  , r.parallel # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "parallel"
+buildProjections ∷ ∀ a. P.DimMap → a → L.List (Sql.Projection Sql.Sql)
+buildProjections dimMap _ = L.fromFoldable $ A.concat
+  [ SC.measureProjection P.value dimMap "measure"
+  , SC.dimensionProjection P.multiple dimMap "multiple"
+  , SC.dimensionProjection P.parallel dimMap "parallel"
   ]
 
-buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
-buildGroupBy r =
-  SCC.groupBy $ L.fromFoldable $ A.catMaybes
-    [ r.parallel <#> SCC.jcursorSql
-    , r.multiple <#> SCC.jcursorSql
-    ]
+buildGroupBy ∷ ∀ a. P.DimMap → a → Maybe (Sql.GroupBy Sql.Sql)
+buildGroupBy dimMap _ = SC.groupBy
+  $ SC.sqlProjection P.parallel dimMap
+  <|> SC.sqlProjection P.multiple dimMap
 
-buildPort ∷ ModelR → Ax.Axes → Port.Port
-buildPort m _ =
-  Port.ChartInstructions
-    { options: buildOptions m ∘ buildData m
-    , chartType: CT.gauge
-    }
-
-buildData ∷ ModelR → Array Json → Array GaugeSerie
-buildData r =
+buildData ∷ Array Json → Array GaugeSerie
+buildData =
   foldMap (foldMap A.singleton ∘ decodeItem)
     >>> series
     >>> BCP.adjustRadialPositions
@@ -113,25 +111,26 @@ buildData r =
   toPoint ∷ Item → GaugeItem
   toPoint item = { name: item.multiple, value: item.measure }
 
-buildOptions ∷ ModelR → Array GaugeSerie → DSL OptionI
-buildOptions r series = do
+options ∷ ∀ a. P.DimMap → a → Gauge.State → Array GaugeSerie → DSL OptionI
+options dimMap _ r series = do
   let
-    cols =
-      [ { label: D.jcursorLabel r.value, value: CCT.formatForeign ∘ _.value }
-      ]
-    opts = A.catMaybes
-      [ r.parallel <#> \dim → { label: D.jcursorLabel dim, value: _.seriesName }
-      , r.multiple <#> \dim → { label: D.jcursorLabel dim, value: _.name }
+    mkRow prj value  = P.lookup prj dimMap # foldMap \dim →
+      [ { label: D.jcursorLabel dim, value } ]
+
+    cols = A.fold
+      [ mkRow P.value $ CCT.formatForeign ∘ _.value
+      , mkRow P.parallel _.seriesName
+      , mkRow P.multiple _.name
       ]
 
   CCT.tooltip do
-    E.formatterItem (CCT.tableFormatter (const Nothing) (cols <> opts) ∘ pure)
+    E.formatterItem (CCT.tableFormatter (const Nothing) cols ∘ pure)
 
   E.colors colors
 
   E.series $ for_ series \serie → E.gauge do
-    E.min r.minValue
-    E.max r.maxValue
+    E.min r.val.min
+    E.max r.val.max
     for_ serie.name E.name
     E.axisLine $ E.lineStyle $ E.setWidth $ E.pixels 10
     E.splitLine $ E.length 20
@@ -173,4 +172,3 @@ buildOptions r series = do
   where
   allValues ∷ Array Number
   allValues = map _.value $ A.concatMap _.items series
--}

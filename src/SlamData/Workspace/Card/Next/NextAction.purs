@@ -21,14 +21,8 @@ import SlamData.Prelude
 import Data.Array as A
 
 import SlamData.ActionList.Action as Action
-import SlamData.Render.Icon as I
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.CardType.Chart as Cht
-import SlamData.Workspace.Card.CardType.Select as Sel
-import SlamData.Workspace.Card.CardType.Input as Inp
-import SlamData.Workspace.Card.CardType.Static as Sta
-import SlamData.Workspace.Card.CardType.Geo as Geo
 import SlamData.Workspace.Card.InsertableCardType (InsertableCardType)
 import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.Port (Port)

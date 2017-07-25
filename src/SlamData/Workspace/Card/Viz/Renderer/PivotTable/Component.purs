@@ -18,31 +18,27 @@ module SlamData.Workspace.Card.Viz.Renderer.PivotTable.Component where
 
 import SlamData.Prelude
 
+import DOM.Event.Event (preventDefault)
+import DOM.Event.Types (Event)
 import Data.Argonaut as J
 import Data.Array as Array
 import Data.Int as Int
 import Data.Lens ((^.), (^?))
-
-import DOM.Event.Event (preventDefault)
-import DOM.Event.Types (Event)
-
+import Global (readFloat)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-
 import SlamData.Monad (Slam)
 import SlamData.Render.CSS.New as CSS
 import SlamData.Render.Icon as I
 import SlamData.Workspace.Card.Eval.State as ES
-import SlamData.Workspace.Card.Viz.Renderer.PivotTable.Model as PTRM
-import SlamData.Workspace.Card.Viz.Renderer.PivotTable.Common (PTree, foldTree, sizeOfRow, topField)
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model (Column(..))
+import SlamData.Workspace.Card.Setups.PivotTable.Model (Column(..))
 import SlamData.Workspace.Card.Setups.Transform as T
-
-import Global (readFloat)
+import SlamData.Workspace.Card.Viz.Renderer.PivotTable.Common (PTree, foldTree, sizeOfRow, topField)
+import SlamData.Workspace.Card.Viz.Renderer.PivotTable.Model as PTRM
 import Utils (showPrettyNumber, showFormattedNumber)
 
 type State =

@@ -14,15 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Scatter.Eval where
-{-  ( eval
-  , module SlamData.Workspace.Card.Setups.Chart.Scatter.Model
-  ) where
+module SlamData.Workspace.Card.Setups.Viz.Eval.Scatter where
 
 import SlamData.Prelude
 
 import Color as C
-
 import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array as A
 import Data.Foldable as F
@@ -30,37 +26,41 @@ import Data.Int as Int
 import Data.Lens ((.~))
 import Data.List as L
 import Data.Set as Set
-
+import Data.Variant (prj)
 import Global (infinity)
-
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
-
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Axis (Axes)
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors, getTransparentColor)
-import SlamData.Workspace.Card.Setups.Chart.Common as SCC
-import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
-import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
-import SlamData.Workspace.Card.Setups.Chart.Scatter.Model (Model, ModelR)
+import SlamData.Workspace.Card.Setups.ColorScheme (colors, getTransparentColor)
+import SlamData.Workspace.Card.Setups.Common as SC
+import SlamData.Workspace.Card.Setups.Common.Positioning as BCP
+import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-
+import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
+import SlamData.Workspace.Card.Setups.Auxiliary as Aux
+import SlamData.Workspace.Card.Setups.Auxiliary.Scatter as Scatter
 import SqlSquared as Sql
-
 import Utils.Foldable (enumeratedFor_)
 
-eval ∷ ∀ m v. BCE.ChartSetupEval ModelR m v
-eval =
-  BCE.chartSetupEval
-    (\a b → setDistinct $ SCC.buildBasicSql buildProjections buildGroupBy a b) buildPort
+eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Resource → m Port.Out)
+eval dimMap aux =
+  BCE.chartSetupEval buildSql buildPort aux'
   where
+  aux' = prj CT._scatter aux
+  buildSql a b = setDistinct $ SC.buildBasicSql (buildProjections dimMap) (buildGroupBy dimMap) a b
+  buildPort r axes = Port.ChartInstructions
+    { options: options dimMap axes r ∘ buildData aux'
+    , chartType: CT.scatter
+    }
   setDistinct = Sql._Select ∘ Sql._isDistinct .~ true
+
 
 type ScatterSeries =
   { name ∷ Maybe String
@@ -101,36 +101,24 @@ decodeItem = decodeJson >=> \obj → do
   series ← Sem.maybeString <$> obj .? "series"
   pure { abscissa, ordinate, size, parallel, series }
 
-buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
-buildProjections r = L.fromFoldable
-  [ r.abscissa # SCC.jcursorPrj # Sql.as "abscissa"
-  , r.ordinate # SCC.jcursorPrj # Sql.as "ordinate" # SCC.applyTransform r.ordinate
-  , sizeF
-  , r.parallel # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "parallel"
-  , r.series # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "series"
+buildProjections ∷ ∀ a. P.DimMap → a → L.List (Sql.Projection Sql.Sql)
+buildProjections dimMap _ = L.fromFoldable $ A.concat
+  [ SC.dimensionProjection P.abscissa dimMap "abscissa"
+  , SC.dimensionProjection P.ordinate dimMap "ordinate"
+  , SC.measureProjection P.size dimMap "size"
+  , SC.dimensionProjection P.parallel dimMap "parallel"
+  , SC.dimensionProjection P.series dimMap "series"
   ]
-  where
-  sizeF = case r.size of
-    Just sv → sv # SCC.jcursorPrj # Sql.as "size" # SCC.applyTransform sv
-    Nothing → SCC.nullPrj # Sql.as "size"
 
-buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
-buildGroupBy r =
-  SCC.groupBy $ L.fromFoldable $ A.catMaybes
-    [ r.parallel <#> SCC.jcursorSql
-    , r.series <#> SCC.jcursorSql
-    , Just $ r.abscissa # SCC.jcursorSql
-    ]
+buildGroupBy ∷ ∀ a. P.DimMap → a → Maybe (Sql.GroupBy Sql.Sql)
+buildGroupBy dimMap _ = SC.groupBy
+  $ SC.sqlProjection P.parallel dimMap
+  <|> SC.sqlProjection P.series dimMap
+  <|> SC.sqlProjection P.abscissa dimMap
 
-buildPort ∷ ModelR → Axes → Port.Port
-buildPort m _ =
-  Port.ChartInstructions
-    { options: buildOptions m ∘ buildData m
-    , chartType: CT.scatter
-    }
 
-buildData ∷ ModelR → Array Json → Array ScatterSeries
-buildData r =
+buildData ∷ Maybe Scatter.State → Array Json → Array ScatterSeries
+buildData mbR =
   BCP.adjustRectangularPositions
   ∘ series
   ∘ foldMap (foldMap A.singleton ∘ decodeItem)
@@ -175,31 +163,37 @@ buildData r =
         fromMaybe infinity $ F.maximum values
       distance =
         maxValue - minValue
+      maxSize =
+        maybe zero _.size.max mbR
+      minSize =
+        maybe zero _.size.min mbR
       sizeDistance =
-        r.maxSize - r.minSize
+        maxSize - minSize
 
       relativeSize ∷ Number → Number
       relativeSize val
         | distance ≡ zero = val
         | val < 0.0 = 0.0
         | otherwise =
-            r.maxSize - sizeDistance / distance * (maxValue - val)
+            maxSize - sizeDistance / distance * (maxValue - val)
     in
       map (\x → x{size = Int.floor $ relativeSize x.r}) is
 
-buildOptions ∷ ModelR → Array ScatterSeries → DSL OptionI
-buildOptions r scatterData = do
+options ∷ ∀ ax. P.DimMap → ax → Scatter.State → Array ScatterSeries → DSL OptionI
+options dimMap _ r scatterData = do
   let
-    cols =
-      [ { label: D.jcursorLabel r.abscissa, value: CCT.formatValueIx 0 }
-      , { label: D.jcursorLabel r.ordinate, value: CCT.formatValueIx 1 }
+    mkRow prj value  = P.lookup prj dimMap # foldMap \dim →
+      [ { label: D.jcursorLabel dim, value } ]
+
+    cols = A.fold
+      [ mkRow P.abscissa $ CCT.formatValueIx 0
+      , mkRow P.ordinate $ CCT.formatValueIx 1
+      , mkRow P.size $ CCT.formatValueIx 2
+      , mkRow P.series _.seriesName
       ]
-    opts = A.catMaybes
-      [ r.size <#> \dim → { label: D.jcursorLabel dim, value: CCT.formatValueIx 2 }
-      , r.series <#> \dim → { label: D.jcursorLabel dim, value: _.seriesName }
-      ]
+
   CCT.tooltip do
-    E.formatterItem (CCT.tableFormatter (pure ∘ _.color) (cols <> opts) ∘ pure)
+    E.formatterItem (CCT.tableFormatter (pure ∘ _.color) cols ∘ pure)
     E.triggerItem
     E.axisPointer do
       E.crossAxisPointer
@@ -211,7 +205,8 @@ buildOptions r scatterData = do
 
   BCP.rectangularGrids scatterData
   BCP.rectangularTitles scatterData
-    $ maybe "" D.jcursorLabel r.parallel
+    $ maybe "" D.jcursorLabel
+    $ P.lookup P.parallel dimMap
 
   E.grid BCP.cartesian
   E.xAxes $ valueAxes E.addXAxis
@@ -256,5 +251,4 @@ buildOptions r scatterData = do
           E.addValue item.x
           E.addValue item.y
           E.addValue item.r
-        when (isJust r.size) $ E.symbolSize item.size
--}
+        when (P.member P.size dimMap) $ E.symbolSize item.size

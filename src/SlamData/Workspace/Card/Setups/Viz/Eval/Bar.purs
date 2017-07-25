@@ -14,40 +14,38 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Bar.Eval where
-{-  ( eval
-  , module SlamData.Workspace.Card.Setups.Chart.Bar.Model
-  ) where
+module SlamData.Workspace.Card.Setups.Viz.Eval.Bar where
 
 import SlamData.Prelude
 
 import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array as A
-import Data.Map as M
-import Data.Set as Set
 import Data.Lens ((^?))
 import Data.List as L
-
-import ECharts.Monad (DSL)
+import Data.Map as M
+import Data.Set as Set
+import Data.Variant (prj)
 import ECharts.Commands as E
+import ECharts.Monad (DSL)
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
-
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Auxiliary as Aux
+import SlamData.Workspace.Card.Setups.Auxiliary.Bar as Bar
 import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Workspace.Card.Setups.Chart.Bar.Model (Model, ModelR)
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Chart.Common as SCC
-import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
-import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
+import SlamData.Workspace.Card.Setups.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Common.Positioning as BCP
+import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
+import SlamData.Workspace.Card.Setups.Common as SC
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-
+import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
 import SqlSquared as Sql
 
 type BarSeries =
@@ -79,34 +77,34 @@ decodeItem = decodeJson >=> \obj → do
        , stack
        }
 
-eval ∷ ∀ m v. BCE.ChartSetupEval ModelR m v
-eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildBar
-
-buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
-buildProjections r = L.fromFoldable
-  [ r.value # SCC.jcursorPrj # Sql.as "measure" # SCC.applyTransform r.value
-  , r.category # SCC.jcursorPrj # Sql.as "category"
-  , r.stack # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "stack"
-  , r.parallel # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "parallel"
-  ]
-
-buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
-buildGroupBy r =
-  SCC.groupBy $ L.fromFoldable $ A.catMaybes
-    [ r.parallel <#> SCC.jcursorSql
-    , r.stack <#> SCC.jcursorSql
-    , Just r.category <#> SCC.jcursorSql
-    ]
-
-buildBar ∷ ModelR → Axes → Port.Port
-buildBar m axes =
-  Port.ChartInstructions
-    { options: barOptions axes m ∘ buildBarData
+eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Resource → m Port.Out)
+eval dimMap aux =
+  BCE.chartSetupEval buildSql buildPort aux'
+  where
+  aux' = prj CT._bar aux
+  buildSql = SC.buildBasicSql (buildProjections dimMap) (buildGroupBy dimMap)
+  buildPort r axes = Port.ChartInstructions
+    { options: options dimMap axes r ∘ buildData
     , chartType: CT.bar
     }
 
-buildBarData ∷ Array Json → Array BarStacks
-buildBarData =
+buildProjections ∷ ∀ a. P.DimMap → a → L.List (Sql.Projection Sql.Sql)
+buildProjections dimMap _ = L.fromFoldable $ A.concat
+  [ SC.measureProjection P.value dimMap "measure"
+  , SC.dimensionProjection P.category dimMap "category"
+  , SC.dimensionProjection P.stack dimMap "stack"
+  , SC.dimensionProjection P.parallel dimMap "parallel"
+  ]
+
+buildGroupBy ∷ ∀ a. P.DimMap → a → Maybe (Sql.GroupBy Sql.Sql)
+buildGroupBy dimMap _ = SC.groupBy
+  $ SC.sqlProjection P.parallel dimMap
+  <|> SC.sqlProjection P.stack dimMap
+  <|> SC.sqlProjection P.category dimMap
+
+
+buildData ∷ Array Json → Array BarStacks
+buildData =
   stacks ∘ foldMap (foldMap A.singleton ∘ decodeItem)
   where
   stacks ∷ Array Item → Array BarStacks
@@ -126,23 +124,22 @@ buildBarData =
   toPoint ∷ Item → String × Number
   toPoint { measure, category } = category × measure
 
-barOptions ∷ Axes → ModelR → Array BarStacks → DSL OptionI
-barOptions axes r barData = do
+options ∷ P.DimMap → Axes → Bar.State → Array BarStacks → DSL OptionI
+options dimMap axes r barData = do
   let
-    cols =
-      [ { label: D.jcursorLabel r.category, value: CCT.formatValueIx 0 }
-      , { label: D.jcursorLabel r.value, value: CCT.formatValueIx 1 }
-      ]
-    seriesFn ix dim =
-      { label: D.jcursorLabel dim, value: CCT.formatNameIx ix }
-    opts =
-      A.catMaybes
-      [ seriesFn 0 <$> r.stack
-      , seriesFn (fromMaybe 0 $ r.stack $> 1) <$> r.parallel
+    mkRow prj value  = P.lookup prj dimMap # foldMap \dim →
+      [ { label: D.jcursorLabel dim, value } ]
+
+    cols = A.fold
+      [ mkRow P.category $ CCT.formatValueIx 0
+      , mkRow P.value $ CCT.formatValueIx 1
+      , mkRow P.stack $ CCT.formatNameIx 0
+      , mkRow P.parallel $ CCT.formatNameIx
+          if P.member P.stack dimMap then 1 else 0
       ]
 
   CCT.tooltip do
-    E.formatterItem (CCT.tableFormatter (pure ∘ _.color) (cols <> opts) ∘ pure)
+    E.formatterItem (CCT.tableFormatter (pure ∘ _.color) cols ∘ pure)
     E.triggerItem
 
   E.colors colors
@@ -179,16 +176,16 @@ barOptions axes r barData = do
 
   where
   xAxisType ∷ Ax.AxisType
-  xAxisType =
-    fromMaybe Ax.Category
-    $ Ax.axisType <$> (r.category ^? D._value ∘ D._projection) <*> pure axes
-
+  xAxisType = fromMaybe Ax.Category do
+    ljc ← P.lookup P.category dimMap
+    cursor ← ljc ^? D._value ∘ D._projection
+    pure $ Ax.axisType cursor axes
 
   xAxisConfig ∷ Ax.EChartsAxisConfiguration
   xAxisConfig = Ax.axisConfiguration xAxisType
 
   seriesNames ∷ Array String
-  seriesNames = case r.stack, r.parallel of
+  seriesNames = case P.lookup P.stack dimMap, P.lookup P.parallel dimMap of
     Nothing, Nothing →
       [ ]
     Nothing, Just _ →
@@ -226,11 +223,10 @@ barOptions axes r barData = do
               E.addStringValue key
               E.addValue v
       for_ stacked.stack E.name
-      case r.parallel, r.stack of
+      case P.lookup P.parallel dimMap, P.lookup P.stack dimMap of
         Just _, Nothing →
           for_ serie.name E.name
         Just _, Just _ →
           for_ serie.name E.stack
         _, _ →
           E.stack "default stack"
--}

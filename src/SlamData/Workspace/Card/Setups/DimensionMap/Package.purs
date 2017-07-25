@@ -705,5 +705,5 @@ packages = lm.union customMap $ map interpret mapFromFree
         field Pr.value
           >>= addSource Ax._category
       pure unit
-  , CT.pivotOptions × pure unit
+  , CT.pivot × pure unit
   ]

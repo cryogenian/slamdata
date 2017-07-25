@@ -149,7 +149,7 @@ setupEval = case _ of
   Q.ToggleVizPicker next → do
     state ← H.get
     H.modify _{ vizTypePickerExpanded = true
-              , vizType = (CT.pivotOptions ∷ VCT.VizType)
+              , vizType = (CT.pivot ∷ VCT.VizType)
               }
     for_ state.axes \axes →
       void $ H.query' CS.cpPicker unit $ H.action $ VT.UpdateAxes axes

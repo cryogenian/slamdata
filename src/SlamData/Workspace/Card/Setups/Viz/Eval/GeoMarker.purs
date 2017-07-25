@@ -14,76 +14,71 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Geo.Marker.Eval where
-{-  ( eval
-  , module SlamData.Workspace.Card.Setups.Geo.Marker.Model
-  ) where
+module SlamData.Workspace.Card.Setups.Viz.Eval.GeoMarker where
+
 
 import SlamData.Prelude
 
-import Color as C
 
 import CSS as CSS
-
-import Data.Array ((!!))
-import Data.Array as A
+import Color as C
+import Control.Monad.Aff (Aff)
 import Data.Argonaut (Json, decodeJson, (.?))
-import Data.List as L
-import Data.StrMap as Sm
-import Data.String as S
+import Data.Array as A
 import Data.Foldable as F
 import Data.Int as Int
+import Data.List ((!!))
+import Data.List as L
 import Data.Path.Pathy (currentDir, file, dir, (</>), (<.>))
-import Data.URI as URI
+import Data.StrMap as Sm
+import Data.String as S
 import Data.URI (URIRef)
-
+import Data.URI as URI
+import Data.Variant (prj)
 import Halogen.HTML as HH
-import Halogen.HTML.Properties as HP
 import Halogen.HTML.CSS as HC
+import Halogen.HTML.Properties as HP
 import Halogen.VDom.DOM.StringRenderer as VDS
-
 import Leaflet.Core as LC
-
 import Math ((%), log)
-
+import SlamData.Effects (SlamDataEffects)
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Axis (Axes)
-import SlamData.Workspace.Card.Setups.Chart.Common as SCC
-import SlamData.Workspace.Card.Setups.Geo.Marker.Model (ModelR, Model)
+import SlamData.Workspace.Card.Setups.Auxiliary as Aux
+import SlamData.Workspace.Card.Setups.Auxiliary.GeoMarker (State)
+import SlamData.Workspace.Card.Setups.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Common as SC
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Semantics as Sem
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Dimension as D
-
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
+import SlamData.Workspace.Card.Setups.Semantics as Sem
+import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
 import SqlSquared as Sql
-
 import Utils.Array (enumerate)
 
-eval ∷ ∀ m v. BCE.ChartSetupEval ModelR m v
-eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildMarker
-
-buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
-buildProjections r = L.fromFoldable
-  $ [ r.lat # SCC.jcursorPrj # Sql.as "lat"
-    , r.lng # SCC.jcursorPrj # Sql.as "lng"
-    , r.series # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "series"
-    , sizeField
-    ]
-  ⊕ ( map mkProjection $ enumerate r.dims )
+eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Resource → m Port.Out)
+eval dimMap aux = BCE.chartSetupEval buildSql buildPort aux'
   where
-  sizeField = case r.size of
-    Nothing → SCC.nullPrj # Sql.as "size"
-    Just sz → sz # SCC.jcursorPrj # Sql.as "size" # SCC.applyTransform sz
-  mkProjection (ix × field) =
-    field # SCC.jcursorPrj # Sql.as ("measure" ⊕ show ix) # SCC.applyTransform field
+  aux' = prj CT._geoMarker aux
+  buildSql = SC.buildBasicSql (buildProjections dimMap) (buildGroupBy dimMap)
+  buildPort r axes = Port.GeoChart { build: build dimMap r ,osmURI: r.osm.uri }
 
-buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
-buildGroupBy r =
-  SCC.groupBy $ L.fromFoldable $ A.catMaybes
-    [ Just $ SCC.jcursorSql r.lat
-    , Just $ SCC.jcursorSql r.lng
-    , map SCC.jcursorSql r.series
+buildProjections ∷ P.DimMap → State → L.List (Sql.Projection Sql.Sql)
+buildProjections dimMap r = L.fromFoldable $ A.concat
+  $ [ SC.dimensionProjection P.lat dimMap "lat"
+    , SC.dimensionProjection P.lng dimMap "lng"
+    , SC.dimensionProjection P.series dimMap "series"
     ]
+  ⊕ ( A.mapWithIndex (\ix _ → SC.measureProjection (P.dimIx ix) dimMap $ "measure" ⊕ show ix)
+      $ A.fromFoldable $ P.dims dimMap
+    )
+
+buildGroupBy ∷ P.DimMap → State → Maybe (Sql.GroupBy Sql.Sql)
+buildGroupBy dimMap r =
+  SC.groupBy
+  $ SC.sqlProjection P.lat dimMap
+  <|> SC.sqlProjection P.lng dimMap
+  <|> SC.sqlProjection P.series dimMap
 
 type Item =
   { lat ∷ LC.Degrees
@@ -126,9 +121,112 @@ iconConf =
   , iconSize: 40 × 40
   }
 
-buildMarker ∷ ModelR → Axes → Port.Port
-buildMarker r@{ osmURI } _ =
-  Port.GeoChart { build, osmURI }
+build
+  ∷ P.DimMap
+  → State
+  → LC.Leaflet
+  → Array Json
+  → Aff SlamDataEffects (Array LC.Layer × Array LC.Control)
+build dimMap r leaf records = do
+  let
+    items = mkItems records
+    minLng = mkMinLng items
+    maxLng = mkMaxLng items
+    minLat = mkMinLat items
+    maxLat = mkMaxLat items
+    latDiff = maxLat - minLat
+    lngDiff = maxLng - minLng
+    avgLat = mkAvgLat items
+    avgLng = mkAvgLng items
+    zoomLat = 360.0 / latDiff
+    zoomLng = 360.0 / lngDiff
+    zoomInt = Int.ceil $ (log $ min zoomLat zoomLng) / log 2.0
+    series = mkSeries items
+    minSize = mkMinSize items
+    maxSize = mkMaxSize items
+    sizeDistance = r.size.max - r.size.min
+    distance = maxSize - minSize
+    mkRadius size
+      | distance ≡ 0.0 = r.size.min
+      | not (P.member P.size dimMap) = r.size.min
+      | otherwise = r.size.max - sizeDistance / distance * (maxSize - size)
+    foldFn icon {layers, overlays} item@{lat, lng} = do
+      let
+        color s = unsafePartial fromJust $ Sm.lookup s series
+      layer
+        -- Renderer is too slow for png/svg icons :(
+        ← if (P.member P.series dimMap) ∨ (P.member P.size dimMap) ∨ A.length items > 1000
+          then
+            map LC.circleMarkerToLayer
+              $ LC.circleMarker
+                {lat, lng}
+                { radius: mkRadius item.size
+                , color: color item.series
+                }
+          else map LC.markerToLayer $ LC.marker {lat, lng} >>= LC.setIcon icon
+
+      let
+        mkTableRow mbDim strVal = flip foldMap mbDim \dim →
+          [ HH.tr_ [ HH.td_ [ HH.text $ D.jcursorLabel dim ]
+                   , HH.td_ [ HH.text strVal ]
+                   ]
+          ]
+
+        content = VDS.render absurd $ unwrap
+          $ HH.table [ HP.class_ $ HH.ClassName "sd-chart-tooltip-table" ]
+          $ mkTableRow (P.lookup P.lat dimMap) (show $ LC.degreesToNumber lat )
+          ⊕ mkTableRow (P.lookup P.lng dimMap) (show $ LC.degreesToNumber lng )
+          ⊕ mkTableRow (P.lookup P.size dimMap) (show item.size)
+          ⊕ mkTableRow (P.lookup P.series dimMap) item.series
+          ⊕ (fold $ enumerate item.dims <#> \(ix × dim) →
+              mkTableRow (map snd $ P.dims dimMap !! ix) (show dim))
+
+        alterFunction Nothing = Just [ layer ]
+        alterFunction (Just a) = Just $ A.cons layer a
+
+        mkKey s =
+          VDS.render absurd ∘ unwrap
+            $ HH.table [ HP.class_ $ HH.ClassName "sd-chart-geo-layers-control" ]
+              [ HH.tr_ [ HH.td_ [ HH.span [ HP.class_ $ HH.ClassName "sd-chart-tooltip-color"
+                                          , HC.style $ CSS.backgroundColor $ color s
+                                          ] [ ]
+                                ]
+                       , HH.td_ [ HH.text item.series ]
+                       ]
+              ]
+
+
+      _ ← LC.bindPopup content layer
+
+      pure { layers: A.cons layer layers
+           , overlays: Sm.alter alterFunction (mkKey item.series) overlays
+           }
+
+  zoom ← LC.mkZoom zoomInt
+  view ← LC.mkLatLng avgLat avgLng
+
+  icon ← LC.icon iconConf
+
+  {layers, overlays} ←
+    A.foldRecM (foldFn icon) {layers: [ ], overlays: Sm.empty } items
+
+  layGroups ← for overlays LC.layerGroup
+
+  control ← case P.lookup P.series dimMap of
+    Nothing → pure [ ]
+    Just _ → do
+      c ← LC.layers Sm.empty layGroups { collapsed: false }
+      _ ← LC.addTo leaf c
+      pure [ c ]
+
+
+  _ ← LC.setZoom zoom leaf
+  _ ← LC.setView view leaf
+  let
+    toSend
+      | Sm.isEmpty layGroups = layers
+      | otherwise = Sm.values $ map LC.groupToLayer layGroups
+  pure $ toSend × control
   where
   mkItems ∷ Array Json → Array Item
   mkItems = foldMap $ foldMap A.singleton ∘ decodeItem
@@ -165,106 +263,3 @@ buildMarker r@{ osmURI } _ =
 
   mkSeries ∷ Array Item → Sm.StrMap C.Color
   mkSeries items = Sm.fromFoldable $ A.zip (A.sort $ A.nub $ map _.series items) colors
-
-  build leaf records = do
-    let
-      items = mkItems records
-      minLng = mkMinLng items
-      maxLng = mkMaxLng items
-      minLat = mkMinLat items
-      maxLat = mkMaxLat items
-      latDiff = maxLat - minLat
-      lngDiff = maxLng - minLng
-      avgLat = mkAvgLat items
-      avgLng = mkAvgLng items
-      zoomLat = 360.0 / latDiff
-      zoomLng = 360.0 / lngDiff
-      zoomInt = Int.ceil $ (log $ min zoomLat zoomLng) / log 2.0
-      series = mkSeries items
-      minSize = mkMinSize items
-      maxSize = mkMaxSize items
-      sizeDistance = r.maxSize - r.minSize
-      distance = maxSize - minSize
-      mkRadius size
-        | distance ≡ 0.0 = r.minSize
-        | isNothing r.size = r.minSize
-        | otherwise = r.maxSize - sizeDistance / distance * (maxSize - size)
-      foldFn icon {layers, overlays} item@{lat, lng} = do
-        let
-          color s = unsafePartial fromJust $ Sm.lookup s series
-        layer
-         -- Renderer is too slow for png/svg icons :(
-          ← if isNothing r.series && isNothing r.size && A.length items < 1001
-            then map LC.markerToLayer $ LC.marker {lat, lng} >>= LC.setIcon icon
-            else
-              map LC.circleMarkerToLayer
-              $ LC.circleMarker
-                  {lat, lng}
-                  { radius: mkRadius item.size
-                  , color: color item.series
-                  }
-
-        let
-          mkTableRow mbDim strVal = flip foldMap mbDim \dim →
-            [ HH.tr_ [ HH.td_ [ HH.text $ D.jcursorLabel dim ]
-                     , HH.td_ [ HH.text strVal ]
-                     ]
-            ]
-
-          content = VDS.render absurd $ unwrap
-            $ HH.table [ HP.class_ $ HH.ClassName "sd-chart-tooltip-table" ]
-            $ mkTableRow (Just r.lat) (show $ LC.degreesToNumber lat )
-            ⊕ mkTableRow (Just r.lng) (show $ LC.degreesToNumber lng )
-            ⊕ mkTableRow r.size (show item.size)
-            ⊕ mkTableRow r.series item.series
-            ⊕ (fold $ enumerate item.dims <#> \(ix × dim) →
-                mkTableRow (r.dims !! ix) (show dim))
-
-          alterFunction Nothing = Just [ layer ]
-          alterFunction (Just a) = Just $ A.cons layer a
-
-          mkKey s =
-            VDS.render absurd ∘ unwrap
-            $ HH.table [ HP.class_ $ HH.ClassName "sd-chart-geo-layers-control" ]
-              [ HH.tr_ [ HH.td_ [ HH.span [ HP.class_ $ HH.ClassName "sd-chart-tooltip-color"
-                                          , HC.style $ CSS.backgroundColor $ color s
-                                          ] [ ]
-                                ]
-                       , HH.td_ [ HH.text item.series ]
-                       ]
-              ]
-
-
-        _ ← LC.bindPopup content layer
-
-        pure { layers: A.cons layer layers
-             , overlays: Sm.alter alterFunction (mkKey item.series) overlays
-             }
-    zoom ← LC.mkZoom zoomInt
-
-    view ← LC.mkLatLng avgLat avgLng
-
-    icon ← LC.icon iconConf
-
-    {layers, overlays} ←
-      A.foldRecM (foldFn icon) {layers: [ ], overlays: Sm.empty } items
-
-    layGroups ← for overlays LC.layerGroup
-
-    control ← case r.series of
-      Nothing → pure [ ]
-      Just _ → do
-        c ← LC.layers Sm.empty layGroups { collapsed: false }
-        _ ← LC.addTo leaf c
-        pure [ c ]
-
-
-    _ ← LC.setZoom zoom leaf
-    _ ← LC.setView view leaf
-    let
-      toSend
-        | Sm.isEmpty layGroups = layers
-        | otherwise = Sm.values $ map LC.groupToLayer layGroups
-
-    pure $ toSend × control
--}

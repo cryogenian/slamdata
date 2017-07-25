@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.State
+module SlamData.Workspace.Card.Setups.PivotTable.Component.State
   ( State
   , OrderingOpts
   , Selecting(..)
@@ -42,8 +42,8 @@ import Data.List (List, (:))
 import Data.List as List
 
 import SlamData.Workspace.Card.Setups.Axis (Axes, initialAxes)
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Component.Query (ForDimension)
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
+import SlamData.Workspace.Card.Setups.PivotTable.Component.Query (ForDimension)
+import SlamData.Workspace.Card.Setups.PivotTable.Model as PTM
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.DimensionPicker.Column (groupColumns, ColumnNode)
 import SlamData.Workspace.Card.Setups.DimensionPicker.JCursor (groupJCursors, JCursorNode)

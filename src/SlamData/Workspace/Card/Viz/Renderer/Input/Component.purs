@@ -26,6 +26,7 @@ import Data.DateTime as DT
 import Data.Either.Nested (Either3)
 import Data.Formatter.DateTime as FD
 import Data.Functor.Coproduct.Nested (Coproduct3)
+import Data.Lens ((^?))
 import Data.Time.Duration (Milliseconds(..))
 import Data.Variant (on, default)
 import Halogen as H
@@ -43,6 +44,7 @@ import SlamData.Render.ClassName as CN
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port (SetupInputPort)
+import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Viz.Renderer.Input.Model as M
 import SlamData.Workspace.PickerUtils as PU
 import Text.Markdown.SlamDown.Halogen.Component as TMH
@@ -166,16 +168,16 @@ eval = case _ of
   Setup p next → do
     st ← H.get
     H.modify _
-      { label = if p.name ≡ "" then Nothing else Just p.name
+      { label =  p.projection ^? D._staticCategory
       , formInputType = p.formInputType
-      , cursor = p.cursor
-      -- If cursor field is changed we remove user selected value
-      -- I'm not sure that this is the most convenient way of
-      -- doing this, but empty data produced by incorrect `value` here is kinda weird
-      , value = if p.cursor ≠ st.cursor then "" else st.value
       }
-    when (st.cursor ≠ p.cursor) $
-      void $ sendAfter (Milliseconds 200.0) RaiseUpdated
+    for_ (p.projection ^? D._value ∘ D._projection) \cursor → do
+      H.modify _
+        { cursor = cursor
+        , value = if cursor ≠ st.cursor then "" else st.value
+        }
+      when (st.cursor ≠ cursor) $
+        void $ sendAfter (Milliseconds 200.0) RaiseUpdated
     pure next
   Save cont → do
     st ← H.get

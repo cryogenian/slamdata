@@ -251,7 +251,7 @@ fromPort = case _ of
   Port.SlamDown _ → Markdown
   Port.ChartInstructions _ → Viz
   Port.PivotTable _ → Viz
-  Port.SetupLabeledFormInput _ → Viz
+  Port.SetupSelect _ → Viz
   Port.SetupInput _ → Viz
   Port.Variables → Variables
   Port.ValueMetric _ → Viz

@@ -44,7 +44,7 @@ import Halogen.HTML as H
 import SlamData.Render.Icon as I
 import SlamData.Workspace.Card.CardType.Ace ( _aceMarkdown, aceMarkdown, _aceSql, aceSql, mode, AceR, Ace, contractToAce)
 import SlamData.Workspace.Card.CardType.Ace as Ace
-import SlamData.Workspace.Card.CardType.Chart ( _pie, pie, _line, line, _bar, bar, _area, area, _scatter, scatter, _radar, radar, _funnel, funnel, _graph, graph, _heatmap, heatmap, _sankey, sankey, _gauge, gauge, _boxplot, boxplot, _metric, metric, _pivot, pivot, _punchCard, punchCard, _candlestick, candlestick, _parallel, parallel, ChartR, Chart, contractToChart, _pivotOptions, pivotOptions)
+import SlamData.Workspace.Card.CardType.Chart ( _pie, pie, _line, line, _bar, bar, _area, area, _scatter, scatter, _radar, radar, _funnel, funnel, _graph, graph, _heatmap, heatmap, _sankey, sankey, _gauge, gauge, _boxplot, boxplot, _metric, metric, _pivot, pivot, _punchCard, punchCard, _candlestick, candlestick, _parallel, parallel, ChartR, Chart, contractToChart)
 import SlamData.Workspace.Card.CardType.Chart as Cht
 import SlamData.Workspace.Card.CardType.Geo ( _geoMarker, geoMarker, _geoHeatmap, geoHeatmap, GeoR, Geo, contractToGeo)
 import SlamData.Workspace.Card.CardType.Geo as Geo

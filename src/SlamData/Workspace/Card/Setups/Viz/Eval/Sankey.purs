@@ -14,33 +14,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Sankey.Eval where
-{-  ( eval
-  , module SlamData.Workspace.Card.Setups.Chart.Sankey.Model
-  ) where
+module SlamData.Workspace.Card.Setups.Viz.Eval.Sankey where
 
 import SlamData.Prelude
 
 import Data.Argonaut (JArray, Json, decodeJson, (.?))
 import Data.Array as A
 import Data.List as L
-
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
-
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Axis (Axes)
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Chart.Common as SCC
-import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
-import SlamData.Workspace.Card.Setups.Chart.Sankey.Model (Model, ModelR)
+import SlamData.Workspace.Card.Setups.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Common as SC
+import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-
+import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
+import SlamData.Workspace.Card.Setups.Auxiliary as Aux
 import SqlSquared as Sql
 
 type Item =
@@ -56,41 +51,44 @@ decodeItem = decodeJson >=> \obj → do
   weight ← map (fromMaybe zero ∘ Sem.maybeNumber) $ obj .? "weight"
   pure { source, target, weight }
 
-eval ∷ ∀ m v. BCE.ChartSetupEval ModelR m v
-eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildSankey
-
-buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
-buildProjections r = L.fromFoldable
-  [ r.source # SCC.jcursorPrj # Sql.as "source"
-  , r.target # SCC.jcursorPrj # Sql.as "target"
-  , r.value # SCC.jcursorPrj # Sql.as "weight"
-  ]
-
-buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
-buildGroupBy r =
-  SCC.groupBy $ L.fromFoldable
-    [ r.source # SCC.jcursorSql
-    , r.target # SCC.jcursorSql
-    ]
-
-buildSankey ∷ ModelR → Axes → Port.Port
-buildSankey m _ =
-  Port.ChartInstructions
-    { options: sankeyOptions m ∘ buildSankeyData
+eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Resource → m Port.Out)
+eval dimMap aux =
+  BCE.chartSetupEval buildSql buildPort $ Just unit
+  where
+  buildPort r axes = Port.ChartInstructions
+    { options: options dimMap axes r ∘ buildData
     , chartType: CT.sankey
     }
 
-buildSankeyData ∷ JArray → Array Item
-buildSankeyData =
+  buildSql = SC.buildBasicSql (buildProjections dimMap) (buildGroupBy dimMap)
+
+buildProjections ∷ ∀ a. P.DimMap → a → L.List (Sql.Projection Sql.Sql)
+buildProjections dimMap _ = L.fromFoldable $ A.concat
+  [ SC.dimensionProjection P.source dimMap "source"
+  , SC.dimensionProjection P.target dimMap "target"
+  , SC.measureProjection P.value dimMap "weight"
+  ]
+
+buildGroupBy ∷ ∀ a. P.DimMap → a → Maybe (Sql.GroupBy Sql.Sql)
+buildGroupBy dimMap _ = SC.groupBy
+  $ SC.sqlProjection P.source dimMap
+  <|> SC.sqlProjection P.target dimMap
+
+
+
+buildData ∷ JArray → Array Item
+buildData =
   foldMap $ foldMap A.singleton ∘ decodeItem
 
-sankeyOptions ∷ ModelR → Array Item → DSL OptionI
-sankeyOptions r sankeyData = do
+options ∷ ∀ ax a. P.DimMap → ax → a → Array Item → DSL OptionI
+options dimMap _ _ sankeyData = do
   let
-    cols =
-      [ { label: D.jcursorLabel r.source, value: CCT.formatDataProp "source" }
-      , { label: D.jcursorLabel r.target, value: CCT.formatDataProp "target" }
-      , { label: D.jcursorLabel r.value, value: CCT.formatDataProp "value" }
+    mkRow prj value  = P.lookup prj dimMap # foldMap \dim →
+      [ { label: D.jcursorLabel dim, value } ]
+    cols = A.fold
+      [ mkRow P.source $ CCT.formatDataProp "source"
+      , mkRow P.target $ CCT.formatDataProp "target"
+      , mkRow P.value $ CCT.formatDataProp "value"
       ]
   CCT.tooltip do
     E.formatterItem (CCT.tableFormatter (const Nothing) cols ∘ pure)
@@ -115,4 +113,3 @@ sankeyOptions r sankeyData = do
     for_
       (A.nub $ (_.source <$> sankeyData) ⊕ (_.target <$> sankeyData))
       (E.addItem ∘ E.name)
--}

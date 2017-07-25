@@ -23,7 +23,7 @@ module SlamData.Workspace.Card.Port
   , MetricPort
   , ChartInstructionsPort
   , PivotTablePort
-  , SetupLabeledFormInputPort
+  , SetupSelectPort
   , SetupInputPort
   , GeoChartPort
   , tagPort
@@ -55,8 +55,7 @@ module SlamData.Workspace.Card.Port
 import SlamData.Prelude
 
 import Control.Monad.Aff (Aff)
-
-import Data.Argonaut (JCursor, Json)
+import Data.Argonaut (Json)
 import Data.Lens (Prism', prism', Traversal', wander, Lens', lens, (^.), view)
 import Data.List as List
 import Data.Map as Map
@@ -64,19 +63,17 @@ import Data.Set as Set
 import Data.StrMap as SM
 import Data.Path.Pathy as Path
 import Data.URI (URIRef)
-
 import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
-
 import Leaflet.Core as LC
-
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Download.Model (DownloadOptions)
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Setups.Chart.PivotTable.Model as PTM
+import SlamData.Workspace.Card.Setups.PivotTable.Model as PTM
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), emptyVarMap, _VarMapValue)
+import SlamData.Workspace.Card.Setups.Dimension as D
 
 import SqlSquared as Sql
 
@@ -116,17 +113,15 @@ type PivotTablePort =
   , isSimpleQuery ∷ Boolean
   }
 
-type SetupLabeledFormInputPort =
-  { name ∷ String
+type SetupSelectPort =
+  { projection ∷ D.LabeledJCursor
   , valueLabelMap ∷ Map.Map Sem.Semantics (Maybe String)
-  , cursor ∷ JCursor
   , selectedValues ∷ Set.Set Sem.Semantics
   , formInputType ∷ CT.Select ()
   }
 
 type SetupInputPort =
-  { name ∷ String
-  , cursor ∷ JCursor
+  { projection ∷ D.LabeledJCursor
   , formInputType ∷ CT.Input ()
   }
 
@@ -141,7 +136,7 @@ data Port
   | Variables
   | CardError CE.CardError
   | ResourceKey String
-  | SetupLabeledFormInput SetupLabeledFormInputPort
+  | SetupSelect SetupSelectPort
   | SetupInput SetupInputPort
   | SlamDown (SD.SlamDownP VarMapValue)
   | ChartInstructions ChartInstructionsPort
@@ -158,7 +153,7 @@ tagPort  = case _ of
   Variables → "Variables"
   CardError err → "CardError: " ⊕ CE.showCardError err
   ResourceKey str → "ResourceKey: " ⊕ show str
-  SetupLabeledFormInput _ → "SetupLabeledFormInput"
+  SetupSelect _ → "SetupSelect"
   SetupInput _ → "SetupInput"
   SlamDown sd → "SlamDown: " ⊕ show sd
   ChartInstructions _ → "ChartInstructions"

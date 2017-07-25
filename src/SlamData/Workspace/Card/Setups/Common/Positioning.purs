@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Common.Positioning where
+module SlamData.Workspace.Card.Setups.Common.Positioning where
 
 import SlamData.Prelude
 

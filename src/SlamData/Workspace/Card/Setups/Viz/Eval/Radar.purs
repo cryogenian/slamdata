@@ -14,10 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Chart.Radar.Eval where
-{-  ( eval
-  , module SlamData.Workspace.Card.Setups.Chart.Radar.Model
-  ) where
+module SlamData.Workspace.Card.Setups.Viz.Eval.Radar where
 
 import SlamData.Prelude
 
@@ -28,32 +25,38 @@ import Data.List as L
 import Data.Map as M
 import Data.Set as Set
 import Data.Int as Int
-
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
-
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis (Axes)
-import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Chart.Common as SCC
-import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
-import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
+import SlamData.Workspace.Card.Setups.ColorScheme (colors)
+import SlamData.Workspace.Card.Setups.Common as SC
+import SlamData.Workspace.Card.Setups.Common.Positioning as BCP
+import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Setups.Chart.Radar.Model (Model, ModelR)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-
+import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
+import SlamData.Workspace.Card.Setups.Auxiliary as Aux
 import SqlSquared as Sql
-
 import Utils.Array (enumerate)
 
-eval ∷ ∀ m v. BCE.ChartSetupEval ModelR m v
-eval = BCE.chartSetupEval (SCC.buildBasicSql buildProjections buildGroupBy) buildPort
+eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Resource → m Port.Out)
+eval dimMap aux =
+  BCE.chartSetupEval buildSql buildPort $ Just unit
+  where
+  buildPort r axes = Port.ChartInstructions
+    { options: options dimMap axes r ∘ buildData
+    , chartType: CT.radar
+    }
+
+  buildSql = SC.buildBasicSql (buildProjections dimMap) (buildGroupBy dimMap)
 
 -- | One radar serie. Actually just data for echarts radar series
 type RadarSerie =
@@ -83,31 +86,23 @@ decodeItem = decodeJson >=> \obj → do
   parallel ← Sem.maybeString <$> obj .? "parallel"
   pure { category, measure, multiple, parallel }
 
-buildProjections ∷ ModelR → L.List (Sql.Projection Sql.Sql)
-buildProjections r = L.fromFoldable
-  [ r.category # SCC.jcursorPrj # Sql.as "category"
-  , r.value # SCC.jcursorPrj # Sql.as "measure" # SCC.applyTransform r.value
-  , r.multiple # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "multiple"
-  , r.parallel # maybe SCC.nullPrj SCC.jcursorPrj # Sql.as "parallel"
+buildProjections ∷ ∀ a. P.DimMap → a → L.List (Sql.Projection Sql.Sql)
+buildProjections dimMap a = L.fromFoldable $ A.concat
+  [ SC.dimensionProjection P.category dimMap "category"
+  , SC.measureProjection P.value dimMap "measure"
+  , SC.dimensionProjection P.multiple dimMap "multiple"
+  , SC.dimensionProjection P.parallel dimMap "parallel"
   ]
 
-buildGroupBy ∷ ModelR → Maybe (Sql.GroupBy Sql.Sql)
-buildGroupBy r =
-  SCC.groupBy $ L.fromFoldable $ A.catMaybes
-    [ r.parallel <#> SCC.jcursorSql
-    , r.multiple <#> SCC.jcursorSql
-    , Just r.category <#> SCC.jcursorSql
-    ]
+buildGroupBy ∷ ∀ a. P.DimMap → a → Maybe (Sql.GroupBy Sql.Sql)
+buildGroupBy dimMap _ = SC.groupBy
+  $ SC.sqlProjection P.parallel dimMap
+  <|> SC.sqlProjection P.multiple dimMap
+  <|> SC.sqlProjection P.category dimMap
 
-buildPort ∷ ModelR → Axes → Port.Port
-buildPort m _ =
-  Port.ChartInstructions
-    { options: buildOptions m ∘ buildData m
-    , chartType: CT.radar
-    }
 
-buildData ∷ ModelR → Array Json → Array SeriesOnRadar
-buildData r =
+buildData ∷ Array Json → Array SeriesOnRadar
+buildData =
   foldMap (foldMap A.singleton ∘ decodeItem)
     >>> series
     >>> BCP.adjustRadialPositions
@@ -135,8 +130,8 @@ buildData r =
   toPoint ∷ Item → Tuple String Number
   toPoint item = item.category × item.measure
 
-buildOptions ∷ ModelR → Array SeriesOnRadar → DSL OptionI
-buildOptions r radarData = do
+options ∷ P.DimMap → Axes → Unit → Array SeriesOnRadar  → DSL OptionI
+options dimMap axes r radarData = do
   CCT.tooltip do
     E.triggerItem
 
@@ -157,7 +152,8 @@ buildOptions r radarData = do
     $ traverse_ E.radarSeries series
 
   BCP.radialTitles radarData
-    $ maybe "" D.jcursorLabel r.parallel
+    $ maybe "" D.jcursorLabel
+    $ P.lookup P.parallel dimMap
 
   where
   serieNames ∷ Array String
@@ -226,4 +222,3 @@ buildOptions r radarData = do
       (E.singleValueRadius
        ∘ ET.SingleValueRadius
        ∘ ET.Percent) radius
--}
