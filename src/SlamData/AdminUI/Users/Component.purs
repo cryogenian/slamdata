@@ -100,7 +100,7 @@ component =
               , HH.slot
                   unit
                   (AC.component AC.defaultConfig)
-                  (maybe [] (Array.fromFoldable ∘ map QA.printGroupPath) state.allGroups)
+                  (maybe [] (map QA.printGroupPath) state.allGroups)
                   (HE.input HandleGroupFilter)
               ]
             ]
@@ -119,7 +119,7 @@ component =
             NoFilter →
               true
             InvalidGroupFilter _ →
-              false
+              true
             GroupFilter userIds →
               userId `Array.elem` userIds
 
