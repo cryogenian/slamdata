@@ -43,13 +43,21 @@
   right: 2rem
 
   &.info
-    border-top-color: $brand-info
+    border-top-color: $brand-primary
 
   &.warning
     border-top-color: $brand-warning
 
+    // we want buttons to match
+    .btn-primary
+      @extend .btn-warning
+
   &.error
     border-top-color: $brand-danger
+
+    // we want buttons to match
+    .btn-primary
+      @extend .btn-danger
 
   &.current
     animation-name: fade-in
