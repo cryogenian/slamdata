@@ -43,6 +43,9 @@ data Query a
   | SetFilter String a
   | DeleteUser QA.UserId a
   | EditUser QA.UserId a
+  | Select Int a
+  | HoverIn Int a
+  | HoverOut a
   | HandleGroupFilter (AC.Message String) a
 
 data GroupFilter
@@ -57,10 +60,12 @@ type State =
   , users ∷ Maybe (Array QA.UserId)
   , allGroups ∷ Maybe (Array QA.GroupPath)
   , groupFilter ∷ GroupFilter
+  , selected ∷ Maybe Int
+  , hovered ∷ Maybe Int
   }
 
 defaultState ∷ State
-defaultState = { filter: "", users: Nothing, allGroups: Nothing, groupFilter: NoFilter }
+defaultState = { filter: "", users: Nothing, allGroups: Nothing, groupFilter: NoFilter, selected: Nothing, hovered: Nothing }
 
 type ChildSlot = Unit
 
@@ -81,28 +86,25 @@ component =
       render state =
         HH.div
           [ HP.class_ (HH.ClassName "sd-admin-ui-users") ]
-          [ HH.fieldset_
-            [ HH.label_
-              [ HH.text "Search"
-              , HH.input
-                [ HP.class_ (HH.ClassName "form-control")
+          [ HH.div
+            [ HP.class_ (HH.ClassName "sd-admin-ui-users-header")]
+            [ HH.input
+                [ HP.class_ (HH.ClassName "sd-admin-ui-users-search")
                 , HP.type_ HP.InputText
-                , HP.placeholder "Search string"
+                , HP.placeholder "Search User"
                 , HE.onValueInput (HE.input \str → SetFilter str)
                 , HP.value state.filter
                 ]
-              , HH.button
-                  [ HE.onClick (HE.input_ (SetFilter ""))]
-                  [ R.clearFieldIcon "Clear search string" ]
-              , HH.button
-                  [ HE.onClick (HE.input_ FetchUsers)]
-                  [ R.busyFieldIcon "Clear search string" ]
-              , HH.slot
-                  unit
-                  (AC.component AC.defaultConfig)
-                  (maybe [] (map QA.printGroupPath) state.allGroups)
-                  (HE.input HandleGroupFilter)
-              ]
+            , HH.button
+                [ HE.onClick (HE.input_ (SetFilter ""))
+                , HP.classes (map H.ClassName ["btn", "btn-default"])
+                ]
+                [ R.clearFieldIcon "Clear search string" ]
+            , HH.button
+                [ HE.onClick (HE.input_ FetchUsers)
+                , HP.classes (map H.ClassName ["btn", "btn-default"])
+                ]
+                [ R.busyFieldIcon "Refresh" ]
             , HH.slot
                 unit
                 (AC.component AC.defaultConfig { containerClass = H.ClassName "sd-admin-ui-autocomplete"
@@ -118,7 +120,7 @@ component =
                 Nothing →
                   []
                 Just users →
-                  (map renderUser (Array.filter (userFilter && groupFilter) users))
+                  (Array.mapWithIndex renderUser (Array.filter (userFilter && groupFilter) users))
           ]
         where
           userFilter uid = String.contains (String.Pattern state.filter) (QA.runUserId uid)
@@ -132,24 +134,29 @@ component =
             GroupFilter userIds →
               userId `Array.elem` userIds
 
-          renderUser uid =
-            HH.li
-              [ HP.class_ (HH.ClassName "sd-admin-ui-user") ]
-              [ HH.div
-                  [ HP.class_ (HH.ClassName "sd-admin-ui-user-label") ]
-                  [ HH.text (QA.runUserId uid) ]
-              , HH.div
-                  [ HP.class_ (HH.ClassName "sd-admin-ui-user-actions") ]
-                  [ HH.button
-                      [ HE.onClick (HE.input_ (DeleteUser uid))
-                      ]
-                      [ HH.text "Delete" ]
-                  , HH.button
-                      [ HE.onClick (HE.input_ (EditUser uid))
-                      ]
-                      [ HH.text "Permissions" ]
-                  ]
-              ]
+          renderUser ix userId =
+            let
+              isActive = state.selected == Just ix || state.hovered == Just ix
+            in
+              HH.li
+                [ HP.class_ (HH.ClassName "sd-admin-ui-user")
+                , HE.onMouseEnter (HE.input_ (HoverIn ix))
+                , HE.onMouseLeave (HE.input_ HoverOut)
+                , HE.onClick (HE.input_ (Select ix))
+                ]
+                [ HH.div
+                    [ HP.class_ (HH.ClassName "sd-admin-ui-user-label") ]
+                    [ HH.text (QA.runUserId userId) ]
+                , HH.div
+                      [ HP.classes (HH.ClassName <$> ["sd-admin-ui-user-actions"] <> (guard (not isActive) $> "hidden")) ]
+                    [ HH.a
+                        [ HE.onClick (HE.input_ (DeleteUser userId)) ]
+                        [ HH.text "Delete" ]
+                    , HH.a
+                        [ HE.onClick (HE.input_ (EditUser userId)) ]
+                        [ HH.text "Permissions" ]
+                    ]
+                ]
       eval ∷ Query ~> DSL
       eval = case _ of
         Init next → do
@@ -157,6 +164,15 @@ component =
             allGroups ← fetchAllGroups
             users ← allUsers
             H.modify (_ { allGroups = Just allGroups, users = Just users })
+          pure next
+        Select ix next → do
+          H.modify (_ { selected = Just ix })
+          pure next
+        HoverIn ix next → do
+          H.modify (_ { hovered = Just ix })
+          pure next
+        HoverOut next → do
+          H.modify (_ { hovered = Nothing })
           pure next
         FetchUsers next → do
           users ← allUsers
