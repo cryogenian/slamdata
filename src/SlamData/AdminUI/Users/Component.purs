@@ -118,6 +118,8 @@ component =
           groupFilter userId = case state.groupFilter of
             NoFilter →
               true
+            -- TODO(Christoph): Display a warning/error about the wrong filter.
+            -- Maybe a red outline
             InvalidGroupFilter _ →
               true
             GroupFilter userIds →
@@ -180,11 +182,7 @@ component =
             pure next
           AC.Selected _ → pure next
 
-allUsers
-  ∷ ∀ m
-  . Monad m
-  ⇒ QuasarDSL m
-  ⇒ m (Array QA.UserId)
+allUsers ∷ ∀ m . Monad m ⇒ QuasarDSL m ⇒ m (Array QA.UserId)
 allUsers = do
   groupInfo (QA.GroupPath Pathy.rootDir) >>= case _ of
     Left _ →
@@ -193,11 +191,7 @@ allUsers = do
     Right { allMembers } →
       pure allMembers
 
-fetchAllGroups
-  ∷ ∀ m
-  . Monad m
-  ⇒ QuasarDSL m
-  ⇒ m (Array QA.GroupPath)
+fetchAllGroups ∷ ∀ m . Monad m ⇒ QuasarDSL m ⇒ m (Array QA.GroupPath)
 fetchAllGroups = do
   result ← groupInfo (QA.GroupPath Pathy.rootDir)
   pure (either (const []) _.subGroups result)
@@ -212,12 +206,7 @@ fetchTransitiveUsers path = do
   result ← groupInfo path
   pure (either (const []) _.allMembers result)
 
-crawlGroups
-  ∷ ∀ m
-  . Monad m
-  ⇒ QuasarDSL m
-  ⇒ QA.UserId
-  → m (Array QA.GroupPath)
+crawlGroups ∷ ∀ m . Monad m ⇒ QuasarDSL m ⇒ QA.UserId → m (Array QA.GroupPath)
 crawlGroups userId =
   map
     -- Drop the root directory, because every User is member of it implicitly
