@@ -68,6 +68,7 @@ buildProjections dimMap r = L.fromFoldable $ A.concat
   $ [ SC.dimensionProjection P.lat dimMap "lat"
     , SC.dimensionProjection P.lng dimMap "lng"
     , SC.dimensionProjection P.series dimMap "series"
+    , SC.measureProjection P.size dimMap "size"
     ]
   ⊕ ( A.mapWithIndex (\ix _ → SC.measureProjection (P.dimIx ix) dimMap $ "measure" ⊕ show ix)
       $ A.fromFoldable $ P.dims dimMap
@@ -109,6 +110,7 @@ decodeItem = decodeJson >=> \obj → do
        , series
        , dims
        }
+
 
 iconConf ∷ { iconUrl ∷ URIRef, iconSize ∷ LC.Point }
 iconConf =

@@ -230,12 +230,12 @@ packages = lm.union customMap $ map interpret mapFromFree
           >>= addSource Ax._datetime
 
       label ←
-        field Pr.formLabel
+        optional Pr.formLabel
           >>= addSource Ax._category
           >>= isFilteredBy value
 
       selected ←
-        field Pr.formSelected
+        optional Pr.formSelected
           >>= addSource Ax._category
           >>= addSource Ax._value
           >>= addSource Ax._date
@@ -257,12 +257,12 @@ packages = lm.union customMap $ map interpret mapFromFree
           >>= addSource Ax._datetime
 
       label ←
-        field Pr.formLabel
+        optional Pr.formLabel
           >>= addSource Ax._category
           >>= isFilteredBy value
 
       selected ←
-        field Pr.formSelected
+        optional Pr.formSelected
           >>= addSource Ax._category
           >>= addSource Ax._value
           >>= addSource Ax._date
@@ -283,12 +283,12 @@ packages = lm.union customMap $ map interpret mapFromFree
           >>= addSource Ax._datetime
 
       label ←
-        field Pr.formLabel
+        optional Pr.formLabel
           >>= addSource Ax._category
           >>= isFilteredBy value
 
       selected ←
-        field Pr.formSelected
+        optional Pr.formSelected
           >>= addSource Ax._category
           >>= addSource Ax._value
           >>= addSource Ax._date

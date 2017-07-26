@@ -82,7 +82,7 @@ type Item =
 
 decodeItem ∷ Json → Either String Item
 decodeItem = decodeJson >=> \obj → do
-  category ← Sem.requiredString "" <$> obj .? "category"
+  category ← Sem.requiredString "" <$> obj .? "dimension"
   measure1 ← Sem.requiredNumber zero <$> obj .? "measure1"
   measure2 ← Sem.maybeNumber <$> obj .? "measure2"
   size ← Sem.maybeNumber <$> obj .? "size"
@@ -120,17 +120,15 @@ buildData mbR =
   items f = A.mapMaybe \i →
     Tuple i.category <$> case f i, i.size of
       Nothing, _ → Nothing
-      Just value, _ | maybe false _.optionalMarkers mbR →
-        Just { value, symbolSize: fromMaybe zero $ Int.floor ∘ _.size.min <$> mbR }
-      Just value, Nothing →
-        Just { value, symbolSize: fromMaybe zero $ Int.floor ∘ _.size.min <$> mbR }
       Just value, Just size →
         Just { value, symbolSize: Int.floor size }
+      Just value, _ | maybe false _.optionalMarkers mbR →
+        Just { value, symbolSize: fromMaybe zero $ Int.floor ∘ _.size.min <$> mbR }
+      Just value, _ | otherwise →
+        Just { value, symbolSize: zero }
 
   adjustSymbolSizes ∷ ∀ f. Functor f ⇒ Foldable f ⇒ f LineItem → f LineItem
-  adjustSymbolSizes is
-    | maybe false _.optionalMarkers mbR = is
-    | otherwise =
+  adjustSymbolSizes is =
       let
         minValue ∷ Number
         minValue =

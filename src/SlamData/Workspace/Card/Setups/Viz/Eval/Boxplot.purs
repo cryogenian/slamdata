@@ -36,7 +36,6 @@ import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Auxiliary as Aux
 import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Common as SC
@@ -96,8 +95,8 @@ decodeItem = decodeJson >=> \obj → do
        , parallel
        }
 
-eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Resource → m Port.Out)
-eval dimMap aux =
+eval ∷ ∀ m. VizEval m (P.DimMap → Port.Resource → m Port.Out)
+eval dimMap =
   BCE.chartSetupEval buildSql buildPort aux'
   where
   buildPort r axes = Port.ChartInstructions
@@ -129,7 +128,7 @@ eval dimMap aux =
 
 buildProjections ∷ ∀ a. P.DimMap → a → L.List (Sql.Projection Sql.Sql)
 buildProjections dimMap _ = L.fromFoldable $ A.concat
-  [ SC.dimensionProjection P.value dimMap "value"
+  [ SC.dimensionProjection P.flatValue dimMap "value"
   , SC.dimensionProjection P.dimension dimMap "dimension"
   , SC.dimensionProjection P.series dimMap "series"
   , SC.dimensionProjection P.parallel dimMap "parallel"

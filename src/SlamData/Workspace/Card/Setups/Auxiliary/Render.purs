@@ -154,7 +154,7 @@ toggle proxy state =
             [ HP.type_ HP.InputCheckbox
             , HP.checked $ state ^. lens
             , ARIA.label $ label proxy
-            , HE.onValueInput \_ → Just $ inj proxy $ H.action $ Alg.Toggle
+            , HE.onChecked \_ → Just $ inj proxy $ H.action $ Alg.Toggle
             ]
         , HH.text $ label proxy
         ]

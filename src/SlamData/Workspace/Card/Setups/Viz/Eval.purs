@@ -61,12 +61,6 @@ import SlamData.Workspace.Card.Setups.Viz.Eval.Radar as Radar
 import SlamData.Workspace.Card.Setups.Viz.Eval.Sankey as Sankey
 import SlamData.Workspace.Card.Setups.Viz.Eval.Scatter as Scatter
 
-
-import Unsafe.Coerce (unsafeCoerce)
-
-hole ∷ ∀ a. a
-hole = unsafeCoerce unit
-
 lm ∷ ∀ a. LM.Module VT.VizType a
 lm = LM.openModule VT.eq_
 
@@ -83,6 +77,7 @@ eval m resource = do
   gOut ← for (CT.contractToGeo m.vizType) evalGeo
   cOut ← for (CT.contractToChart m.vizType) $ evalChart records
   stOut ← for (CT.contractToStatic m.vizType) $ evalStatic records
+
 
   maybe throwUnexpected pure
     $ iOut <|> sOut <|> gOut <|> cOut <|> stOut
@@ -134,7 +129,7 @@ eval m resource = do
   evalSelect ∷ Array J.Json → CT.Select () → m Port.Out
   evalSelect records formInputType = do
     dimMap ← getDimMap
-    port ← Select.eval records formInputType $ unsafePartial fromJust $ P.lookup P.formValue dimMap
+    port ← Select.eval dimMap records formInputType
     pure $ port × SM.singleton Port.defaultResourceVar (Left resource)
 
   evalGeo ∷ CT.Geo () → m Port.Out
@@ -149,24 +144,23 @@ eval m resource = do
   evalChart ∷ Array J.Json → CT.Chart () → m Port.Out
   evalChart records cht = do
     dimMap ← getDimMap
-    aux ← getAux
     case_
-      # on CT._area (const $ Area.eval dimMap aux resource)
-      # on CT._bar (const $ Bar.eval dimMap aux resource)
-      # on CT._boxplot (const $ Boxplot.eval dimMap aux resource)
-      # on CT._candlestick (const $ Candlestick.eval dimMap aux resource)
-      # on CT._funnel (const $ Funnel.eval dimMap aux resource)
-      # on CT._gauge (const $ Gauge.eval dimMap aux resource)
-      # on CT._graph (const $ Graph.eval dimMap aux resource)
-      # on CT._heatmap (const $ Heatmap.eval dimMap aux resource)
-      # on CT._line (const $ Line.eval dimMap aux resource)
+      # on CT._area (const $ getAux >>= \aux → Area.eval dimMap aux resource)
+      # on CT._bar (const $ getAux >>= \aux → Bar.eval dimMap aux resource)
+      # on CT._boxplot (const $ Boxplot.eval dimMap resource)
+      # on CT._candlestick (const $ Candlestick.eval dimMap resource)
+      # on CT._funnel (const $ getAux >>= \aux → Funnel.eval dimMap aux resource)
+      # on CT._gauge (const $ getAux >>= \aux → Gauge.eval dimMap aux resource)
+      # on CT._graph (const $ getAux >>= \aux → Graph.eval dimMap aux resource)
+      # on CT._heatmap (const $ getAux >>= \aux → Heatmap.eval dimMap aux resource)
+      # on CT._line (const $ getAux >>= \aux → Line.eval dimMap aux resource)
       # on CT._metric (const $ evalMetric records)
-      # on CT._parallel (const $ Parallel.eval dimMap aux resource)
-      # on CT._pie (const $ Pie.eval dimMap aux resource)
-      # on CT._punchCard (const $ PunchCard.eval dimMap aux resource)
-      # on CT._radar (const $ Radar.eval dimMap aux resource)
-      # on CT._sankey (const $ Sankey.eval dimMap aux resource)
-      # on CT._scatter (const $ Scatter.eval dimMap aux resource)
+      # on CT._parallel (const $ Parallel.eval dimMap resource)
+      # on CT._pie (const $ Pie.eval dimMap resource)
+      # on CT._punchCard (const $ getAux >>= \aux → PunchCard.eval dimMap aux resource)
+      # on CT._radar (const $ Radar.eval dimMap resource)
+      # on CT._sankey (const $ Sankey.eval dimMap resource)
+      # on CT._scatter (const $ getAux >>= \aux → Scatter.eval dimMap aux resource)
       # on CT._pivot (const $ CE.throw "Pivot table case should be handled separately")
       $ cht
 

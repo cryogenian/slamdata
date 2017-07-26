@@ -20,11 +20,11 @@ import SlamData.Prelude
 
 import Data.Argonaut (JArray, Json, decodeJson, (.?))
 import Data.Array as A
-import Data.List as L
 import Data.Lens ((^?))
+import Data.List as L
 import Data.Map as M
-import ECharts.Monad (DSL)
 import ECharts.Commands as E
+import ECharts.Monad (DSL)
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import SlamData.Workspace.Card.CardType as CT
@@ -33,15 +33,14 @@ import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Common as SC
-import SlamData.Workspace.Card.Setups.Common.Positioning as BCP
-import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.Common.Positioning as BCP
+import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
-import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
-import SlamData.Workspace.Card.Setups.Auxiliary as Aux
 import SqlSquared as Sql
 import Utils.Foldable (enumeratedFor_)
 
@@ -64,8 +63,8 @@ decodeItem = decodeJson >=> \obj → do
   parallel ← map Sem.maybeString $ obj .? "parallel"
   pure { dimension, high, low, open, close, parallel }
 
-eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Resource → m Port.Out)
-eval dimMap aux =
+eval ∷ ∀ m. VizEval m (P.DimMap → Port.Resource → m Port.Out)
+eval dimMap =
   BCE.chartSetupEval buildSql buildPort $ Just unit
   where
   buildPort r axes = Port.ChartInstructions
@@ -111,6 +110,7 @@ type OnOneGrid =
 
 buildData ∷ JArray → Array OnOneGrid
 buildData =
+
   BCP.adjustRectangularPositions
   ∘ oneGrids
   ∘ foldMap (foldMap A.singleton ∘ decodeItem)
@@ -147,15 +147,13 @@ options dimMap axes r kData = do
         , mkRow P.low $ CCT.formatValueIx 2 fmt
         , mkRow P.high $ CCT.formatValueIx 3 fmt
         ]
-
+  BCP.rectangularGrids kData
   BCP.rectangularTitles kData
     $ maybe "" D.jcursorLabel
     $ P.lookup P.parallel dimMap
 
-  BCP.rectangularGrids kData
 
   E.colors colors
-
   E.xAxes xAxes
   E.yAxes yAxes
   E.series series

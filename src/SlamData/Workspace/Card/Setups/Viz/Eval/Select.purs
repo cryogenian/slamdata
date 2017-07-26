@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Data.Argonaut as J
 import Data.Array as A
-import Data.Lens ((^?))
+import Data.Lens (preview)
 import Data.Map as Map
 import Data.Set as Set
 import SlamData.Workspace.Card.CardType as CT
@@ -30,14 +30,16 @@ import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Viz.Error.Select as LE
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
 
-eval ∷ ∀ m. VizEval m (Array J.Json → CT.Select () → D.LabeledJCursor → m Port.Port)
-eval records formInputType projection
+eval ∷ ∀ m. VizEval m (P.DimMap → Array J.Json → CT.Select () → m Port.Port)
+eval dimMap records formInputType
   | A.null records =
       LE.throwFormInputLabeledError $ LE.EmptyResource formInputType
   | otherwise = do
     selectedValues × valueLabelMap × _ × _ ←
       A.foldM foldFn (Set.empty × Map.empty × 0 × 0) records
+    let projection = unsafePartial fromJust $ P.lookup P.formValue dimMap
     pure
       $ Port.SetupSelect
           { projection
@@ -46,6 +48,10 @@ eval records formInputType projection
           , formInputType
           }
   where
+  mbFormValue = P.lookup P.formValue dimMap >>= ( preview $ D._value ∘ D._projection )
+  mbFormSelected = P.lookup P.formSelected dimMap >>= ( preview $ D._value ∘ D._projection )
+  mbFormLabel = P.lookup P.formLabel dimMap >>= ( preview $ D._value ∘ D._projection )
+
   foldFn acc@(selected × vlmap × keyCount × selectedCount) record = do
     when (keyCount > Sel.maximumCountOfEntries formInputType)
       $ LE.throwFormInputLabeledError
@@ -63,12 +69,12 @@ eval records formInputType projection
           }
 
     newKeyCount × newVlmap ←
-      case Sem.getSemantics record =<< (projection ^? D._value ∘ D._projection) of
+      case Sem.getSemantics record =<< mbFormValue of
         Nothing →
           pure $ keyCount × vlmap
         Just value → do
           let
-            mbNewLabel = Sem.getMaybeString record =<< ( projection ^? D._value ∘ D._projection )
+            mbNewLabel = Sem.getMaybeString record =<< mbFormLabel
           case Map.lookup value vlmap of
             Nothing →
               pure
@@ -81,7 +87,7 @@ eval records formInputType projection
               pure $ keyCount × vlmap
 
     newSelCount × newSelected ←
-      pure $ case Sem.getSemantics record =<< ( projection ^? D._value ∘ D._projection) of
+      pure $ case Sem.getSemantics record =<< mbFormSelected of
         Nothing → selectedCount × selected
         Just value
           | Set.member value selected → selectedCount × selected

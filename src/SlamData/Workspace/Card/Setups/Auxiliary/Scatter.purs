@@ -59,6 +59,8 @@ encode r =
 
 decode ∷ J.Json → String ⊹ State
 decode r = J.decodeJson r >>= \obj → do
+  tag ← obj .? "tag"
+  unless (tag ≡ "scatter") $ Left "This is not scatter chart"
   minSize ← obj .? "minSize"
   maxSize ← obj .? "maxSize"
   pure { size: { min: minSize, max: maxSize } }

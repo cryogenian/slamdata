@@ -167,7 +167,7 @@ evalCard = case _ of
           $ fromMaybe (M.chart unit)
           $ mm <|> join im <|> join pm <|> join sm <|> join gm
 
-  CC.Load model next →
+  CC.Load model next → do
     case model of
       Card.Viz vm → case_
         # on M._pivot (\m → do

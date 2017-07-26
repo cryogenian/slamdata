@@ -21,21 +21,20 @@ import SlamData.Prelude
 import Data.Argonaut (JArray, Json, decodeJson, (.?))
 import Data.Array as A
 import Data.List as L
-import ECharts.Monad (DSL)
 import ECharts.Commands as E
+import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Common as SC
-import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
-import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
-import SlamData.Workspace.Card.Setups.Auxiliary as Aux
 import SqlSquared as Sql
 
 type Item =
@@ -51,8 +50,8 @@ decodeItem = decodeJson >=> \obj → do
   weight ← map (fromMaybe zero ∘ Sem.maybeNumber) $ obj .? "weight"
   pure { source, target, weight }
 
-eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Resource → m Port.Out)
-eval dimMap aux =
+eval ∷ ∀ m. VizEval m (P.DimMap → Port.Resource → m Port.Out)
+eval dimMap =
   BCE.chartSetupEval buildSql buildPort $ Just unit
   where
   buildPort r axes = Port.ChartInstructions
