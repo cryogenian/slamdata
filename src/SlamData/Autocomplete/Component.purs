@@ -72,6 +72,7 @@ type DSL item m = H.ComponentDSL (State item) (Query item) (Message item) m
 
 type Config item =
   { containerClass ∷ HH.ClassName
+  , placeholder ∷ String
   , itemFilter ∷ String → item → Boolean
   , itemText ∷ item → String
   , itemDisplay ∷ item → H.HTML Void (Const Void)
@@ -80,6 +81,7 @@ type Config item =
 defaultConfig ∷ Config String
 defaultConfig =
   { containerClass: HH.ClassName "halogen-autocomplete"
+  , placeholder: ""
   , itemFilter: \input item → not String.null input && String.contains (String.Pattern input) item
   , itemText: id
   , itemDisplay: \item → HH.text item
@@ -90,7 +92,7 @@ component
   . MonadEff (dom ∷ DOM | e) m
   ⇒ Config item
   → H.Component HH.HTML (Query item) (Input item) (Message item) m
-component { containerClass, itemFilter, itemText, itemDisplay } =
+component { containerClass, placeholder, itemFilter, itemText, itemDisplay } =
   H.lifecycleComponent
    { initialState
    , render
@@ -115,6 +117,7 @@ component { containerClass, itemFilter, itemText, itemDisplay } =
         ]
         [ HH.input [ HP.value state.inputText
                    , HE.onValueInput (HE.input Input)
+                   , HP.placeholder placeholder
                    , HE.onBlur (HE.input_ Blur)
                    , HE.onKeyDown (HE.input KeyDown)
                    ]

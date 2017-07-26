@@ -103,6 +103,13 @@ component =
                   (maybe [] (map QA.printGroupPath) state.allGroups)
                   (HE.input HandleGroupFilter)
               ]
+            , HH.slot
+                unit
+                (AC.component AC.defaultConfig { containerClass = H.ClassName "sd-admin-ui-autocomplete"
+                                               , placeholder = "Search Group"
+                                               })
+                (maybe [] (map QA.printGroupPath) state.allGroups)
+                (HE.input HandleGroupFilter)
             ]
           , HH.ul
               [ HP.class_ (HH.ClassName "sd-admin-ui-users-list") ]
