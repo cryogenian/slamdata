@@ -19,23 +19,21 @@ module SlamData.Workspace.Card.Setups.PivotTable.Error where
 
 import SlamData.Prelude
 
-import Quasar.Advanced.QuasarAF (QError)
 import SlamData.GlobalError as GE
 import Utils (throwVariantError)
 
-data PivotTableError
-  = PivotTableNoColumnSelectedError
-  | PivotTableQuasarError QError
+data Error = NoColumnSelected
 
-instance showPivotTableError ∷ Show PivotTableError where
-  show = case _ of
-    PivotTableNoColumnSelectedError → "PivotTableNoColumnSelectedError"
-    PivotTableQuasarError qErr → "(PivotTableQuasarError " <> show qErr <> ")"
+instance showPivotTableError ∷ Show Error where
+  show _ = "NoColumnSelectd"
 
-pivotTableToGlobalError ∷ PivotTableError → Maybe GE.GlobalError
-pivotTableToGlobalError = case _ of
-  PivotTableQuasarError qErr → hush (GE.fromQError qErr)
-  _ → Nothing
+pivotTableToGlobalError ∷ Error → Maybe GE.GlobalError
+pivotTableToGlobalError _ = Nothing
 
-throwPivotTableError ∷ forall v m a. MonadThrow (Variant (pivotTable ∷ PivotTableError | v)) m ⇒ PivotTableError → m a
-throwPivotTableError = throwVariantError (SProxy :: SProxy "pivotTable")
+throwError
+  ∷ ∀ v m a
+  . MonadThrow (Variant (pivotTable ∷ Error | v)) m
+  ⇒ Error
+  → m a
+throwError =
+  throwVariantError (SProxy ∷ SProxy "pivotTable")

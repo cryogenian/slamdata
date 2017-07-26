@@ -49,7 +49,7 @@ type CardError = Variant
   , formInputStatic ∷ FISE.Error
   , markdown ∷ CMDE.MarkdownError
   , open ∷ COE.OpenError
-  , pivotTable ∷ CPT.PivotTableError
+  , pivotTable ∷ CPT.Error
   , query ∷ CQE.QueryError
   , search ∷ CSE.SearchError
   , table ∷ CTE.TableError

@@ -53,17 +53,15 @@ import SlamData.Workspace.Card.Markdown.Error as CME
 import SlamData.Workspace.Card.Open.Error as COE
 import SlamData.Workspace.Card.Query.Error as CQE
 import SlamData.Workspace.Card.Search.Error as CSE
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as Pr
 import SlamData.Workspace.Card.Setups.PivotTable.Error as CPTE
+import SlamData.Workspace.Card.Setups.Viz.Error as SVE
 import SlamData.Workspace.Card.Setups.Viz.Error.Select as CFILE
 import SlamData.Workspace.Card.Setups.Viz.Error.Static as CFISE
-import SlamData.Workspace.Card.Setups.Viz.Error as SVE
 import SlamData.Workspace.Card.Table.Error as CTE
 import SlamData.Workspace.Card.Variables.Error as CVE
 import SlamData.Workspace.Card.Viz.Error as VE
-import SlamData.Workspace.Card.Setups.DimensionMap.Projection as Pr
-
 import Text.Parsing.Parser (parseErrorMessage)
-
 import Utils (prettyJson)
 
 type DSL = H.ComponentDSL State Query Void Slam
@@ -730,7 +728,7 @@ searchErrorMessage { accessType, expanded } err =
             $> HH.p_ [ HH.text "Go back to the previous card and correct your query to fix this error." ]
           ]
 
-pivotTableErrorMessage ∷ State → CPTE.PivotTableError → HTML
+pivotTableErrorMessage ∷ State → CPTE.Error → HTML
 pivotTableErrorMessage { accessType, expanded } err =
   case accessType of
     Editable → renderDetails err
@@ -745,7 +743,7 @@ pivotTableErrorMessage { accessType, expanded } err =
         ]
   where
   renderDetails = case _ of
-    CPTE.PivotTableNoColumnSelectedError →
+    CPTE.NoColumnSelected →
       HH.div_
         $ join
           [ pure $ errorTitle
@@ -758,21 +756,6 @@ pivotTableErrorMessage { accessType, expanded } err =
               ]
           , guard (accessType == Editable)
             $> HH.p_ [ HH.text "Go back to the previous card and select a column to fix this error." ]
-          ]
-    CPTE.PivotTableQuasarError error →
-      HH.div_
-        $ join
-          [ pure $ errorTitle
-            [ HH.text
-              $ "An error occurred in the "
-              <> VT.name CT.pivot
-              <> " card." ]
-          , pure $ HH.p_
-              [ HH.text "The Quasar Analytics engine returned the following error:"
-              , printQErrorWithDetails error
-              ]
-          , guard (accessType == Editable)
-            $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
 
 variablesErrorMessage ∷ State → CVE.VariablesError → HTML

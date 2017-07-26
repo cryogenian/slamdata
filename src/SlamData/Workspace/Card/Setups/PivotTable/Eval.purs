@@ -35,9 +35,11 @@ import Data.StrMap as SM
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Eval.Monad as CEM
+import Quasar.Advanced.QuasarAF (QError)
+import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis (buildAxes)
-import SlamData.Workspace.Card.Setups.PivotTable.Error (PivotTableError(..), throwPivotTableError)
+import SlamData.Workspace.Card.Setups.PivotTable.Error as PE
 import SlamData.Workspace.Card.Setups.PivotTable.Model as PTM
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Transform as T
@@ -49,7 +51,7 @@ eval
   ∷ ∀ m v
   . MonadAsk CEM.CardEnv m
   ⇒ MonadState CEM.CardState m
-  ⇒ MonadThrow (Variant (pivotTable ∷ PivotTableError | v)) m
+  ⇒ MonadThrow (Variant (pivotTable ∷ PE.Error, qerror ∷ QError | v)) m
   ⇒ QuasarDSL m
   ⇒ PTM.Model
   → Port.DataMap
@@ -68,7 +70,7 @@ eval options varMap resource = do
       _ → do
         QQ.sample filePath 0 300 >>= case _ of
           Right sample → pure (buildAxes sample)
-          Left err → throwPivotTableError (PivotTableQuasarError err)
+          Left err → CE.throwQError err
   let
     state' = { axes, records: [], resource }
     view = Port.View r (Sql.print $ snd query) varMap
@@ -76,10 +78,10 @@ eval options varMap resource = do
     backendPath = fromMaybe Path.rootDir (Path.parentDir r)
   put (Just (CEM.Analysis state'))
   when (Array.null options.columns) do
-    throwPivotTableError PivotTableNoColumnSelectedError
+    PE.throwError PE.NoColumnSelected
   QQ.viewQuery r (snd query) SM.empty >>= case _ of
     Right result → pure result
-    Left err → throwPivotTableError (PivotTableQuasarError err)
+    Left err → CE.throwQError err
   pure output
 
 mkSql ∷ PTM.Model → FilePath → Port.PivotTablePort × Sql
