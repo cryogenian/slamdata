@@ -43,3 +43,5 @@ data Query a
   | HandleGroupByPicker (DPC.Message JCursorNode) a
   | HandleColumnPicker (DPC.Message ColumnNode) a
   | HandleTransformPicker ForDimension (AS.Message T.Transform) a
+
+data Message = Update

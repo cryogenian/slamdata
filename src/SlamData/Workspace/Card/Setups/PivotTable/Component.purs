@@ -15,8 +15,6 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.Card.Setups.PivotTable.Component where
-{-  ( pivotTableBuilderComponent
-  ) where
 
 import SlamData.Prelude
 
@@ -35,16 +33,13 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.HTML.CSS as HC
-
-import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Component as CC
-import SlamData.Workspace.Card.Eval.State (_Axes)
-import SlamData.Workspace.Card.Model as Card
+--import SlamData.Workspace.Card.Eval.State (_Axes)
+--import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Setups.ActionSelect.Component as AS
 import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Workspace.Card.Setups.PivotTable.Component.ChildSlot as PCS
-import SlamData.Workspace.Card.Setups.PivotTable.Component.Query (Query(..), ForDimension(..))
-import SlamData.Workspace.Card.Setups.PivotTable.Component.State as PS
+import SlamData.Workspace.Card.Setups.PivotTable.Component.ChildSlot as CS
+import SlamData.Workspace.Card.Setups.PivotTable.Component.Query as Q
+import SlamData.Workspace.Card.Setups.PivotTable.Component.State as ST
 import SlamData.Workspace.Card.Setups.PivotTable.Model as PTM
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.DimensionPicker.Column (flattenColumns, showColumn)
@@ -54,25 +49,23 @@ import SlamData.Workspace.Card.Setups.Inputs as I
 import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Transform.Numeric as N
 import SlamData.Workspace.Card.Setups.Transform.Place.Component as TPC
-import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-
+--import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import Utils (showPrettyJCursor, showJCursorTip)
+import SlamData.Monad (Slam)
 import Utils.Lens as UL
 
-type DSL = CC.InnerCardParentDSL PS.State Query PCS.ChildQuery PCS.ChildSlot
+type HTML = H.ParentHTML Q.Query CS.ChildQuery CS.ChildSlot Slam
+type DSL = H.ParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot Q.Message Slam
 
-type HTML = CC.InnerCardParentHTML Query PCS.ChildQuery PCS.ChildSlot
+component ∷ H.Component HH.HTML Q.Query Unit Q.Message Slam
+component = H.parentComponent
+  { initialState: const ST.initialState
+  , render
+  , eval
+  , receiver: const Nothing
+  }
 
-pivotTableBuilderComponent ∷ CC.CardOptions → CC.CardComponent
-pivotTableBuilderComponent =
-  CC.makeCardComponent CT.pivot $ H.parentComponent
-    { render
-    , eval: coproduct evalCard evalOptions
-    , initialState: const PS.initialState
-    , receiver: const Nothing
-    }
-
-render ∷ PS.State → HTML
+render ∷ ST.State → HTML
 render st =
   HH.div
     [ HP.classes [ HH.ClassName "sd-pivot-options" ] ]
@@ -94,8 +87,8 @@ render st =
     ]
   where
   renderSelect = case _ of
-    PS.SelectColumn values →
-      HH.slot' PCS.cpCol unit
+    ST.SelectColumn values →
+      HH.slot' CS.cpCol unit
         (DPC.picker
           { title: "Choose column"
           , label: DPC.labelNode (showColumn showJCursorTip)
@@ -104,9 +97,9 @@ render st =
           , isSelectable: DPC.isLeafPath
           })
         unit
-        (Just ∘ right ∘ H.action ∘ HandleColumnPicker)
-    PS.SelectGroupBy values →
-      HH.slot' PCS.cpDim unit
+        (Just ∘ H.action ∘ Q.HandleColumnPicker)
+    ST.SelectGroupBy values →
+      HH.slot' CS.cpDim unit
         (DPC.picker
           { title: "Choose dimension"
           , label: DPC.labelNode showJCursorTip
@@ -115,9 +108,9 @@ render st =
           , isSelectable: DPC.isLeafPath
           })
         unit
-        (Just ∘ right ∘ H.action ∘ HandleGroupByPicker)
-    PS.SelectTransform slot selection options →
-      HH.slot' PCS.cpTransform unit AS.component
+        (Just ∘ H.action ∘ Q.HandleGroupByPicker)
+    ST.SelectTransform slot selection options →
+      HH.slot' CS.cpTransform unit AS.component
         { options
         , selection: (\a → a × a) <$> selection
         , title: "Choose transformation"
@@ -129,7 +122,7 @@ render st =
             T.Numeric (N.Ceil _) → Just $ HCP.proxy TPC.transformCeil
             _ → Nothing
         }
-        (Just ∘ right ∘ H.action ∘ HandleTransformPicker slot)
+        (Just ∘ H.action ∘ Q.HandleTransformPicker slot)
 
   renderedDimensions =
     let
@@ -145,7 +138,7 @@ render st =
               [ HP.classes [ HH.ClassName "sd-pivot-options-dim-inner"] ]
               [ HH.button
                   [ HP.classes [ HH.ClassName "sd-pivot-options-plus" ]
-                  , HE.onClick (HE.input_ (right ∘ AddGroupBy))
+                  , HE.onClick (HE.input_ Q.AddGroupBy)
                   , ARIA.label "Add dimension"
                   , HP.title "Add dimension"
                   ]
@@ -169,10 +162,10 @@ render st =
               , showLabel: absurd
               , showDefaultLabel: showPrettyJCursor
               , showValue: showPrettyJCursor
-              , onLabelChange: HE.input (\l → right ∘ ChangeLabel (ForGroupBy slot) l)
-              , onDismiss: HE.input_ (right ∘ Remove (ForGroupBy slot))
-              , onConfigure: HE.input_ (right ∘ Configure (ForGroupBy slot))
-              , onMouseDown: HE.input (\e → right ∘ OrderStart (ForGroupBy slot) e)
+              , onLabelChange: HE.input (\l → Q.ChangeLabel (Q.ForGroupBy slot) l)
+              , onDismiss: HE.input_ (Q.Remove (Q.ForGroupBy slot))
+              , onConfigure: HE.input_ (Q.Configure (Q.ForGroupBy slot))
+              , onMouseDown: HE.input (\e → Q.OrderStart (Q.ForGroupBy slot) e)
               , onClick: const Nothing
               , onLabelClick: const Nothing
               , disabled: false
@@ -197,8 +190,8 @@ render st =
   dimensionEvents slot =
     if isJust st.orderingDimension
       then
-        [ HE.onMouseOver (HE.input_ (right ∘ OrderOver (ForGroupBy slot)))
-        , HE.onMouseOut (HE.input_ (right ∘ OrderOut (ForGroupBy slot)))
+        [ HE.onMouseOver (HE.input_ (Q.OrderOver (Q.ForGroupBy slot)))
+        , HE.onMouseOut (HE.input_ (Q.OrderOut (Q.ForGroupBy slot)))
         ]
       else
         []
@@ -219,7 +212,7 @@ render st =
                   [ HP.classes [ HH.ClassName "sd-pivot-options-col-value" ] ]
                   [ HH.button
                       [ HP.classes [ HH.ClassName "sd-pivot-options-plus" ]
-                      , HE.onClick (HE.input_ (right ∘ AddColumn))
+                      , HE.onClick (HE.input_ (Q.AddColumn))
                       , ARIA.label "Add column"
                       , HP.title "Add column"
                       ]
@@ -244,10 +237,10 @@ render st =
               , showLabel: absurd
               , showDefaultLabel: showColumn showPrettyJCursor
               , showValue: showColumn showPrettyJCursor
-              , onLabelChange: HE.input (\l → right ∘ ChangeLabel (ForColumn slot) l)
-              , onDismiss: HE.input_ (right ∘ Remove (ForColumn slot))
-              , onConfigure: HE.input_ (right ∘ Configure (ForColumn slot))
-              , onMouseDown: HE.input (\e → right ∘ OrderStart (ForColumn slot) e)
+              , onLabelChange: HE.input (\l → Q.ChangeLabel (Q.ForColumn slot) l)
+              , onDismiss: HE.input_ (Q.Remove (Q.ForColumn slot))
+              , onConfigure: HE.input_ (Q.Configure (Q.ForColumn slot))
+              , onMouseDown: HE.input (\e → Q.OrderStart (Q.ForColumn slot) e)
               , onClick: const Nothing
               , onLabelClick: const Nothing
               , disabled: false
@@ -272,12 +265,12 @@ render st =
   columnEvents slot =
     if isJust st.orderingColumn
       then
-        [ HE.onMouseOver (HE.input_ (right ∘ OrderOver (ForColumn slot)))
-        , HE.onMouseOut (HE.input_ (right ∘ OrderOut (ForColumn slot)))
+        [ HE.onMouseOver (HE.input_ (Q.OrderOver (Q.ForColumn slot)))
+        , HE.onMouseOut (HE.input_ (Q.OrderOut (Q.ForColumn slot)))
         ]
       else
         []
-
+{-
 evalCard ∷ CC.CardEvalQuery ~> DSL
 evalCard = case _ of
   CC.Activate next →
@@ -285,11 +278,11 @@ evalCard = case _ of
   CC.Deactivate next →
     pure next
   CC.Save k →
-    map (k ∘ Card.BuildPivotTable ∘ PS.modelFromState) H.get
+    map (k ∘ Card.BuildPivotTable ∘ ST.modelFromState) H.get
   CC.Load card next → do
     case card of
       Card.BuildPivotTable model →
-        H.modify (PS.stateFromModel model)
+        H.modify (ST.stateFromModel model)
       _ → pure unit
     pure next
   CC.ReceiveInput _ _ next →
@@ -301,47 +294,47 @@ evalCard = case _ of
       H.modify _ { axes = axes }
     pure next
   CC.ReceiveDimensions dims reply → do
-    _ ← H.query' PCS.cpTransform unit (H.action AS.UpdateDimensions)
+    _ ← H.query' CS.cpTransform unit (H.action AS.UpdateDimensions)
     pure $ reply
       if dims.width < 540.0 || dims.height < 360.0
         then Low
         else High
-
-evalOptions ∷ Query ~> DSL
-evalOptions = case _ of
-  AddGroupBy next → do
+-}
+eval ∷ Q.Query ~> DSL
+eval = case _ of
+  Q.AddGroupBy next → do
     st ← H.get
-    let vals = PS.selectGroupByValues st.axes
-    H.modify _ { selecting = Just (PS.SelectGroupBy vals) }
+    let vals = ST.selectGroupByValues st.axes
+    H.modify _ { selecting = Just (ST.SelectGroupBy vals) }
     pure next
-  AddColumn next → do
+  Q.AddColumn next → do
     st ← H.get
-    let vals = PS.selectColumnValues st.axes
-    H.modify _ { selecting = Just (PS.SelectColumn vals) }
+    let vals = ST.selectColumnValues st.axes
+    H.modify _ { selecting = Just (ST.SelectColumn vals) }
     pure next
-  Remove (ForGroupBy slot) next → do
+  Q.Remove (Q.ForGroupBy slot) next → do
     H.modify \st →
       st { dimensions = Array.filter (not ∘ eq slot ∘ fst) st.dimensions }
-    H.raise CC.modelUpdate
+    H.raise Q.Update
     pure next
-  Remove (ForColumn slot) next → do
+  Q.Remove (Q.ForColumn slot) next → do
     H.modify \st →
       st { columns = Array.filter (not ∘ eq slot ∘ fst) st.columns }
-    H.raise CC.modelUpdate
+    H.raise Q.Update
     pure next
-  ChangeLabel fd label next → do
+  Q.ChangeLabel fd label next → do
     let
       label'
         | label ≡ "" = Nothing
         | otherwise  = Just (D.Static label)
     case fd of
-      ForGroupBy slot →
-        H.modify (PS._dimensions ∘ UL.lookup slot ∘ D._category .~ label')
-      ForColumn slot →
-        H.modify (PS._columns ∘ UL.lookup slot ∘ D._category .~ label')
-    H.raise CC.modelUpdate
+      Q.ForGroupBy slot →
+        H.modify (ST._dimensions ∘ UL.lookup slot ∘ D._category .~ label')
+      Q.ForColumn slot →
+        H.modify (ST._columns ∘ UL.lookup slot ∘ D._category .~ label')
+    H.raise Q.Update
     pure next
-  Configure (ForGroupBy slot) next → do
+  Q.Configure (Q.ForGroupBy slot) next → do
     st ← H.get
     let
       groupBy = st.dimensions ^? UL.lookup slot ∘ D._value
@@ -350,10 +343,10 @@ evalOptions = case _ of
         Just (D.Projection mbTr cursor) →
           transformOptions (T.axisTransforms (Ax.axisType cursor st.axes) mbTr) mbTr
         _ → mempty
-      selecting = PS.SelectTransform (ForGroupBy slot) selection options
+      selecting = ST.SelectTransform (Q.ForGroupBy slot) selection options
     H.modify _ { selecting = Just selecting }
     pure next
-  Configure (ForColumn slot) next → do
+  Q.Configure (Q.ForColumn slot) next → do
     st ← H.get
     let
       col = st.columns ^? UL.lookup slot ∘ D._value
@@ -364,10 +357,10 @@ evalOptions = case _ of
         Just (D.Projection mbTr PTM.All) | rootAxes st.axes →
           transformOptions (T.axisTransforms (Ax.axisType J.JCursorTop st.axes) mbTr) mbTr
         _ → mempty
-      selecting = PS.SelectTransform (ForColumn slot) selection options
+      selecting = ST.SelectTransform (Q.ForColumn slot) selection options
     H.modify _ { selecting = Just selecting }
     pure next
-  OrderStart (ForGroupBy slot) ev next → do
+  Q.OrderStart (Q.ForGroupBy slot) ev next → do
     let
       opts =
         { source: slot
@@ -375,10 +368,10 @@ evalOptions = case _ of
         , offset: 0.0
         }
     H.subscribe $ Drag.dragEventSource ev \drag →
-      Just (right (Ordering (ForGroupBy slot) drag H.Listening))
+      Just (Q.Ordering (Q.ForGroupBy slot) drag H.Listening)
     H.modify _ { orderingDimension = Just opts }
     pure next
-  Ordering (ForGroupBy slot) ev next → do
+  Q.Ordering (Q.ForGroupBy slot) ev next → do
     st ← H.get
     for_ st.orderingDimension \opts →
       case ev of
@@ -389,23 +382,23 @@ evalOptions = case _ of
             Just slot' → do
               H.modify _
                 { orderingDimension = Nothing
-                , dimensions = PS.reorder slot slot' st.dimensions
+                , dimensions = ST.reorder slot slot' st.dimensions
                 }
-              H.raise CC.modelUpdate
+              H.raise Q.Update
             Nothing →
               H.modify _ { orderingDimension = Nothing }
     pure next
-  OrderOver (ForGroupBy slot) next → do
+  Q.OrderOver (Q.ForGroupBy slot) next → do
     st ← H.get
     for_ st.orderingDimension \opts →
       H.modify _ { orderingDimension = Just (opts { over = Just slot }) }
     pure next
-  OrderOut (ForGroupBy slot) next → do
+  Q.OrderOut (Q.ForGroupBy slot) next → do
     st ← H.get
     for_ st.orderingDimension \opts →
       H.modify _ { orderingDimension = Just (opts { over = Nothing }) }
     pure next
-  OrderStart (ForColumn slot) ev next → do
+  Q.OrderStart (Q.ForColumn slot) ev next → do
     let
       opts =
         { source: slot
@@ -413,10 +406,10 @@ evalOptions = case _ of
         , offset: 0.0
         }
     H.subscribe $ Drag.dragEventSource ev \drag →
-      Just (right (Ordering (ForColumn slot) drag H.Listening))
+      Just (Q.Ordering (Q.ForColumn slot) drag H.Listening)
     H.modify _ { orderingColumn = Just opts }
     pure next
-  Ordering (ForColumn slot) ev next → do
+  Q.Ordering (Q.ForColumn slot) ev next → do
     st ← H.get
     for_ st.orderingColumn \opts →
       case ev of
@@ -427,23 +420,23 @@ evalOptions = case _ of
             Just slot' → do
               H.modify _
                 { orderingColumn = Nothing
-                , columns = PS.reorder slot slot' st.columns
+                , columns = ST.reorder slot slot' st.columns
                 }
-              H.raise CC.modelUpdate
+              H.raise Q.Update
             Nothing →
               H.modify _ { orderingColumn = Nothing }
     pure next
-  OrderOver (ForColumn slot) next → do
+  Q.OrderOver (Q.ForColumn slot) next → do
     st ← H.get
     for_ st.orderingColumn \opts →
       H.modify _ { orderingColumn = Just (opts { over = Just slot }) }
     pure next
-  OrderOut (ForColumn slot) next → do
+  Q.OrderOut (Q.ForColumn slot) next → do
     st ← H.get
     for_ st.orderingColumn \opts →
       H.modify _ { orderingColumn = Just (opts { over = Nothing }) }
     pure next
-  HandleGroupByPicker msg next → do
+  Q.HandleGroupByPicker msg next → do
     case msg of
       DPC.Dismiss →
         H.modify _ { selecting = Nothing }
@@ -457,9 +450,9 @@ evalOptions = case _ of
           , dimensions = Array.snoc st.dimensions (st.fresh × cell)
           , selecting = Nothing
           }
-        H.raise CC.modelUpdate
+        H.raise Q.Update
     pure next
-  HandleColumnPicker msg next → do
+  Q.HandleColumnPicker msg next → do
     case msg of
       DPC.Dismiss →
         H.modify _ { selecting = Nothing }
@@ -476,9 +469,9 @@ evalOptions = case _ of
           , columns = Array.snoc st.columns (st.fresh × cell)
           , selecting = Nothing
           }
-        H.raise CC.modelUpdate
+        H.raise Q.Update
     pure next
-  HandleTransformPicker fd msg next → do
+  Q.HandleTransformPicker fd msg next → do
     case msg of
       AS.Dismiss →
         H.modify _ { selecting = Nothing }
@@ -486,9 +479,9 @@ evalOptions = case _ of
         H.modify
           $ _ { selecting = Nothing }
           ∘ case fd of
-              ForGroupBy slot → PS.setGroupByTransform mbt slot
-              ForColumn slot → PS.setColumnTransform mbt slot
-    H.raise CC.modelUpdate
+              Q.ForGroupBy slot → ST.setGroupByTransform mbt slot
+              Q.ForColumn slot → ST.setColumnTransform mbt slot
+    H.raise Q.Update
     pure next
 
 transformOptions ∷ Array T.Transform → Maybe T.Transform → Array T.Transform
@@ -505,4 +498,3 @@ rootAxes ax =
   || onlyTop ax.datetime
   where
   onlyTop = eq [ J.JCursorTop ] ∘ Array.fromFoldable
--}
