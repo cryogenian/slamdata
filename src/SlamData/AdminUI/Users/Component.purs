@@ -80,7 +80,7 @@ component =
     where
       render state =
         HH.div
-          [ HP.class_ (HH.ClassName "users") ]
+          [ HP.class_ (HH.ClassName "sd-admin-ui-users") ]
           [ HH.fieldset_
             [ HH.label_
               [ HH.text "Search"
@@ -178,7 +178,6 @@ component =
                   users ← fetchTransitiveUsers path
                   H.modify (_ { groupFilter = GroupFilter users })
               _ → H.modify (_ { groupFilter = InvalidGroupFilter s })
-
             pure next
           AC.Selected _ → pure next
 

@@ -83,7 +83,7 @@ render state =
 tabHeader ∷ AT.TabIndex → AT.HTML
 tabHeader active =
   HH.ul
-    [ HP.class_ $ H.ClassName "tabs"]
+    [ HP.class_ $ H.ClassName "sd-admin-ui-tabs"]
     $ Array.fromFoldable
     $ AT.allTabs <#> \t →
       HH.li
@@ -96,7 +96,7 @@ tabHeader active =
 tabBody ∷ AT.State → AT.HTML
 tabBody state =
   HH.div
-    [HP.class_ $ HH.ClassName "tab-body"]
+    [HP.class_ $ HH.ClassName "sd-admin-ui-tab-body"]
     (activeTab <> [closeButton])
   where
     closeButton =
@@ -111,21 +111,21 @@ tabBody state =
     activeTab = case state.active of
       AT.MySettings →
         pure $ HH.div
-          [ HP.class_ (HH.ClassName "my-settings") ]
+          [ HP.class_ (HH.ClassName "sd-admin-ui-my-settings") ]
           (renderMySettingsForm state.formState.mySettings)
       AT.Database →
         pure $ HH.div
-          [ HP.class_ (HH.ClassName "database") ]
+          [ HP.class_ (HH.ClassName "sd-admin-ui-database") ]
           (renderDatabaseForm state.formState.database)
       AT.Server →
         pure $ HH.div
-          [ HP.class_ (HH.ClassName "server") ]
+          [ HP.class_ (HH.ClassName "sd-admin-ui-server") ]
           (renderServerForm state.formState.server)
       AT.Users →
         [ HH.slot' AT.cpUsers unit Users.component unit (HE.input AT.HandleUsers) ]
       AT.Groups →
         pure $ HH.div
-          [ HP.class_ (HH.ClassName "groups") ]
+          [ HP.class_ (HH.ClassName "sd-admin-ui-groups") ]
           (Group.renderGroupsForm state.formState.groups)
       _ →
         [HH.text "Not implemented"]
