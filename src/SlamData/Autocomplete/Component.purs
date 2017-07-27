@@ -36,6 +36,7 @@ data Query item a
   | Input String a
   | Select item a
   | ItemClick item MouseEvent a
+  | Focus a
   | Blur a
   | Previous a
   | Next a
@@ -73,6 +74,7 @@ type DSL item m = H.ComponentDSL (State item) (Query item) (Message item) m
 type Config item =
   { containerClass ∷ HH.ClassName
   , placeholder ∷ String
+  , autofirst ∷ Boolean
   , itemFilter ∷ String → item → Boolean
   , itemText ∷ item → String
   , itemDisplay ∷ item → H.HTML Void (Const Void)
@@ -82,6 +84,7 @@ defaultConfig ∷ Config String
 defaultConfig =
   { containerClass: HH.ClassName "halogen-autocomplete"
   , placeholder: ""
+  , autofirst: false
   , itemFilter: \input item → not String.null input && String.contains (String.Pattern input) item
   , itemText: id
   , itemDisplay: \item → HH.text item
@@ -92,7 +95,7 @@ component
   . MonadEff (dom ∷ DOM | e) m
   ⇒ Config item
   → H.Component HH.HTML (Query item) (Input item) (Message item) m
-component { containerClass, placeholder, itemFilter, itemText, itemDisplay } =
+component { containerClass, placeholder, autofirst, itemFilter, itemText, itemDisplay } =
   H.lifecycleComponent
    { initialState
    , render
@@ -119,6 +122,7 @@ component { containerClass, placeholder, itemFilter, itemText, itemDisplay } =
                    , HE.onValueInput (HE.input Input)
                    , HP.placeholder placeholder
                    , HE.onBlur (HE.input_ Blur)
+                   , HE.onFocus (HE.input_ Focus)
                    , HE.onKeyDown (HE.input KeyDown)
                    ]
         , HH.ul
@@ -157,6 +161,9 @@ component { containerClass, placeholder, itemFilter, itemText, itemDisplay } =
            close CuzNoMatches
            pure a
          else eval (Open a)
+     Focus a → do
+       when autofirst (H.modify (_ { open = true, index = Just 0 }))
+       pure a
      Blur a → do
        close CuzBlur
        pure a

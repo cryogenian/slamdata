@@ -36,6 +36,7 @@ import SlamData.Monad (Slam)
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Security (groupInfo, removeUsersFromGroup)
 import SlamData.Render.Common as R
+import SlamData.Render.Icon as I
 
 data Query a
   = Init a
@@ -88,27 +89,36 @@ component =
           [ HP.class_ (HH.ClassName "sd-admin-ui-users") ]
           [ HH.div
             [ HP.class_ (HH.ClassName "sd-admin-ui-users-header")]
-            [ HH.input
-                [ HP.class_ (HH.ClassName "sd-admin-ui-users-search")
-                , HP.type_ HP.InputText
-                , HP.placeholder "Search User"
-                , HE.onValueInput (HE.input \str → SetFilter str)
-                , HP.value state.filter
+            [ HH.div [ HP.class_ (H.ClassName "sd-admin-ui-users-search")]
+                [ HH.div
+                    [ HP.class_ (HH.ClassName "sd-admin-ui-users-search-icon") ]
+                    [ I.searchSm ]
+                , HH.input
+                    [ HP.class_ (HH.ClassName "sd-admin-ui-users-search-field")
+                    , HP.type_ HP.InputText
+                    , HP.placeholder "Search by user id"
+                    , HE.onValueInput (HE.input \str → SetFilter str)
+                    , HP.value state.filter
+                    ]
+                , HH.button
+                    [ HP.class_ (HH.ClassName "sd-admin-ui-users-search-clear")
+                    , HP.type_ HP.ButtonButton
+                    , HE.onClick (HE.input_ (SetFilter ""))
+                    , HP.enabled (state.filter /= "")
+                    ]
+                    [ R.clearFieldIcon "Clear search string" ]
                 ]
-            , HH.button
-                [ HE.onClick (HE.input_ (SetFilter ""))
-                , HP.classes (map H.ClassName ["btn", "btn-default"])
-                ]
-                [ R.clearFieldIcon "Clear search string" ]
-            , HH.button
-                [ HE.onClick (HE.input_ FetchUsers)
-                , HP.classes (map H.ClassName ["btn", "btn-default"])
-                ]
-                [ R.busyFieldIcon "Refresh" ]
+            -- , HH.button
+            --     [ HE.onClick (HE.input_ FetchUsers)
+            --     , HP.classes (map H.ClassName ["btn", "btn-default"])
+            --     ]
+            --     [ R.busyFieldIcon "Refresh" ]
             , HH.slot
                 unit
                 (AC.component AC.defaultConfig { containerClass = H.ClassName "sd-admin-ui-autocomplete"
-                                               , placeholder = "Search Group"
+                                               , placeholder = "Search by group"
+                                               , autofirst = true
+                                               , itemFilter = String.contains ∘ String.Pattern
                                                })
                 (maybe [] (map QA.printGroupPath) state.allGroups)
                 (HE.input HandleGroupFilter)
