@@ -54,3 +54,4 @@ groupItemName = case _ of
 data GroupMessage
   = AddNewGroup { path ∷ QA.GroupPath, event ∷ DOM.Event, name ∷ String }
   | DeleteGroup { path ∷ QA.GroupPath }
+  | DisplayUsers { path ∷ QA.GroupPath }

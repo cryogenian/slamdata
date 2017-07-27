@@ -383,6 +383,10 @@ eval = case _ of
     AT.DeleteGroup { path } → do
       H.modify (_ { dialog = Just (Dialog.ConfirmGroupDeletion path) })
       pure next
+    AT.DisplayUsers { path } → do
+      H.modify (_ { active = AT.Users })
+      _ ← H.query' AT.cpUsers unit (H.action (Users.SetGroupFilter path))
+      pure next
   AT.HandleDialog msg next → do
     case msg of
       Dialog.Confirm (Dialog.ConfirmGroupDeletion path) → do

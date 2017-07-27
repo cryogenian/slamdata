@@ -42,6 +42,7 @@ data Query a
   = Init a
   | FetchUsers a
   | SetFilter String a
+  | SetGroupFilter QA.GroupPath a
   | DeleteUser QA.UserId a
   | EditUser QA.UserId a
   | Select Int a
@@ -170,10 +171,9 @@ component =
       eval ∷ Query ~> DSL
       eval = case _ of
         Init next → do
-          _ ← fork do
-            allGroups ← fetchAllGroups
-            users ← allUsers
-            H.modify (_ { allGroups = Just allGroups, users = Just users })
+          allGroups ← fetchAllGroups
+          users ← allUsers
+          H.modify (_ { allGroups = Just allGroups, users = Just users })
           pure next
         Select ix next → do
           H.modify (_ { selected = Just ix })
@@ -191,6 +191,11 @@ component =
         SetFilter s next → do
           H.modify (_ { filter = s })
           pure next
+        SetGroupFilter path next → do
+          setGroupFilter path
+          _ ← H.query unit (H.action (AC.Input (QA.printGroupPath path)))
+          _ ← H.query unit (H.action (AC.Close AC.CuzSelect))
+          pure next
         DeleteUser userId next → do
           H.raise (RaiseDialog (Dialog.ConfirmUserDeletion userId))
           pure next
@@ -203,18 +208,23 @@ component =
             H.modify (_ { groupFilter = NoFilter })
             pure next
           AC.Changed s → do
-            allGroups ← H.gets _.allGroups
             case QA.parseGroupPath s of
-              Right path
-                | Just groups ← allGroups
-                , path `Array.elem` groups → do
-                  users ← fetchTransitiveUsers path
-                  H.modify (_ { groupFilter = GroupFilter users })
-              _ → H.modify (_ { groupFilter = InvalidGroupFilter s })
+              Right path → setGroupFilter path
+              Left _ → H.modify (_ { groupFilter = InvalidGroupFilter s })
             pure next
           AC.Selected _ → pure next
 
-allUsers ∷ ∀ m . Monad m ⇒ QuasarDSL m ⇒ m (Array QA.UserId)
+setGroupFilter ∷ QA.GroupPath → DSL Unit
+setGroupFilter path = do
+  allGroups ← H.gets _.allGroups
+  case allGroups of
+    Just groups | path `Array.elem` groups → do
+      users ← fetchTransitiveUsers path
+      H.modify (_ { groupFilter = GroupFilter users })
+    _ →
+      H.modify (_ { groupFilter = InvalidGroupFilter (QA.printGroupPath path) })
+
+allUsers ∷ ∀ m. Monad m ⇒ QuasarDSL m ⇒ m (Array QA.UserId)
 allUsers = do
   groupInfo (QA.GroupPath Pathy.rootDir) >>= case _ of
     Left _ →
