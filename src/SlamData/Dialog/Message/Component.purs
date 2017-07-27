@@ -18,12 +18,11 @@ module SlamData.Dialog.Message.Component where
 
 import SlamData.Prelude
 
-import Data.List.NonEmpty as NEL
-import Data.Newtype (un)
 import Halogen as H
-import Halogen.Component.Proxy as Proxy
-import Halogen.HTML as HH
-import SlamData.Dialog.Component as Dialog
+import SlamData.Dialog.Component as D
+import SlamData.Render.ClassName as CN
+
+type MessageQuery o = Tuple (D.Message o)
 
 type MessageSpec o =
   { title ∷ String
@@ -32,30 +31,28 @@ type MessageSpec o =
   , action ∷ Either String (String × o)
   }
 
-mkSpec ∷ ∀ o. MessageSpec o → Dialog.DialogSpec o
+mkSpec ∷ ∀ o m. MessageSpec o → D.DialogSpec o m
 mkSpec { title, class_, action, message } =
-  { title
-  , class_
-  , dialog: Proxy.proxy (component message)
-  , buttons: case action of
-    Right (label × o) →
-      dismissButton "Cancel"
-        `NEL.cons` pure (Dialog.buttonPrimary label (Dialog.Confirm o))
-    Left cancelLabel →
-      pure (dismissButton cancelLabel)
-  }
-  where
-    dismissButton ∷ String → Dialog.Button o
-    dismissButton = flip Dialog.buttonDefault Dialog.Dismiss
+  D.dialog
+    $ D.withTitle title
+    >>> D.withInitialState unit
+    >>> D.withClass class_
+    >>> D.withRender (const (absurd ∘ unwrap <$> message))
+    >>> D.withEval eval
+    >>> D.withButton
+        (D.button
+          $ D.withLabel (either id (const "Cancel") action)
+          >>> D.withAction (const (Just (Tuple D.Dismiss))))
+    >>> case action of
+        Left _ → id
+        Right (label × o) →
+          D.withButton
+            (D.button
+              $ D.withLabel label
+              >>> D.withClass CN.btnPrimary
+              >>> D.withAction (const (Just (Tuple (D.Bubble o)))))
 
-component
-  ∷ ∀ o m
-  . H.ComponentHTML (Const Void)
-  → H.Component HH.HTML (Const Void) Unit (Dialog.InnerMessage o) m
-component h =
-  H.component
-    { initialState: const unit
-    , render: const h
-    , eval: absurd ∘ un Const
-    , receiver: const Nothing
-    }
+eval ∷ ∀ o m. MessageQuery o ~> H.ComponentDSL Unit (MessageQuery o) (D.Message o) m
+eval (Tuple msg next) = do
+  H.raise msg
+  pure next

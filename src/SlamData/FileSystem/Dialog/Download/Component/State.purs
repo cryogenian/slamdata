@@ -18,12 +18,8 @@ module SlamData.FileSystem.Dialog.Download.Component.State where
 
 import SlamData.Prelude
 
-import Data.Record as Record
-import Data.List.NonEmpty as NEL
-import SlamData.Dialog.Component as Dialog
 import SlamData.Download.Model as DM
 import SlamData.FileSystem.Resource as R
-import SlamData.Render.ClassName as CN
 
 type State = DM.DownloadModel (error ∷ Maybe String)
 
@@ -43,14 +39,3 @@ validate state@{ targetName } =
   case DM.validFilename targetName of
     Left _ → state { error = Just "Please enter a valid target filename" }
     Right name → state { error = Nothing }
-
-buttonsFromState ∷ State → Dialog.Buttons (DM.DownloadModel ())
-buttonsFromState st =
-  Dialog.buttonDefault "Cancel" Dialog.Dismiss
-    `NEL.cons` pure
-      (Dialog.Button
-        { label: "Download"
-        , action: Dialog.Confirm (Record.delete (SProxy ∷ SProxy "error") st)
-        , class_: CN.btnPrimary
-        , disabled: isJust st.error
-        })

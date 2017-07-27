@@ -14,40 +14,42 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.FileSystem.Dialog
-  ( module SlamData.FileSystem.Dialog
-  , module Exports
-  ) where
+module SlamData.FileSystem.Dialog where
 
 import SlamData.Prelude
 
-import Data.String as Str
-import Halogen.Component.Proxy as Proxy
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import SlamData.Dialog.Component as Dialog
+import SlamData.Dialog.Component as D
 import SlamData.Dialog.Message.Component as Message
-import SlamData.Download.Model as DM
 import SlamData.FileSystem.Dialog.Download.Component as Download
 import SlamData.FileSystem.Dialog.Mount.Component as Mount
-import SlamData.FileSystem.Dialog.Mount.Component (MountAction(..)) as Exports
+import SlamData.FileSystem.Dialog.Rename.Component as Rename
+import SlamData.FileSystem.Dialog.Delete.Component as Delete
 import SlamData.FileSystem.Dialog.Share.Component as Share
 import SlamData.FileSystem.Resource as R
 import SlamData.Render.ClassName as CN
+import SlamData.Monad (Slam)
+import Utils.Path as UP
+
+type Query = D.Query Definition Action
+type Message = D.Message Action
 
 data Definition
   = Error String
-  | Mount Mount.Input
   | Delete R.Resource
-  | Share String String
   | Download R.Resource
+  | Mount Mount.Input
+  | Rename R.Resource
+  | Share { name ∷ String, url ∷ String }
 
-data Action
-  = DoDelete R.Resource
-  | DoDownload (DM.DownloadModel ())
-  | DoMountAction Mount.MountAction
+type Action = Variant
+  ( deleted ∷ UP.AnyPath
+  , renamed ∷ Unit
+  , mounted ∷ Unit
+  )
 
-dialog ∷ Definition → Dialog.DialogSpec Action
+dialog ∷ Definition → D.DialogSpec Action Slam
 dialog = case _ of
   Error msg →
     Message.mkSpec
@@ -59,33 +61,8 @@ dialog = case _ of
       , class_: HH.ClassName "sd-error-dialog"
       , action: Left "Dismiss"
       }
-  Delete res →
-    Message.mkSpec
-      { title: "Confirm deletion"
-      , message:
-        HH.div_
-          [ HH.text "Are you sure you want delete "
-          , HH.code_ [ HH.text (R.resourceName res) ]
-          , HH.text "?"
-          ]
-      , class_: HH.ClassName "sd-delete-dialog"
-      , action: Right ("Delete" × DoDelete res)
-      }
-  Share name url →
-    { title: "Share " <> fromMaybe name (Str.stripSuffix (Str.Pattern ".slam") name)
-    , class_: HH.ClassName "sd-share-dialog"
-    , dialog: Proxy.proxy (Share.component url)
-    , buttons: pure (Dialog.buttonDefault "Dismiss" Dialog.Dismiss)
-    }
-  Download res →
-    { title: "Download"
-    , class_: HH.ClassName "sd-download-dialog"
-    , dialog: Dialog.adaptInner DoDownload (Download.component res)
-    , buttons: map DoDownload <$> Download.initialButtons res
-    }
-  Mount input →
-    { title: "Mount"
-    , class_: HH.ClassName "sd-mount-dialog"
-    , dialog: Dialog.adaptInner DoMountAction (Mount.component input)
-    , buttons: map DoMountAction <$> Mount.initialButtons input
-    }
+  Delete res → Delete.dialog res
+  Download res → Download.dialog res
+  Mount input → Mount.dialog input
+  Rename res → Rename.dialog res
+  Share opts → Share.dialog opts

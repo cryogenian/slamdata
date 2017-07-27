@@ -14,10 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.FileSystem.Dialog.Share.Component
-  ( Query(..)
-  , component
-  ) where
+module SlamData.FileSystem.Dialog.Share.Component (dialog) where
 
 import SlamData.Prelude
 
@@ -31,30 +28,32 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-import SlamData.Dialog.Component as Dialog
+import SlamData.Dialog.Component as D
 import SlamData.Monad (Slam)
 import SlamData.Render.ClassName as CN
 import SlamData.Render.Icon as I
 import Utils.DOM as DOM
+import Utils.Path (dropWorkspaceExt)
 
 data Query a
   = Init a
   | SelectElement DOM.MouseEvent a
   | Copy DOM.MouseEvent a
+  | Dismiss a
 
-copyButtonRef ∷ H.RefLabel
-copyButtonRef = H.RefLabel "copy"
-
-component ∷ ∀ o. String → H.Component HH.HTML Query Unit (Dialog.InnerMessage o) Slam
-component url =
-  H.lifecycleComponent
-    { initialState: const url
-    , initializer: Just (H.action Init)
-    , finalizer: Nothing
-    , receiver: const Nothing
-    , render
-    , eval
-    }
+dialog ∷ ∀ o. { name ∷ String, url ∷ String } → D.DialogSpec o Slam
+dialog { name, url } =
+  D.dialog
+    $ D.withTitle ("Share “" <> dropWorkspaceExt name <> "”")
+    >>> D.withInitialState url
+    >>> D.withClass (H.ClassName "sd-share-dialog")
+    >>> D.withRender render
+    >>> D.withInitializer Init
+    >>> D.withEval eval
+    >>> D.withButton
+        (D.button
+          $ D.withLabel "Dismiss"
+          >>> D.withAction (const (Just Dismiss)))
 
 render ∷ String → H.ComponentHTML Query
 render url =
@@ -81,7 +80,7 @@ render url =
         ]
     ]
 
-eval ∷ ∀ o. Query ~> H.ComponentDSL String Query (Dialog.InnerMessage o) Slam
+eval ∷ ∀ o. Query ~> H.ComponentDSL String Query (D.Message o) Slam
 eval = case _ of
   Init next → do
     url ← H.get
@@ -96,5 +95,11 @@ eval = case _ of
     pure next
   Copy ev next → do
     H.liftEff (DOM.preventDefault ev)
-    H.raise Dialog.SelfDismiss
+    H.raise D.Dismiss
     pure next
+  Dismiss next → do
+    H.raise D.Dismiss
+    pure next
+
+copyButtonRef ∷ H.RefLabel
+copyButtonRef = H.RefLabel "copy"

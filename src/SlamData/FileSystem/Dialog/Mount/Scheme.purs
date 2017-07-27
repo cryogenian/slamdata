@@ -17,6 +17,7 @@ limitations under the License.
 module SlamData.FileSystem.Dialog.Mount.Scheme where
 
 import SlamData.Prelude
+import Quasar.Mount as QM
 
 data Scheme
   = MongoDB
@@ -59,3 +60,14 @@ schemes =
   , SparkFTP
   , SparkLocal
   ]
+
+fromConfig ∷ QM.MountConfig → Scheme
+fromConfig = case _ of
+  QM.MongoDBConfig _ → MongoDB
+  QM.ViewConfig _ → SQL2
+  QM.CouchbaseConfig _ → Couchbase
+  QM.MarkLogicConfig _ → MarkLogic
+  QM.SparkFTPConfig _ → SparkFTP
+  QM.SparkHDFSConfig _ → SparkHDFS
+  QM.SparkLocalConfig _ → SparkLocal
+  QM.ModuleConfig _ → SQL2

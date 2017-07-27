@@ -1,5 +1,5 @@
 {-
-Copyright 2016 SlamData, Inc.
+Copyright 2017 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,191 +14,83 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.FileSystem.Dialog.Rename.Component where
+module SlamData.FileSystem.Dialog.Rename.Component (dialog) where
 
 import SlamData.Prelude
 
-import Control.UI.Browser (reload)
-
-import Data.Array (elemIndex, singleton, sort, nub)
-import Data.Lens ((^.), (%~), (.~), (?~), lens, Lens')
-import Data.Path.Pathy (printPath, parseAbsDir, sandbox, rootDir, (</>))
-import Data.String as S
-
 import DOM.Event.Event as DEE
-
+import Data.Array as Array
+import Data.Maybe.First (First(..))
+import Data.Path.Pathy (printPath, rootDir)
+import Data.Variant as V
 import Halogen as H
-import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-
-import SlamData.Config as Config
-import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
-import SlamData.FileSystem.Dialog.Component.Message (Message(..))
+import SlamData.Dialog.Component as D
+import SlamData.Dialog.Render as DR
+import SlamData.FileSystem.Dialog.Rename.Component.State as S
 import SlamData.FileSystem.Listing.Item.Component.CSS as ItemCSS
 import SlamData.FileSystem.Resource as R
 import SlamData.GlobalError as GE
 import SlamData.Monad (Slam)
 import SlamData.Quasar.FS as API
-import SlamData.Render.Common (formGroup)
 import SlamData.Render.ClassName as CN
-
-import Utils.Path (DirPath, dropWorkspaceExt)
+import SlamData.Render.Common (formGroup)
 import Utils.DOM as DOM
-
-type State =
-  { showList ∷ Boolean
-  , initial ∷ R.Resource
-  , name ∷ String
-  , dirs ∷ Array R.Resource
-  , dir ∷ DirPath
-  , typedDir ∷ String
-  , siblings ∷ Array R.Resource
-  , error ∷ Maybe String
-  }
-
-initialState ∷ R.Resource → State
-initialState resource =
-  { showList: false
-  , initial: resource
-  , name: if R.isWorkspace resource
-          then dropWorkspaceExt $ R.resourceName resource
-          else R.resourceName resource
-  , dir: R.resourceDir resource
-  , typedDir: printPath $ R.resourceDir resource
-  , siblings: mempty
-  , dirs: singleton R.root
-  , error: Nothing
-  }
-
-_showList ∷ Lens' State Boolean
-_showList = lens _.showList (_ { showList = _ })
-
-_initial ∷ Lens' State R.Resource
-_initial = lens _.initial (_ { initial = _ })
-
-_name ∷ Lens' State String
-_name = lens _.name (_ { name = _ })
-
-_typedDir ∷ Lens' State String
-_typedDir = lens _.typedDir (_ { typedDir = _ })
-
-_dirs ∷ Lens' State (Array R.Resource)
-_dirs = lens _.dirs (_ { dirs = _ })
-
-_dir ∷ Lens' State DirPath
-_dir = lens _.dir (_ { dir = _ })
-
-_siblings ∷ Lens' State (Array R.Resource)
-_siblings = lens _.siblings (_ { siblings = _ })
-
-_error ∷ Lens' State (Maybe String)
-_error = lens _.error (_ { error = _ })
-
-renameSlam ∷ State → R.Resource
-renameSlam r =
-  let initial = r.initial
-      name = r.name
-      nameWithExt = if R.isWorkspace initial
-                    then name <> "." <> Config.workspaceExtension
-                    else name
-  in initial # (R._name .~ nameWithExt)
-           <<< (R._root .~ r.dir)
-
-validate ∷ State → State
-validate r
-  | r.initial == renameSlam r = r # _error .~ Nothing
-  | otherwise = r # _error .~ either Just (const Nothing) do
-    let name = r.name
-    when (name == "")
-      $ throwError "Please enter a name for the file"
-
-    when (isJust $ S.stripSuffix (S.Pattern $ "." <> Config.workspaceExtension) name)
-      $ throwError $ "Please choose an alternative name, ."
-      <> Config.workspaceExtension
-      <> " is a reserved extension"
-
-    when (isJust $ S.indexOf (S.Pattern "/") name)
-      $ throwError "Please enter a valid name for the file"
-
-    let nameWithExt = if R.isWorkspace (r.initial)
-                      then name <> "." <> Config.workspaceExtension
-                      else name
-    when (isJust $ elemIndex nameWithExt (map (_ ^. R._name) (r.siblings)))
-      $ throwError "An item with this name already exists in the target folder"
+import Utils.Path (DirPath, dropWorkspaceExt)
 
 data Query a
-  = RaiseDismiss a
-  | SetShowList Boolean a
-  | ToggleShowList a
+  = Init a
+  | ToggleShowList Boolean a
   | NameTyped String a
   | DirTyped String a
   | DirClicked R.Resource a
-  | SetSiblings (Array R.Resource) a
-  | AddDirs (Array R.Resource) a
-  | PreventDefaultAndRename DOM.Event a
   | StopPropagation DOM.Event (Query a)
-  | Init a
+  | Dismiss a
+  | Confirm R.Resource a
 
-type DSL = H.ComponentDSL State Query Message Slam
+type Message o = Variant (renamed ∷ Unit | o)
+type DSL o = H.ComponentDSL S.State Query (D.Message (Message o)) Slam
 type HTML = H.ComponentHTML Query
 
-component ∷ H.Component HH.HTML Query R.Resource Message Slam
-component =
-  H.lifecycleComponent
-    { initialState
-    , render
-    , eval
-    , initializer: Just (H.action Init)
-    , finalizer: Nothing
-    , receiver: const Nothing
-    }
+dialog ∷ ∀ o. R.Resource → D.DialogSpec (Message o) Slam
+dialog res =
+  D.dialog
+    $ D.withTitle ("Rename “" <> dropWorkspaceExt (R.resourceName res) <> "”")
+    >>> D.withInitialState (S.initialState res)
+    >>> D.withClass (H.ClassName "sd-rename-dialog")
+    >>> D.withRender render
+    >>> D.withInitializer Init
+    >>> D.withEval eval
+    >>> D.withPending _.renaming
+    >>> D.withButton
+        (D.button
+          $ D.withLabel "Cancel"
+          >>> D.withAction (const (Just Dismiss)))
+    >>> D.withButton
+        (D.button
+          $ D.withLabel "Rename"
+          >>> D.withClass CN.btnPrimary
+          >>> D.withAction (either (const Nothing) (Just ∘ Confirm) ∘ _.value)
+          >>> D.withPending _.renaming)
 
-render ∷ State → HTML
-render dialog =
-  HH.form
-    [ HE.onSubmit $ HE.input PreventDefaultAndRename ]
-    [ modalDialog
-      [ modalHeader "Move/rename"
-      , modalBody
-        $ HH.div
-            [ HP.classes [ CN.renameDialogForm ]
-            , HE.onClick \e → Just $ StopPropagation (DOM.toEvent e) $ H.action $ SetShowList false
-            ]
-            [ nameInput
-            , dirDropdownField
-            , dirDropdownList
-            , errorMessage
-            ]
-      , modalFooter
-          [ HH.button
-              [ HP.type_ HP.ButtonSubmit
-              , HP.classes [ CN.btn, CN.btnPrimary ]
-              , HP.disabled $ isJust dialog.error
-              ]
-              [ HH.text "Rename" ]
-          , HH.button
-              [ HP.type_ HP.ButtonButton
-              , HP.classes
-                [ CN.btn
-                , CN.btnDefault
-                ]
-              , HE.onClick $ HE.input_ RaiseDismiss
-              ]
-              [ HH.text "Cancel" ]
-          ]
-      ]
+render ∷ S.State → HTML
+render state =
+  HH.div
+    [ HP.class_ (H.ClassName "sd-rename-dialog-inner")
+    , HE.onClick \e → Just $ StopPropagation (DOM.toEvent e) $ H.action $ ToggleShowList false
     ]
+    $ join
+        [ pure (renderName state.name)
+        , pure dirDropdownField
+        , pure dirDropdownList
+        , foldMap (pure ∘ DR.renderError) $
+            ala First foldMap [either Just (const Nothing) state.value, state.error]
+        ]
+
   where
-  nameInput ∷ HTML
-  nameInput =
-    formGroup [ HH.input [ HP.classes [ CN.formControl ]
-                        , HP.value (dialog.name)
-                        , HP.placeholder "New name"
-                        , HE.onValueInput (HE.input NameTyped)
-                        ]
-              ]
 
   dirDropdownField ∷ HTML
   dirDropdownField =
@@ -209,7 +101,7 @@ render dialog =
           , HP.classes [ CN.formControl ]
           , HP.placeholder "New directory"
           , HE.onValueInput (HE.input DirTyped)
-          , HP.value $ dialog ^. _typedDir
+          , HP.value state.dir
           ]
       , HH.span
           [ HP.classes [ CN.inputGroupBtn ] ]
@@ -217,7 +109,7 @@ render dialog =
               [ HP.type_ HP.ButtonButton
               , HP.classes [ CN.btn, CN.btnDefault ]
               , HE.onClick \e →
-                   Just $ StopPropagation (DOM.toEvent e) $ H.action $ ToggleShowList
+                   Just $ StopPropagation (DOM.toEvent e) $ H.action $ ToggleShowList (not state.showList)
               , ARIA.label "Select a destination folder"
               , HP.title "Select a destination folder"
               ]
@@ -228,15 +120,8 @@ render dialog =
   dirDropdownList =
     HH.ul
       ([ HP.classes  [ CN.listGroup, CN.fileListGroup ] ]
-       <> if dialog.showList then [] else [ ARIA.hidden "true" ])
-    $ renameItem <$> dialog.dirs
-
-  errorMessage ∷ HTML
-  errorMessage =
-    HH.div
-      ([ HP.classes $ [ CN.alert, CN.alertDanger ] ]
-       <> if isJust dialog.error then [] else [ ARIA.hidden "true" ])
-      $ maybe [ ] (pure <<< HH.text) (dialog.error)
+       <> if state.showList then [] else [ ARIA.hidden "true" ])
+    $ renameItem <$> state.dirs
 
   renameItem ∷ R.Resource → HTML
   renameItem res =
@@ -247,95 +132,82 @@ render dialog =
       ]
       [ HH.text (R.resourcePath res) ]
 
-eval ∷ Query ~> DSL
-eval (RaiseDismiss next) = do
-  H.raise Dismiss
-  pure next
-eval (StopPropagation e q) = do
-  H.liftEff $ DEE.stopPropagation e
-  eval q
-eval (SetShowList bool next) = do
-  H.modify (_showList .~ bool)
-  H.modify validate
-  pure next
-eval (ToggleShowList next) = do
-  H.modify (_showList %~ not)
-  H.modify validate
-  pure next
-eval (PreventDefaultAndRename ev next) = do
-  H.liftEff $ DEE.preventDefault ev
-  dirStr <- endingInSlash <$> H.gets _.typedDir
-  maybe presentDirNotExistError moveIfDirAccessible (parsedDir dirStr)
-  pure next
-  where
-  parsedDir =
-    map (rootDir </> _) ∘ sandbox rootDir <=< parseAbsDir
+renderName ∷ String → HTML
+renderName name =
+  formGroup
+    [ HH.input
+        [ HP.classes [ CN.formControl ]
+        , HP.value name
+        , HP.placeholder "New name"
+        , HE.onValueInput (HE.input NameTyped)
+        ]
+    ]
 
-  presentSourceMissingError =
-    H.modify $ _error .~ Just "The file you are trying to move is unavailable, please refresh."
-
-  presentDirNotExistError =
-    H.modify $ _error .~ Just "Target directory does not exist."
-
-  presentError e =
-    case GE.fromQError e of
-      Left msg → H.modify $ _error .~ Just msg
-      Right ge → GE.raiseGlobalError ge
-
-  moveIfDirAccessible dir =
-    maybe (move dir) presentError =<< API.dirNotAccessible dir
-
-  move dir = do
-    H.modify $ (_dir .~ dir) <<< (_showList .~ false)
+eval ∷ ∀ o. Query ~> DSL o
+eval = case _ of
+  Init next → do
     state ← H.get
-    let src = state.initial
-        tgt = R.getPath $ renameSlam state
-    result ← H.lift $ API.move src tgt
+    dirItemClicked (R.parent state.initial)
+    flip getDirectories rootDir \ds →
+      H.modify \st → st { dirs = Array.sort (Array.nub (st.dirs <> ds)) }
+    pure next
+  StopPropagation e q → do
+    H.liftEff (DEE.stopPropagation e)
+    eval q
+  ToggleShowList b next → do
+    H.modify (_ { showList = b })
+    pure next
+  NameTyped name next → do
+    modify (_ { name = name })
+    pure next
+  DirTyped dir next → do
+    modify (_ { dir = dir })
+    pure next
+  DirClicked res next → do
+    dirItemClicked res
+    pure next
+  Confirm dest next → do
+    { initial } ← H.get
+    H.modify (_ { error = Nothing, renaming = true })
+    result ← H.lift $ API.move initial (R.getPath dest)
     case result of
-      Left e ->
+      Left e →
         case GE.fromQError e of
-          Left msg -> H.modify (_error ?~ msg)
-          Right ge -> GE.raiseGlobalError ge
-      Right x ->
-        maybe
-          presentSourceMissingError
-          (const $ H.modify (_error .~ Nothing) *> H.liftEff reload)
-          x
-    pure unit
+          Left msg → H.modify (_ { error = Just msg, renaming = false })
+          Right ge → GE.raiseGlobalError ge
+      Right Nothing →
+        H.modify (_ { error = Just "The file you are trying to move does not exist, please refresh.", renaming = false })
+      Right (Just x) → do
+        H.raise D.Dismiss
+        H.raise (D.Bubble (V.inj (SProxy ∷ SProxy "renamed") unit))
+    pure next
+  Dismiss next → do
+    H.raise D.Dismiss
+    pure next
 
-  lastChar s = S.drop (S.length s - 1) s
+modify ∷ ∀ o. (S.State → S.State) → DSL o Unit
+modify f = H.modify (S.validate ∘ f ∘ (_ { error = Nothing }))
 
-  endingInSlash s = if lastChar s == "/" then s else s <> "/"
-
-eval (NameTyped str next) = do
-  H.modify (_name .~ str)
-  H.modify validate
-  pure next
-eval (DirTyped str next) = do
-  H.modify $ _typedDir .~ str
-  pure next
-eval (DirClicked res next) = do
-  dirItemClicked res
-  pure next
-eval (SetSiblings ss next) = do
-  H.modify (_siblings .~ ss)
-  pure next
-eval (AddDirs ds next) = do
-  H.modify (_dirs %~ append ds >>> nub >>> sort)
-  pure next
-eval (Init next) = do
-  state <- H.get
-  dirItemClicked $ R.parent $ state.initial
-  pure next
-
-dirItemClicked ∷ R.Resource → DSL Unit
+dirItemClicked ∷ ∀ o. R.Resource → DSL o Unit
 dirItemClicked res = do
   case R.getPath res of
     Right _ → pure unit
-    Left dir → do
-      siblings ← API.children dir
-      H.modify
-        $ (_dir .~ dir)
-        <<< (_showList .~ false)
-        <<< (_siblings .~ either (const []) id siblings)
-        <<< (_typedDir .~ printPath dir)
+    Left dir → modify (_ { dir = printPath dir, showList = false })
+
+getChildren
+  ∷ ∀ o. (R.Resource → Boolean)
+  → (Array R.Resource → DSL o Unit)
+  → DirPath
+  → DSL o Unit
+getChildren pred cont start = do
+  ei ← API.children start
+  case ei of
+    Right items → do
+      let items' = Array.filter pred items
+          parents = Array.mapMaybe (either Just (const Nothing) ∘ R.getPath) items
+      cont items'
+      traverse_ (getChildren pred cont) parents
+    _ → pure unit
+
+getDirectories ∷ ∀ o. (Array R.Resource → DSL o Unit) → DirPath → DSL o Unit
+getDirectories = getChildren $ R.isDirectory ∨ R.isDatabaseMount

@@ -14,44 +14,49 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.FileSystem.Dialog.Download.Component
-  ( Query
-  , Message
-  , initialButtons
-  , component
-  ) where
+module SlamData.FileSystem.Dialog.Download.Component (dialog) where
 
 import SlamData.Prelude
 
+import Control.UI.Browser as Browser
 import Data.Lens (_Left, _Right, (.~))
 import Halogen as H
-import Halogen.Component.Utils as HCU
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import SlamData.Dialog.Component as Dialog
+import SlamData.Dialog.Component as D
 import SlamData.Download.Model as DM
 import SlamData.Download.Render as DR
-import SlamData.FileSystem.Dialog.Download.Component.State as S
 import SlamData.FileSystem.Resource as R
+import SlamData.FileSystem.Dialog.Download.Component.State as S
 import SlamData.Monad (Slam)
+import SlamData.Quasar.Auth as QAuth
 import SlamData.Render.ClassName as CN
+import Utils.Path (dropWorkspaceExt)
 
-data Query a = Modify (∀ r. DM.DownloadModel r → DM.DownloadModel r) a
+data Query a
+  = Modify (∀ r. DM.DownloadModel r → DM.DownloadModel r) a
+  | Dismiss a
+  | Download a
 
-type Message = Dialog.InnerMessage (DM.DownloadModel ())
-
-initialButtons ∷ R.Resource → Dialog.Buttons (DM.DownloadModel ())
-initialButtons = S.buttonsFromState ∘ S.initialState
-
-component ∷ R.Resource → H.Component HH.HTML Query Unit Message Slam
-component res =
-  H.component
-    { initialState: const (S.initialState res)
-    , render
-    , eval
-    , receiver: const Nothing
-    }
+dialog ∷ ∀ o. R.Resource → D.DialogSpec o Slam
+dialog res =
+  D.dialog
+    $ D.withTitle ("Download “" <> dropWorkspaceExt (R.resourceName res) <> "”")
+    >>> D.withInitialState (S.initialState res)
+    >>> D.withRender render
+    >>> D.withEval eval
+    >>> D.withClass (H.ClassName "sd-download-dialog")
+    >>> D.withButton
+          (D.button
+            $ D.withLabel "Cancel"
+            >>> D.withAction (const (Just Dismiss)))
+    >>> D.withButton
+          (D.button
+            $ D.withLabel "Download"
+            >>> D.withClass CN.btnPrimary
+            >>> D.withAction
+                (\st → if isJust st.error then Nothing else Just Download))
 
 render ∷ S.State → H.ComponentHTML Query
 render state@{ options, targetName } =
@@ -119,8 +124,17 @@ renderError { error } = case error of
       [ HP.classes [ CN.alert, CN.alertDanger ] ]
       [ HH.text err ]
 
-eval ∷ Query ~> H.ComponentDSL S.State Query Message Slam
-eval (Modify f next) = do
-  newState ← HCU.modify (S.validate ∘ f)
-  H.raise (Dialog.Change (S.buttonsFromState newState))
-  pure next
+eval ∷ ∀ o. Query ~> H.ComponentDSL S.State Query (D.Message o) Slam
+eval = case _ of
+  Modify f next → do
+    newState ← H.modify (S.validate ∘ f)
+    pure next
+  Dismiss next → do
+    H.raise D.Dismiss
+    pure next
+  Download next → do
+    opts ← H.get
+    authHeaders ← lift QAuth.authHeaders
+    H.liftEff $ Browser.newTab (DM.renderURL authHeaders opts)
+    H.raise D.Dismiss
+    pure next
