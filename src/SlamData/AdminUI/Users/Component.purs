@@ -94,7 +94,7 @@ component =
                     [ HP.class_ (HH.ClassName "sd-admin-ui-users-search-icon") ]
                     [ I.searchSm ]
                 , HH.input
-                    [ HP.class_ (HH.ClassName "sd-admin-ui-users-search-field")
+                    [ HP.classes (HH.ClassName <$> ["sd-admin-ui-users-search-field", "form-control"])
                     , HP.type_ HP.InputText
                     , HP.placeholder "Search by user id"
                     , HE.onValueInput (HE.input \str → SetFilter str)
@@ -108,11 +108,6 @@ component =
                     ]
                     [ R.clearFieldIcon "Clear search string" ]
                 ]
-            -- , HH.button
-            --     [ HE.onClick (HE.input_ FetchUsers)
-            --     , HP.classes (map H.ClassName ["btn", "btn-default"])
-            --     ]
-            --     [ R.busyFieldIcon "Refresh" ]
             , HH.slot
                 unit
                 (AC.component AC.defaultConfig { containerClass = H.ClassName "sd-admin-ui-autocomplete"
@@ -122,6 +117,11 @@ component =
                                                })
                 (maybe [] (map QA.printGroupPath) state.allGroups)
                 (HE.input HandleGroupFilter)
+            , HH.button
+                [ HE.onClick (HE.input_ FetchUsers)
+                , HP.classes (map H.ClassName ["btn", "btn-success"])
+                ]
+                [ HH.text "New User" ]
             ]
           , HH.ul
               [ HP.class_ (HH.ClassName "sd-admin-ui-users-list") ]

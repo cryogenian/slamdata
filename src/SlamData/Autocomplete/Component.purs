@@ -124,6 +124,7 @@ component { containerClass, placeholder, autofirst, itemFilter, itemText, itemDi
                    , HE.onBlur (HE.input_ Blur)
                    , HE.onFocus (HE.input_ Focus)
                    , HE.onKeyDown (HE.input KeyDown)
+                   , HP.class_ (H.ClassName "form-control")
                    ]
         , HH.ul
             (join
