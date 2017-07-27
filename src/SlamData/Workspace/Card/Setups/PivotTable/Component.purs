@@ -128,11 +128,12 @@ render st =
     let
       len  = Array.length st.dimensions + 1
       size = 100.0 / toNumber len
+      calc = "calc(" ⊕ show size ⊕ "% - 10rem)"
     in
       map (renderDimension size) st.dimensions <>
       [ HH.div
           [ HP.classes [ HH.ClassName "sd-pivot-options-dim" ]
-          , HC.style (C.height (C.pct size))
+          , HC.style (C.height $ C.fromString calc)
           ]
           [ HH.div
               [ HP.classes [ HH.ClassName "sd-pivot-options-dim-inner"] ]
@@ -204,7 +205,7 @@ render st =
       map (renderColumn size) st.columns <>
       [ HH.div
           [ HP.classes [ HH.ClassName "sd-pivot-options-col" ]
-          , HC.style (C.width (C.pct size))
+          , HC.style (C.width $ C.pct size)
           ]
           [ HH.div
               [ HP.classes [ HH.ClassName "sd-pivot-options-col-inner"] ]
@@ -300,8 +301,20 @@ evalCard = case _ of
         then Low
         else High
 -}
+
+raiseUpdate ∷ DSL Unit
+raiseUpdate = do
+  st ← H.get
+  H.raise $ ST.modelFromState st
+
 eval ∷ Q.Query ~> DSL
 eval = case _ of
+  Q.Load m next → do
+    H.modify $ ST.stateFromModel m
+    pure next
+  Q.SetAxes axes next → do
+    H.modify _{ axes = axes }
+    pure next
   Q.AddGroupBy next → do
     st ← H.get
     let vals = ST.selectGroupByValues st.axes
@@ -315,12 +328,12 @@ eval = case _ of
   Q.Remove (Q.ForGroupBy slot) next → do
     H.modify \st →
       st { dimensions = Array.filter (not ∘ eq slot ∘ fst) st.dimensions }
-    H.raise Q.Update
+    raiseUpdate
     pure next
   Q.Remove (Q.ForColumn slot) next → do
     H.modify \st →
       st { columns = Array.filter (not ∘ eq slot ∘ fst) st.columns }
-    H.raise Q.Update
+    raiseUpdate
     pure next
   Q.ChangeLabel fd label next → do
     let
@@ -332,7 +345,7 @@ eval = case _ of
         H.modify (ST._dimensions ∘ UL.lookup slot ∘ D._category .~ label')
       Q.ForColumn slot →
         H.modify (ST._columns ∘ UL.lookup slot ∘ D._category .~ label')
-    H.raise Q.Update
+    raiseUpdate
     pure next
   Q.Configure (Q.ForGroupBy slot) next → do
     st ← H.get
@@ -384,7 +397,7 @@ eval = case _ of
                 { orderingDimension = Nothing
                 , dimensions = ST.reorder slot slot' st.dimensions
                 }
-              H.raise Q.Update
+              raiseUpdate
             Nothing →
               H.modify _ { orderingDimension = Nothing }
     pure next
@@ -422,7 +435,7 @@ eval = case _ of
                 { orderingColumn = Nothing
                 , columns = ST.reorder slot slot' st.columns
                 }
-              H.raise Q.Update
+              raiseUpdate
             Nothing →
               H.modify _ { orderingColumn = Nothing }
     pure next
@@ -450,7 +463,7 @@ eval = case _ of
           , dimensions = Array.snoc st.dimensions (st.fresh × cell)
           , selecting = Nothing
           }
-        H.raise Q.Update
+        raiseUpdate
     pure next
   Q.HandleColumnPicker msg next → do
     case msg of
@@ -469,7 +482,7 @@ eval = case _ of
           , columns = Array.snoc st.columns (st.fresh × cell)
           , selecting = Nothing
           }
-        H.raise Q.Update
+        raiseUpdate
     pure next
   Q.HandleTransformPicker fd msg next → do
     case msg of
@@ -481,7 +494,7 @@ eval = case _ of
           ∘ case fd of
               Q.ForGroupBy slot → ST.setGroupByTransform mbt slot
               Q.ForColumn slot → ST.setColumnTransform mbt slot
-    H.raise Q.Update
+    raiseUpdate
     pure next
 
 transformOptions ∷ Array T.Transform → Maybe T.Transform → Array T.Transform

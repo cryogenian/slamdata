@@ -25,12 +25,14 @@ import CSS as CSS
 import Data.Array as A
 import Data.Lens ((^?))
 import Data.ListMap as LM
+import Data.Variant as V
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.CSS as HCSS
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import SlamData.Render.Icon as I
+import SlamData.Render.ClassName as CN
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.VizType as VCT
 import SlamData.Workspace.Card.Component as CC
@@ -40,6 +42,8 @@ import SlamData.Workspace.Card.Setups.Auxiliary as Aux
 import SlamData.Workspace.Card.Setups.DimensionMap.Component as DM
 import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as DQ
 import SlamData.Workspace.Card.Setups.DimensionMap.Package as DP
+import SlamData.Workspace.Card.Setups.PivotTable.Component as PT
+import SlamData.Workspace.Card.Setups.PivotTable.Component.Query as PQ
 import SlamData.Workspace.Card.Setups.Viz.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.Viz.Component.Query as Q
 import SlamData.Workspace.Card.Setups.Viz.Component.State as ST
@@ -69,9 +73,24 @@ render state =
       then [ picker ]
       else [ button ] <> dims )
   ⊕ aux
+  ⊕ [ pivotOptions ]
   where
   icon ∷ Array HTML
   icon = (pure ∘ I.unIconHTML ∘ VCT.icon) state.vizType
+
+  pivotOptions ∷ HTML
+  pivotOptions =
+    HH.div
+    [ HP.classes
+        $ CN.hidden
+        <$ guard
+            ( state.vizTypePickerExpanded
+              ∨ ( not VCT.eq_ CT.pivot state.vizType ) )
+    ]
+    [ HH.slot' CS.cpPivot unit PT.component unit
+      $ HE.input \e → right ∘ Q.HandlePivotTable e
+    ]
+
 
   button =
     HH.button
@@ -123,9 +142,13 @@ cardEval = case _ of
         H.modify _
           { dimMaps = r.dimMaps
           , vizType = r.vizType
+          , auxes = r.auxes
           }
         for_ (lm.lookup r.vizType r.dimMaps) \dimMap → do
           void $ H.query' CS.cpDims unit $ H.action $ DQ.Load dimMap
+          H.raise CC.modelUpdate
+        for_ (lm.lookup CT.pivot r.auxes >>= V.prj CT._pivot) \aux → do
+          void $ H.query' CS.cpPivot unit $ H.action $ PQ.Load aux
           H.raise CC.modelUpdate
       _ → pure unit
     pure next
@@ -138,6 +161,7 @@ cardEval = case _ of
       H.modify _{ axes = Just axes }
       _ ← H.query' CS.cpPicker unit $ H.action $ VT.UpdateAxes axes
       _ ← H.query' CS.cpDims unit $ H.action $ DQ.SetAxes axes
+      _ ← H.query' CS.cpPivot unit $ H.action $ PQ.SetAxes axes
       pure unit
     pure next
   CC.ReceiveDimensions _ reply →
@@ -172,5 +196,9 @@ setupEval = case _ of
     pure next
   Q.HandleAux auxState next → do
     H.modify \st → st { auxes = lm.insert st.vizType auxState st.auxes }
+    H.raise CC.modelUpdate
+    pure next
+  Q.HandlePivotTable m next → do
+    H.modify \st → st { auxes = lm.insert CT.pivot (V.inj CT._pivot m) st.auxes }
     H.raise CC.modelUpdate
     pure next

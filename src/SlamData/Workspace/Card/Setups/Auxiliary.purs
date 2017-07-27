@@ -44,6 +44,7 @@ import SlamData.Workspace.Card.Setups.Auxiliary.PunchCard as PunchCard
 import SlamData.Workspace.Card.Setups.Auxiliary.Scatter as Scatter
 import SlamData.Workspace.Card.Setups.Auxiliary.GeoHeatmap as GeoHeatmap
 import SlamData.Workspace.Card.Setups.Auxiliary.GeoMarker as GeoMarker
+import SlamData.Workspace.Card.Setups.PivotTable.Model as PivotTable
 import Test.StrongCheck.Gen as Gen
 
 type State = Variant
@@ -59,6 +60,7 @@ type State = Variant
   , scatter ∷ Scatter.State
   , geoHeatmap ∷ GeoHeatmap.State
   , geoMarker ∷ GeoMarker.State
+  , pivot ∷ PivotTable.Model
   )
 
 eq_ ∷ State → State → Boolean
@@ -75,6 +77,7 @@ eq_ = V.case_
   # V.on CT._scatter (\r → V.on CT._scatter (Scatter.eq_ r) ff)
   # V.on CT._geoHeatmap (\r → V.on CT._geoHeatmap (GeoHeatmap.eq_ r) ff)
   # V.on CT._geoMarker (\r → V.on CT._geoMarker (GeoMarker.eq_ r) ff)
+  # V.on CT._pivot (\r → V.on CT._pivot (PivotTable.eqModel r) ff)
 
 codec ∷ CA.JsonCodec State
 codec = C.basicCodec (\j → lmap CA.TypeMismatch $ decode j) encode
@@ -93,6 +96,7 @@ encode = V.case_
   # V.on CT._scatter Scatter.encode
   # V.on CT._geoHeatmap GeoHeatmap.encode
   # V.on CT._geoMarker GeoMarker.encode
+  # V.on CT._pivot PivotTable.encode
 
 decode ∷ J.Json → String ⊹ State
 decode j =
@@ -108,6 +112,7 @@ decode j =
   <|> (map (V.inj CT._scatter) $ Scatter.decode j)
   <|> (map (V.inj CT._geoHeatmap) $ GeoHeatmap.decode j)
   <|> (map (V.inj CT._geoMarker) $ GeoMarker.decode j)
+  <|> (map (V.inj CT._pivot) $ PivotTable.decode j)
 
 gen ∷ Gen.Gen State
 gen = Gen.oneOf ( map (V.inj CT._area) Area.gen )
@@ -121,6 +126,7 @@ gen = Gen.oneOf ( map (V.inj CT._area) Area.gen )
   , map (V.inj CT._scatter) Scatter.gen
   , map (V.inj CT._geoHeatmap) GeoHeatmap.gen
   , map (V.inj CT._geoMarker) GeoMarker.gen
+  , map (V.inj CT._pivot) PivotTable.genModel
   ]
 
 type Query = VariantF

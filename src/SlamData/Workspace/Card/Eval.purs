@@ -88,7 +88,6 @@ evalCard trans port varMap = map (_ `SM.union` varMap) <$> case trans, port of
   _, Port.CardError err → throwError err
   Pass, _ → pure (port × varMap)
   Table m, _ → Table.eval m port varMap
-  PivotTable m, Port.PivotTable p → PivotTable.eval m p varMap
   Viz _, Port.PivotTable p →
     PivotTable.eval PTM.initialModel p varMap
   Viz m, Port.SetupSelect lp →
@@ -117,7 +116,7 @@ evalCard trans port varMap = map (_ `SM.union` varMap) <$> case trans, port of
   Cache path, _ → Cache.eval path =<< extractResource varMap
   Open res, _ → Open.evalOpen res varMap
   Variables model, _ → VariablesE.eval model
-  SetupViz model, _ → SetupViz.eval model =<< extractResource varMap
+  SetupViz model, _ → SetupViz.eval model varMap =<< extractResource varMap
   DownloadOptions model, _ → tapResource (DOptions.eval model) varMap
   e, i → CE.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i
 
@@ -135,7 +134,7 @@ modelToEval = case _ of
   Model.Variables model → Variables model
   Model.DownloadOptions model → DownloadOptions model
   Model.Draftboard _ → Composite
-  Model.Viz m → default (Viz m) # on VizM._pivot PivotTable $ m
+  Model.Viz m → Viz m
   Model.Tabs _ → Terminal
   Model.Table model → Table model
   _ → Pass

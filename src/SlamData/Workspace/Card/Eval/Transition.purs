@@ -20,7 +20,6 @@ import SlamData.Prelude
 
 import Quasar.Types (SQL)
 
-import SlamData.Workspace.Card.Viz.Renderer.PivotTable.Model as PivotTable
 import SlamData.Workspace.Card.DownloadOptions.Component.State as Download
 import SlamData.Workspace.Card.Markdown.Model as Markdown
 import SlamData.Workspace.Card.Viz.Model as Viz
@@ -44,7 +43,6 @@ data Eval
   | DownloadOptions Download.State
   | SetupViz SetupViz.Model
   | Table Table.Model
-  | PivotTable PivotTable.Model
   | Viz Viz.Model
 
 
@@ -64,5 +62,4 @@ tagEval = case _ of
   DownloadOptions m → "DownloadOptions"
   SetupViz _ → "SetupViz"
   Table _ → "Table"
-  PivotTable _ → "PivotTable"
   Viz _ → "Viz"

@@ -28,29 +28,29 @@ import Data.List as L
 import Data.ListMap as LM
 import Data.StrMap as SM
 import Data.Variant (on)
-import SlamData.Workspace.Card.Error as CE
+import Data.Variant as V
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.VizType as VT
+import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
-import SlamData.Workspace.Card.Setups.Viz.Model (Model)
-import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
-import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
-import SlamData.Workspace.Card.Setups.Viz.Error as VE
-import SlamData.Workspace.Card.Setups.DimensionMap.Package as PS
-import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Setups.Semantics as Sem
-import SlamData.Workspace.Card.Setups.Viz.Eval.Select as Select
 import SlamData.Workspace.Card.Setups.Auxiliary as Aux
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.DimensionMap.Package as PS
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
+import SlamData.Workspace.Card.Setups.PivotTable.Eval as PivotTable
+import SlamData.Workspace.Card.Setups.Semantics as Sem
+import SlamData.Workspace.Card.Setups.Viz.Error as VE
 import SlamData.Workspace.Card.Setups.Viz.Eval.Area as Area
 import SlamData.Workspace.Card.Setups.Viz.Eval.Bar as Bar
 import SlamData.Workspace.Card.Setups.Viz.Eval.Boxplot as Boxplot
 import SlamData.Workspace.Card.Setups.Viz.Eval.Candlestick as Candlestick
+import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
 import SlamData.Workspace.Card.Setups.Viz.Eval.Funnel as Funnel
 import SlamData.Workspace.Card.Setups.Viz.Eval.Gauge as Gauge
-import SlamData.Workspace.Card.Setups.Viz.Eval.GeoMarker as GeoMarker
 import SlamData.Workspace.Card.Setups.Viz.Eval.GeoHeatmap as GeoHeatmap
+import SlamData.Workspace.Card.Setups.Viz.Eval.GeoMarker as GeoMarker
 import SlamData.Workspace.Card.Setups.Viz.Eval.Graph as Graph
 import SlamData.Workspace.Card.Setups.Viz.Eval.Heatmap as Heatmap
 import SlamData.Workspace.Card.Setups.Viz.Eval.Line as Line
@@ -60,27 +60,30 @@ import SlamData.Workspace.Card.Setups.Viz.Eval.PunchCard as PunchCard
 import SlamData.Workspace.Card.Setups.Viz.Eval.Radar as Radar
 import SlamData.Workspace.Card.Setups.Viz.Eval.Sankey as Sankey
 import SlamData.Workspace.Card.Setups.Viz.Eval.Scatter as Scatter
+import SlamData.Workspace.Card.Setups.Viz.Eval.Select as Select
+import SlamData.Workspace.Card.Setups.Viz.Model (Model)
 
 lm ∷ ∀ a. LM.Module VT.VizType a
 lm = LM.openModule VT.eq_
 
 
-eval ∷ ∀ m. VizEval m (Model → Port.Resource → m Port.Out)
-eval m resource = do
+eval ∷ ∀ m. VizEval m (Model → Port.DataMap → Port.Resource → m Port.Out)
+eval m varMap resource = do
   records × axes ← BCE.analyze resource =<< get
   put $ Just $ CEM.Analysis { resource, records, axes }
 
   checkMissingProjections
 
-  iOut ← for (CT.contractToInput m.vizType) evalInput
-  sOut ← for (CT.contractToSelect m.vizType) $ evalSelect records
-  gOut ← for (CT.contractToGeo m.vizType) evalGeo
-  cOut ← for (CT.contractToChart m.vizType) $ evalChart records
-  stOut ← for (CT.contractToStatic m.vizType) $ evalStatic records
-
-
-  maybe throwUnexpected pure
-    $ iOut <|> sOut <|> gOut <|> cOut <|> stOut
+  case CT.contractToPivot m.vizType of
+    Just _ → evalPivot
+    Nothing → do
+      iOut ← for (CT.contractToInput m.vizType) evalInput
+      sOut ← for (CT.contractToSelect m.vizType) $ evalSelect records
+      gOut ← for (CT.contractToGeo m.vizType) evalGeo
+      cOut ← for (CT.contractToChart m.vizType) $ evalChart records
+      stOut ← for (CT.contractToStatic m.vizType) $ evalStatic records
+      maybe throwUnexpected pure
+        $ iOut <|> sOut <|> gOut <|> cOut <|> stOut
 
   where
   throwUnexpected ∷ ∀ a. m a
@@ -104,6 +107,16 @@ eval m resource = do
     pure
     $ lm.lookup m.vizType m.auxes
 
+
+  evalPivot ∷ m Port.Out
+  evalPivot = do
+    aux ← getAux
+    model ←
+      maybe
+        ( CE.throw "Incorrect pivot table model" )
+        pure
+        $ V.prj CT._pivot aux
+    PivotTable.eval model varMap resource
 
   evalInput ∷ CT.Input () → m Port.Out
   evalInput formInputType = do
@@ -179,8 +192,9 @@ eval m resource = do
 
   checkMissingProjections ∷ m Unit
   checkMissingProjections = do
-    dimMap ← getDimMap
-    let missingProjections = L.filter (not ∘ flip P.member dimMap) requiredProjections
+    let
+      dimMap = fromMaybe P.empty $ lm.lookup m.vizType m.dimMaps
+      missingProjections = L.filter (not ∘ flip P.member dimMap) requiredProjections
     unless (L.null missingProjections)
       $ VE.throw $ { missingProjections, vizType: m.vizType }
 

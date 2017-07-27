@@ -52,7 +52,8 @@ component =
 render ∷ ST.State → HTML
 render state =
   HH.div [ HP.classes [ HH.ClassName "sd-axes-selector" ] ]
-  $ ( foldMap (pure ∘ renderButton state) $ state.package.allFields state.dimMap state.axes )
+  $ [ HH.div [ HP.classes [ HH.ClassName "sd-axes-gap" ] ] [ ] ]
+  ⊕ ( foldMap (pure ∘ renderButton state) $ state.package.allFields state.dimMap state.axes )
   ⊕ [ renderSelection state ]
 
 renderSelection ∷ ST.State → HTML
