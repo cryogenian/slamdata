@@ -197,7 +197,7 @@ component { containerClass, placeholder, autofirst, itemFilter, itemText, itemDi
          Nothing → pure a
          Just ix → do
            count ← length <$> displayedItems
-           goto itemText (if ix == count then 0 else ix + 1)
+           goto itemText (if ix == count - 1 then 0 else ix + 1)
            pure a
      Open a → do
        H.modify (_ { open = true, index = Just 0 })
