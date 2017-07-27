@@ -42,6 +42,7 @@ import SlamData.Workspace.Dialog.Reason.Component as Reason
 import SlamData.Workspace.Dialog.Rename.Component as Rename
 import SlamData.Workspace.Dialog.Share.Component as Share
 import SlamData.Workspace.Dialog.Unshare.Component as Unshare
+import SlamData.Workspace.Dialog.VizUnavailable.Component as VizUnavailable
 import SlamData.Dialog.License (advancedLicenseExpired, advancedTrialLicenseExpired, licenseInvalid)
 import SlamData.Monad (Slam)
 import SlamData.Render.ClassName as CN
@@ -70,10 +71,13 @@ type ChildQuery =
   ⨁ Share.Query
   ⨁ Unshare.Query
   ⨁ Reason.Query
+  ⨁ VizUnavailable.Query
   ⨁ Const Void
+
 
 type ChildSlot =
   Unit
+  ⊹ Unit
   ⊹ Unit
   ⊹ Unit
   ⊹ Unit
@@ -164,6 +168,10 @@ render = case _ of
         , cardPaths
         }
         \Reason.Dismiss → Just $ H.action $ Raise Dismissed
+
+    VizUnavailable inp →
+      HH.slot' CP.cp9 unit VizUnavailable.component inp
+        \_ → Just $ H.action $ Raise Dismissed
 
     LicenseProblem (License.Expired licenseType) →
       case licenseType of

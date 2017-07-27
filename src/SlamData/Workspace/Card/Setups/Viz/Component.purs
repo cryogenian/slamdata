@@ -33,6 +33,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import SlamData.Render.Icon as I
 import SlamData.Render.ClassName as CN
+import SlamData.Wiring as W
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.VizType as VCT
 import SlamData.Workspace.Card.Component as CC
@@ -40,6 +41,7 @@ import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Model as M
 import SlamData.Workspace.Card.Setups.Auxiliary as Aux
 import SlamData.Workspace.Card.Setups.DimensionMap.Component as DM
+import SlamData.Workspace.Dialog.Component as Dialog
 import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as DQ
 import SlamData.Workspace.Card.Setups.DimensionMap.Package as DP
 import SlamData.Workspace.Card.Setups.PivotTable.Component as PT
@@ -170,14 +172,20 @@ cardEval = case _ of
 setupEval ∷ Q.Query ~> DSL
 setupEval = case _ of
   Q.HandlePicker vt next → do
-    H.modify _{ vizTypePickerExpanded = false }
     st ← H.get
     case vt of
       VT.SetVizType v → do
         for_ (lm.lookup v st.dimMaps) \dimMap →
           void $ H.query' CS.cpDims unit $ H.action $ DQ.Load dimMap
         H.modify _{ vizType = v }
+        H.modify _{ vizTypePickerExpanded = false }
         H.raise CC.modelUpdate
+      VT.ExplainNotWorking vizType → do
+        st ← H.get
+        traceAnyA st
+        for_ st.axes \axes →
+          W.showDialog $ Dialog.VizUnavailable {vizType, axes}
+
       _ → pure unit
     pure next
   Q.HandleDims msg next → do

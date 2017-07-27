@@ -24,7 +24,6 @@ import Data.List ((:))
 import Data.List as L
 import Data.ListMap as LM
 import Data.Set as Set
-
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.VizType as VT
 import SlamData.Workspace.Card.Setups.Axis as Ax
@@ -57,6 +56,9 @@ axesComposer = { filter, guard }
 
 lookup ∷ VT.VizType → Maybe Package
 lookup vt = lm.lookup vt packages
+
+getPackage ∷ VT.VizType → Maybe Package
+getPackage vt = lm.lookup vt packages
 
 packages ∷ LM.ListMap VT.VizType Package
 packages = lm.union customMap $ map interpret mapFromFree

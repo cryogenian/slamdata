@@ -157,6 +157,7 @@ eval = case _ of
       pure next
   HandleAction m next → case m of
     AL.Selected a → do
+      traceAnyA a
       H.raise $ case a of
         Set vt → SetVizType vt
         Explain vt → ExplainNotWorking vt
