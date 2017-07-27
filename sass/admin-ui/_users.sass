@@ -1,0 +1,120 @@
+.sd-admin-ui-users
+  .sd-admin-ui-users-header
+    display: flex
+    width: 100%
+    padding: $padding-base-horizontal $padding-base-vertical $padding-base-horizontal $padding-base-vertical
+
+  .sd-admin-ui-users-list
+    padding: 0
+
+  .sd-admin-ui-user
+    display: flex
+    justify-content: space-between
+    align-items: center
+    border-top: 0.1rem solid $color-separator
+
+  .sd-admin-ui-user-label
+    display: block
+    padding: $padding-base-horizontal 0
+
+  .sd-admin-ui-user-actions > a
+      cursor: pointer
+      padding: $padding-base-horizontal $padding-base-vertical
+
+  .sd-admin-ui-autocomplete .visually-hidden
+      position: absolute
+      clip: rect(0, 0, 0, 0)
+
+  .sd-admin-ui-autocomplete
+      display: inline-block
+      position: relative
+
+  .sd-admin-ui-autocomplete > input
+      display: block
+      width: 100%
+      height: 100%
+
+  .sd-admin-ui-autocomplete > ul
+      position: absolute
+      left: 0
+      z-index: 1
+      min-width: 100%
+      box-sizing: border-box
+      list-style: none
+      padding: 0
+      margin: 0
+      background: #fff
+
+      border-radius: 0.3rem
+      margin: 0.2rem 0 0
+      background: hsla(0,0%,100%,0.9)
+      background: linear-gradient(to bottom right, white, hsla(0,0%,100%,.8))
+      border: 0.1rem solid rgba(0,0,0,0.3)
+      box-shadow: .05rem .2rem .6rem rgba(0,0,0,0.2)
+      text-shadow: none
+
+  .sd-admin-ui-autocomplete > ul > li
+    position: relative
+    padding: 0.2rem 0.5rem
+    cursor: pointer
+
+  .sd-admin-ui-autocomplete > ul > li:hover
+    background: hsl(200, 40%, 80%)
+    color: black
+
+  .sd-admin-ui-autocomplete > ul > li[aria-selected="true"]
+    background: hsl(205, 40%, 40%)
+    color: white
+
+    .sd-admin-ui-autocomplete mark
+      background: hsl(65, 100%, 50%)
+
+    .sd-admin-ui-autocomplete li:hover mark
+      background: hsl(68, 100%, 41%)
+
+    .sd-admin-ui-autocomplete li[aria-selected="true"] mark
+      background: hsl(86, 100%, 21%)
+      color: inherit
+
+  .sd-admin-ui-autocomplete > ul:empty
+      display: none
+
+
+.sd-admin-ui-users-search
+  position: relative
+  flex-grow: 1
+  height: 3.5rem
+
+  .sd-admin-ui-users-search-icon
+    position: absolute
+    z-index: 2
+    left: $padding-base-vertical
+    top: 0
+    opacity: 0.5
+    bottom: 0
+    margin: auto
+    height: 1em
+    line-height: 0
+
+  .sd-admin-ui-users-search-field
+    margin: 0
+    border: 0.1rem solid $miller-column-border-color
+    height: 100%
+    width: 100%
+    padding: 0 2.6rem 0 2.4rem
+
+  .sd-admin-ui-users-search-clear
+    position: absolute
+    top: 0
+    bottom: 0
+    right: 0
+    border: none
+    margin: auto
+    padding: 0 $padding-base-vertical
+    background: 0
+    line-height: 0
+    transition: opacity 0.25s ease-out
+    z-index: 2
+
+    &:disabled
+      opacity: 0
