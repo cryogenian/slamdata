@@ -32,6 +32,6 @@ fromConfig = id
 toConfig ∷ State → Either String QMM.Config
 toConfig st
   | Str.trim st."module" == "" =
-      Left "Please enter a query"
+      Left "A module cannot be left empty"
   | otherwise =
       Right st
