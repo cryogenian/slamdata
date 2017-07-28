@@ -210,7 +210,7 @@ columnsComponent =
     }
 
 makePagination ∷ Int → Pagination
-makePagination = { offset: _, limit: 25 }
+makePagination = { offset: _, limit: 5 }
 
 load ∷ AnyPath' × MCR.LoadRequest → DSL (MCR.LoadResponse AnyItem')
 load (path × { filter, requestId, offset }) =
