@@ -180,7 +180,7 @@ eval = case _ of
   SelectScheme newScheme next → do
     { scheme, input } ← H.get
     when (scheme /= newScheme) do
-      let configValue = maybe (Left Nothing) Right (S.matchSchemeConfig input =<< newScheme)
+      let configValue = note Nothing (S.matchSchemeConfig input =<< newScheme)
       modify (_ { scheme = newScheme, configValue = configValue })
     pure next
   Update (SQ.Modified esm) next → do

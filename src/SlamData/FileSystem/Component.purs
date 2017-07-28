@@ -526,7 +526,7 @@ presentMountHint xs path = do
     map (fromMaybe true)  $ H.query' CS.cpSearch unit (H.request Search.IsLoading)
 
   H.modify
-    ∘ (\b st → st { presentMountHint = b })
+    ∘ (flip (_ { presentMountHint = _ }))
     ∘ ((Array.null xs ∧ path ≡ rootDir ∧ not (isSearching ∧ isLoading)) ∧ _)
     ∘ not
     ∘ either (const false) id

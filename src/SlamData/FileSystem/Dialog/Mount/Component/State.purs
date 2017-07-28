@@ -73,14 +73,17 @@ type State =
 
 initialState ∷ Input → State
 initialState input =
-  { input
-  , name: if is _New input then Just "" else Nothing
-  , scheme: MS.fromConfig ∘ _.mount <$> preview _Edit input
-  , pathValue: maybe (Left Nothing) (Right ∘ _.path) (preview _Edit input)
-  , configValue: maybe (Left Nothing) (Right ∘ _.mount) (preview _Edit input)
-  , error: Nothing
-  , status: Idle
-  }
+  let
+    maybeEditInput = preview _Edit input
+  in
+    { input
+    , name: if is _New input then Just "" else Nothing
+    , scheme: MS.fromConfig ∘ _.mount <$> maybeEditInput
+    , pathValue: note Nothing (_.path <$> maybeEditInput)
+    , configValue: note Nothing (_.mount <$> maybeEditInput)
+    , error: Nothing
+    , status: Idle
+    }
 
 validate ∷ State → State
 validate st = st { pathValue = validatePath st }
