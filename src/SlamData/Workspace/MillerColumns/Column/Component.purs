@@ -235,7 +235,8 @@ component' (ColumnOptions colSpec) colPath =
     let
       shouldLoad = case lastLoadRequest of
         Nothing → true
-        Just { filter, offset } → filter /= filterText || offset /= nextOffset
+        Just { filter, offset } →
+          nextOffset /= Nothing && (filter /= filterText || offset /= nextOffset)
     when shouldLoad do
       let
         requestId = Req.succ lastRequestId
