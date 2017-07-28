@@ -15,47 +15,44 @@ limitations under the License.
 -}
 
 module SlamData.FileSystem.Dialog.Mount.Couchbase.Component
-  ( comp
+  ( component
   , Query
-  , module SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery
+  , module Q
   , module S
   ) where
 
 import SlamData.Prelude
 
-import Data.Path.Pathy (dir, (</>))
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Quasar.Mount as QM
+import Quasar.Mount.Couchbase as QMC
 import SlamData.FileSystem.Dialog.Mount.Common.Render as MCR
-import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..), SettingsMessage(..))
+import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery as Q
 import SlamData.FileSystem.Dialog.Mount.Common.State as MCS
 import SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State as S
-import SlamData.FileSystem.Resource (Mount(..))
 import SlamData.Monad (Slam)
-import SlamData.Quasar.Error as QE
-import SlamData.Quasar.Mount as API
 import SlamData.Render.ClassName as CN
 
-type Query = SettingsQuery S.State
+type Query = Q.SettingsQuery S.State
+type Message = Q.SettingsMessage QMC.Config
 
 type HTML = H.ComponentHTML Query
 
-comp ∷ S.State → H.Component HH.HTML Query Unit SettingsMessage Slam
-comp initialState =
+component ∷ H.Component HH.HTML Query (Maybe QMC.Config) Message Slam
+component =
   H.component
-    { initialState: const initialState
+    { initialState: maybe S.initialState S.fromConfig
     , render
-    , eval
+    , eval: Q.eval (MCS.vToE ∘ S.toConfig)
     , receiver: const Nothing
     }
 
 render ∷ S.State → HTML
 render state =
   HH.div
-    [ HP.class_ CN.mountCouchbase ]
+    [ HP.class_ (H.ClassName "mount-couchbase") ]
     [ MCR.section "Server" [ MCR.host state S._host' ]
     , MCR.section "Bucket"
         [ HH.div
@@ -83,7 +80,7 @@ render state =
                 [ HH.input
                     [ HP.type_ HP.InputCheckbox
                     , HP.checked (isJust state.queryTimeout)
-                    , HE.onChecked $ HE.input_ $ ModifyState \st →
+                    , HE.onChecked $ HE.input_ $ Q.ModifyState \st →
                         st { queryTimeout = toggleTimeout st.queryTimeout }
                     ]
                 , HH.span_ [ HH.text "Override default" ]
@@ -93,19 +90,3 @@ render state =
     ]
   where
     toggleTimeout = maybe (Just "30") (const Nothing)
-
-eval ∷ Query ~> H.ComponentDSL S.State Query SettingsMessage Slam
-eval = case _ of
-  ModifyState f next → do
-    H.modify f
-    H.raise Modified
-    pure next
-  Validate k →
-    k ∘ either Just (const Nothing) ∘ MCS.vToE ∘ S.toConfig <$> H.get
-  Submit parent name k →
-    k <$> runExceptT do
-      st ← lift H.get
-      config ← except $ lmap QE.msgToQError $ MCS.vToE $ S.toConfig st
-      let path = parent </> dir name
-      ExceptT $ API.saveMount (Left path) (QM.CouchbaseConfig config)
-      pure $ Database path

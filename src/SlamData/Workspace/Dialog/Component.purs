@@ -42,7 +42,7 @@ import SlamData.Workspace.Dialog.Reason.Component as Reason
 import SlamData.Workspace.Dialog.Rename.Component as Rename
 import SlamData.Workspace.Dialog.Share.Component as Share
 import SlamData.Workspace.Dialog.Unshare.Component as Unshare
-import SlamData.Dialog.License (advancedLicenseExpired, advancedTrialLicenseExpired, licenseInvalid)
+-- import SlamData.Dialog.License (advancedLicenseExpired, advancedTrialLicenseExpired, licenseInvalid)
 import SlamData.Monad (Slam)
 import SlamData.Render.ClassName as CN
 import SlamData.Workspace.Deck.Options (DeckOptions)
@@ -167,11 +167,11 @@ render = case _ of
 
     LicenseProblem (License.Expired licenseType) →
       case licenseType of
-        QAT.Advanced → advancedLicenseExpired
-        QAT.AdvancedTrial → advancedTrialLicenseExpired
+        QAT.Advanced → HH.text ""
+        QAT.AdvancedTrial → HH.text ""
 
     LicenseProblem License.Invalid →
-      licenseInvalid
+      HH.text ""
 
 eval ∷ Query ~> DSL
 eval = case _ of

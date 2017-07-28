@@ -1,4 +1,4 @@
-.dialog-download,
+.sd-download-dialog,
 .download-configuration
   min-width: 70rem
 
@@ -64,7 +64,7 @@
   .download-csv-delimiters
     list-style: none
     padding: 0
-    margin-top: $padding-base-horizontal
+    margin: 0
 
     &, label
       display: flex
@@ -119,6 +119,7 @@
           display: inline-block
 
   .download-json-options
+
     > div
       display: flex
       flex-flow: row wrap
@@ -127,6 +128,7 @@
     > div > label
       flex: 0 1 15.6rem
       line-height: 1.4
+      padding: $padding-base-vertical $padding-base-horizontal
 
     ul
       flex: 1 1 auto
@@ -139,6 +141,3 @@
         label
           cursor: pointer
           display: inline
-
-  .alert
-    height: 4.2rem

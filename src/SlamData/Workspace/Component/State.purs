@@ -19,12 +19,11 @@ module SlamData.Workspace.Component.State where
 import SlamData.Prelude
 
 import Data.List (List)
-
 import Quasar.Advanced.Types (ProviderR)
-
+import SlamData.License as License
 import SlamData.Workspace.Deck.DeckId (DeckId)
-import SlamData.Workspace.StateMode (StateMode(..))
 import SlamData.Workspace.Guide (GuideType)
+import SlamData.Workspace.StateMode (StateMode(..))
 
 type State =
   { cursor ∷ List DeckId
@@ -32,6 +31,7 @@ type State =
   , providers ∷ Array ProviderR
   , guide ∷ Maybe GuideType
   , rootDeckFocused ∷ Boolean
+  , licenseProblem ∷ Maybe License.LicenseProblem
   }
 
 initialState ∷ State
@@ -41,4 +41,5 @@ initialState =
   , providers: mempty
   , guide: Nothing
   , rootDeckFocused: true
+  , licenseProblem: Nothing
   }
