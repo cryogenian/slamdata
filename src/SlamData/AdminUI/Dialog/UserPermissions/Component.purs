@@ -66,7 +66,7 @@ dialog userId =
     >>> D.withPending _.refreshing
     >>> D.withButton
         (D.button
-          $ D.withLabel "Confirm"
+          $ D.withLabel "Done"
           >>> D.withClass CN.btnPrimary
           >>> D.withAction (const (Just Dismiss)))
   where

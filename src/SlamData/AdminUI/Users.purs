@@ -20,17 +20,23 @@ module SlamData.AdminUI.Users where
 
 import SlamData.Prelude
 
+import Control.Monad.Eff.Exception as Exception
 import Data.Array as Array
 import Data.Path.Pathy as Pathy
 import Quasar.Advanced.Types as QA
+import SlamData.Notification as Notification
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Security (groupInfo, removeUsersFromGroup)
 
-allUsers ∷ ∀ m. Monad m ⇒ QuasarDSL m ⇒ m (Array QA.UserId)
+allUsers ∷ ∀ m. Monad m ⇒ QuasarDSL m ⇒ Notification.NotifyDSL m ⇒ m (Array QA.UserId)
 allUsers = do
   groupInfo (QA.GroupPath Pathy.rootDir) >>= case _ of
-    Left _ →
-      -- TODO(Christoph): We should display an Error here
+    Left err → do
+      Notification.error
+        "Failed to load users from Quasar"
+        (Just (Notification.Details (Exception.message err)))
+        Nothing
+        Nothing
       pure []
     Right { allMembers } →
       pure allMembers
@@ -50,7 +56,14 @@ fetchTransitiveUsers path = do
   result ← groupInfo path
   pure (either (const []) _.allMembers result)
 
-crawlGroups ∷ ∀ f m. Monad m ⇒ Parallel f m ⇒ QuasarDSL m ⇒ QA.UserId → m (Array QA.GroupPath)
+crawlGroups
+  ∷ ∀ f m
+  . Monad m
+  ⇒ Parallel f m
+  ⇒ QuasarDSL m
+  ⇒ Notification.NotifyDSL m
+  ⇒ QA.UserId
+  → m (Array QA.GroupPath)
 crawlGroups userId =
   map
     -- Drop the root directory, because every User is member of it implicitly
@@ -59,9 +72,12 @@ crawlGroups userId =
   where
     go path =
       groupInfo path >>= case _ of
-        Left _ →
-          -- TODO(Christoph): We should display an Error here, but I'm not sure
-          -- if we should still continue
+        Left err → do
+          Notification.error
+            ("Failed to load users for " <> QA.printGroupPath path)
+            (Just (Notification.Details (Exception.message err)))
+            Nothing
+            Nothing
           pure []
         Right { allMembers, subGroups, members } | userId `Array.elem` allMembers → do
           -- We only consider the group hierarchy one level at a time, because we
@@ -81,7 +97,14 @@ isDirectSubgroup (QA.GroupPath parent) (QA.GroupPath child) =
     Just (childPrefix × _) →
       Pathy.identicalPath parent childPrefix
 
-deleteUser ∷ ∀ f m. Monad m ⇒ QuasarDSL m ⇒ Parallel f m ⇒ QA.UserId → m Unit
+deleteUser
+  ∷ ∀ f m
+  . Monad m
+  ⇒ QuasarDSL m
+  ⇒ Parallel f m
+  ⇒ Notification.NotifyDSL m
+  ⇒ QA.UserId
+  → m Unit
 deleteUser userId = do
   groups ← crawlGroups userId
   flip parTraverse_ groups \group →

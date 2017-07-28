@@ -137,8 +137,6 @@ component =
           groupFilter userId = case state.groupFilter of
             NoFilter →
               true
-            -- TODO(Christoph): Display a warning/error about the wrong filter.
-            -- Maybe a red outline
             InvalidGroupFilter _ →
               true
             GroupFilter userIds →

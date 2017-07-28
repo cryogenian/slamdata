@@ -29,6 +29,7 @@ import Quasar.Advanced.Types as QA
 import SlamData.AdminUI.Users as Users
 import SlamData.Autocomplete.Component as AC
 import SlamData.Dialog.Component as D
+import SlamData.Dialog.Render as DR
 import SlamData.Monad (Slam)
 import SlamData.Quasar.Security (addUsersToGroup)
 import SlamData.Render.ClassName as CN
@@ -45,10 +46,11 @@ type State =
   , allGroups ∷ Array QA.GroupPath
   , refreshing ∷ Boolean
   , groupSelection ∷ Maybe QA.GroupPath
+  , error ∷ Maybe String
   }
 
 initialState ∷ State
-initialState = { userId: "", allGroups: [], refreshing: true, groupSelection: Nothing }
+initialState = { userId: "", allGroups: [], refreshing: true, groupSelection: Nothing, error: Nothing }
 
 type ChildSlot = Unit
 type Message o = Variant (refreshUsers ∷ Unit | o)
@@ -77,15 +79,15 @@ dialog =
           >>> D.withAction (const (Just Add)))
   where
     render ∷ State → HTML
-    render { userId, allGroups, groupSelection, refreshing } =
-      HH.div_
-        [ HH.input
+    render { userId, allGroups, groupSelection, refreshing, error } =
+      HH.div_ $ fold
+        [ pure $ HH.input
             [ HP.value userId
             , HP.placeholder "User id"
             , HP.class_ (H.ClassName "form-control")
             , HE.onValueInput (HE.input ChangeUserId)
             ]
-        , HH.div
+        , pure $ HH.div
             [ HP.class_ (HH.ClassName "sd-admin-ui-user-new-user-group") ]
             [ HH.slot
                 unit
@@ -99,6 +101,7 @@ dialog =
                 (map QA.printGroupPath allGroups)
                 (HE.input HandleGroupSelection)
             ]
+        , maybe [] (pure ∘ DR.renderError) error
         ]
 
     eval ∷ Query ~> DSL o
@@ -110,14 +113,16 @@ dialog =
         H.modify (_ { userId = new })
         pure next
       Add next → do
-        -- TOOD(Christoph): Actually display an error here
         H.gets _.groupSelection >>= case _ of
           Nothing →
             displayError "Select a valid group."
           Just group → do
             { userId } ← H.get
-            void $ addUsersToGroup group [QA.UserId userId]
-        H.raise (D.Bubble (V.inj (SProxy ∷ SProxy "refreshUsers") unit))
+            if String.null userId
+              then displayError "Enter a user id."
+              else do
+                void $ addUsersToGroup group [QA.UserId userId]
+                H.raise (D.Bubble (V.inj (SProxy ∷ SProxy "refreshUsers") unit))
         pure next
       HandleGroupSelection msg next → case msg of
         AC.Changed g → do
@@ -134,7 +139,7 @@ dialog =
         pure next
 
 displayError ∷ ∀ o. String → DSL o Unit
-displayError _ = pure unit
+displayError s = H.modify (_ { error = Just s })
 
 refresh ∷ ∀ o. DSL o Unit
 refresh = do
