@@ -22,19 +22,12 @@ module SlamData.Workspace.Card.Download.Component
 import SlamData.Prelude
 
 import Data.Lens ((^?))
-import Data.Path.Pathy (printPath)
-
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-
-import Global as Global
-
-import Quasar.Paths as Paths
-
 import SlamData.Download.Model as D
-import SlamData.Quasar (reqHeadersToJSON, encodeURI)
+import SlamData.FileSystem.Resource as R
 import SlamData.Quasar.Auth as API
 import SlamData.Render.ClassName as CN
 import SlamData.Render.CSS.New as CSS
@@ -116,19 +109,6 @@ evalCard = case _ of
 handleDownloadPort ∷ Port.DownloadPort → DSL Unit
 handleDownloadPort opts = do
   hs ← H.lift API.authHeaders
-  H.modify (_ { url = url hs, fileName = opts.targetName ⊕ ext })
-  where
-  ext = D.extension opts.compress opts.options
-
-  url hs =
-    (encodeURI (printPath Paths.data_ ⊕ printPath opts.resource))
-    ⊕ headersPart hs
-
-  headersPart hs =
-    "?request-headers="
-      ⊕ (Global.encodeURIComponent
-           $ show
-           $ reqHeadersToJSON
-           $ append hs
-           $ D.toHeaders opts
-           $ Just (opts.targetName ⊕ ext))
+  let url = D.renderURL hs (opts { resource = R.File opts.resource })
+  let ext = D.extension opts.compress opts.options
+  H.modify (_ { url = url, fileName = opts.targetName ⊕ ext })

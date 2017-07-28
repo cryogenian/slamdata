@@ -15,107 +15,146 @@ limitations under the License.
 -}
 
 module SlamData.FileSystem.Dialog.Mount.Component
-  ( component
-  , module SlamData.FileSystem.Dialog.Mount.Component.Query
-  , module MCS
+  ( dialog
+  , module Exports
   ) where
 
 import SlamData.Prelude
 
-import Data.Argonaut (jsonParser, decodeJson, (.?))
-import Data.Lens (set, (.~), (?~))
-import Data.Path.Pathy (rootDir)
+import Data.Lens (Prism', preview, review)
+import Data.Maybe.First (First(..))
+import Data.Variant as V
 import Halogen as H
+import Halogen.Component.ChildPath as CP
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
-import SlamData.FileSystem.Dialog.Component.Message (Message)
-import SlamData.FileSystem.Dialog.Component.Message as Message
+import SlamData.Dialog.Component as D
+import SlamData.Dialog.Render as DR
 import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery as SQ
 import SlamData.FileSystem.Dialog.Mount.Component.ChildSlot as CS
-import SlamData.FileSystem.Dialog.Mount.Component.Query (Query(..))
-import SlamData.FileSystem.Dialog.Mount.Component.State as MCS
+import SlamData.FileSystem.Dialog.Mount.Component.State (Input(..)) as Exports
+import SlamData.FileSystem.Dialog.Mount.Component.State as S
 import SlamData.FileSystem.Dialog.Mount.Couchbase.Component as Couchbase
 import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component as MarkLogic
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component as MongoDB
-import SlamData.FileSystem.Dialog.Mount.SQL2.Component as SQL2
+import SlamData.FileSystem.Dialog.Mount.Scheme (Scheme)
 import SlamData.FileSystem.Dialog.Mount.Scheme as MS
 import SlamData.FileSystem.Dialog.Mount.SparkFTP.Component as SparkFTP
 import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component as SparkHDFS
 import SlamData.FileSystem.Dialog.Mount.SparkLocal.Component as SparkLocal
-import SlamData.FileSystem.Resource as Resource
+import SlamData.FileSystem.Dialog.Mount.SQL2.Component as SQL2
+import SlamData.FileSystem.Resource as R
 import SlamData.GlobalError as GE
 import SlamData.Monad (Slam)
-import SlamData.Quasar.FS as Api
+import SlamData.Quasar.FS as FS
+import SlamData.Quasar.Mount as QM
 import SlamData.Render.ClassName as CN
-import SlamData.Render.Common as RC
-import Utils.DOM as DOM
+import Utils.Path as UP
 
-type DSL = H.ParentDSL MCS.State Query CS.ChildQuery CS.ChildSlot Message Slam
+data Query a
+  = SetName String a
+  | SelectScheme (Maybe Scheme) a
+  | Update (SQ.SettingsMessage QM.MountConfig) a
+  | Dismiss a
+  | Mount (UP.AnyPath × QM.MountConfig) a
+  | Unmount a
+
+type Message o = Variant (deleted ∷ UP.AnyPath, mounted ∷ Unit | o)
 type HTML = H.ParentHTML Query CS.ChildQuery CS.ChildSlot Slam
+type DSL o = H.ParentDSL S.State Query CS.ChildQuery CS.ChildSlot (D.Message (Message o)) Slam
 
-component ∷ H.Component HH.HTML Query MCS.Input Message Slam
-component =
-  H.parentComponent
-    { initialState: MCS.initialState
-    , render
-    , eval
-    , receiver: const Nothing
-    }
-
-render ∷ MCS.State → HTML
-render state@{ name, new, parent } =
-  HH.form
-    [ HE.onSubmit $ HE.input PreventDefaultAndNotifySave ]
-    [ modalDialog
-        [ modalHeader "Mount"
-        , modalBody
-            $ HH.div
-                [ HP.class_ CN.dialogMount ]
-                $ maybe [] (pure ∘ fldName) state.name
-                <> (pure $ selScheme state)
-                <> maybe [] (pure ∘ settings) state.settings
-                <> maybe [] (pure ∘ errorMessage) state.message
-        , modalFooter
-            $ (guard (not new ∧ isNothing parent) $> btnDelete state)
-            <> [ btnMount state, btnCancel state ]
-        ]
-      ]
+dialog ∷ ∀ o. S.Input → D.DialogSpec (Message o) Slam
+dialog input =
+  D.dialog
+    $ D.withTitle (title input)
+    >>> D.withInitialState (S.initialState input)
+    >>> D.withClass (H.ClassName "sd-mount-dialog")
+    >>> D.withParentRender render
+    >>> D.withEval eval
+    >>> D.withPending (\st → st.status /= S.Idle)
+    >>> buttons
+    >>> D.withButton btnSave
   where
-  settings ∷ MCS.MountSettings → HTML
-  settings = case _ of
-    MCS.MongoDB initialState →
-      HH.slot' CS.cpMongoDB unit (MongoDB.comp initialState) unit (HE.input_ Validate)
-    MCS.SQL2 initialState →
-      HH.slot' CS.cpSQL unit (SQL2.comp initialState) unit (HE.input_ Validate)
-    MCS.Couchbase initialState →
-      HH.slot' CS.cpCouchbase unit (Couchbase.comp initialState) unit (HE.input_ Validate)
-    MCS.MarkLogic initialState →
-      HH.slot' CS.cpMarkLogic unit (MarkLogic.comp initialState) unit (HE.input_ Validate)
-    MCS.SparkFTP initialState →
-      HH.slot' CS.cpSparkFTP unit (SparkFTP.comp initialState) unit (HE.input_ Validate)
-    MCS.SparkHDFS initialState →
-      HH.slot' CS.cpSparkHDFS unit (SparkHDFS.comp initialState) unit (HE.input_ Validate)
-    MCS.SparkLocal initialState ->
-      HH.slot' CS.cpSparkLocal unit (SparkLocal.comp initialState) unit (HE.input_ Validate)
+    title = case _ of
+      S.Edit { path } → "Configure mount “" <> UP.getNameStr path <> "”"
+      _ → "Create mount"
+    buttons = case input of
+      S.Edit { fromRoot } | fromRoot →
+        D.withButton btnUnmount >>> D.withButton btnCancel
+      _ →
+        D.withButton btnCancel
+    btnUnmount =
+      D.button
+        $ D.withLabel "Unmount"
+        >>> D.withClass CN.btnDanger
+        >>> D.withAction (const (Just Unmount))
+        >>> D.withPending (\st → st.status == S.Unmounting)
+    btnCancel =
+      D.button
+        $ D.withLabel "Cancel"
+        >>> D.withAction (const (Just Dismiss))
+    btnSave =
+      D.button
+        $ D.withLabel (if S.isNew input then "Mount" else "Save changes")
+        >>> D.withClass CN.btnPrimary
+        >>> D.withAction (\st → Mount <$> (Tuple <$> hush st.pathValue <*> hush st.configValue))
+        >>> D.withPending (\st → st.status == S.Saving)
 
-fldName ∷ String → HTML
-fldName name =
+
+render ∷ S.State → HTML
+render state@{ input, name, scheme, pathValue, configValue, error } =
   HH.div
-    [ HP.classes [CN.formGroup, CN.mountName] ]
+    [ HP.class_ (H.ClassName "sd-mount-dialog-inner") ]
+    $ join
+        [ foldMap (pure ∘ renderNameField) name
+        , pure $ renderSelectScheme scheme
+        , foldMap (pure ∘ renderSettings (_.mount <$> preview S._Edit state.input)) state.scheme
+        , foldMap (pure ∘ DR.renderError) $
+            ala First foldMap [extractError pathValue, extractError configValue, error]
+        ]
+  where
+    extractError ∷ ∀ a b. Either (Maybe a) b → Maybe a
+    extractError = either id (const Nothing)
+
+renderSettings ∷ Maybe QM.MountConfig → MS.Scheme → HTML
+renderSettings config =
+  case _ of
+    MS.MongoDB → embed CS.cpMongoDB MongoDB.component QM._MongoDB
+    MS.SQL2 → embed CS.cpSQL SQL2.component QM._View
+    MS.Couchbase → embed CS.cpCouchbase Couchbase.component QM._Couchbase
+    MS.MarkLogic → embed CS.cpMarkLogic MarkLogic.component QM._MarkLogic
+    MS.SparkFTP → embed CS.cpSparkFTP SparkFTP.component QM._SparkFTP
+    MS.SparkHDFS → embed CS.cpSparkHDFS SparkHDFS.component QM._SparkHDFS
+    MS.SparkLocal → embed CS.cpSparkLocal SparkLocal.component QM._SparkLocal
+  where
+    embed
+      ∷ ∀ f a
+      . CP.ChildPath f CS.ChildQuery Unit CS.ChildSlot
+      → H.Component HH.HTML f (Maybe a) (SQ.SettingsMessage a) Slam
+      → Prism' QM.MountConfig a
+      → HTML
+    embed cp comp prism =
+      HH.slot' cp unit comp
+        (preview prism =<< config)
+        (HE.input Update ∘ map (review prism))
+
+renderNameField ∷ String → HTML
+renderNameField name =
+  HH.div
+    [ HP.class_ CN.formGroup ]
     [ HH.label_
         [ HH.span_ [ HH.text "Name" ]
         , HH.input
             [ HP.class_ CN.formControl
-            , HE.onValueInput $ HE.input (ModifyState ∘ set MCS._name ∘ Just)
+            , HE.onValueInput (HE.input SetName)
             , HP.value name
             ]
         ]
     ]
 
-selScheme ∷ MCS.State → HTML
-selScheme state =
+renderSelectScheme ∷ Maybe MS.Scheme → HTML
+renderSelectScheme scheme =
   HH.div
     [ HP.class_ CN.formGroup ]
     [ HH.label_
@@ -124,147 +163,71 @@ selScheme state =
             [ HP.class_ CN.formControl
             , HE.onValueChange (HE.input SelectScheme ∘ MS.schemeFromString)
             ]
-            $ [ HH.option_ [] ] <> schemeOptions state.settings
+            $ [ HH.option_ [] ] <> map renderOption MS.schemes
         ]
     ]
   where
-  schemeOptions settings =
-    map
-      (\s → let string = MS.schemeToString s in HH.option [ HP.selected $ Just string ≡ (MS.schemeToString ∘ MCS.scheme <$> state.settings) ] [ HH.text string ])
-      MS.schemes
+    renderOption s =
+      HH.option
+        [ HP.selected (scheme == Just s) ]
+        [ HH.text (MS.schemeToString s) ]
 
-errorMessage ∷ String → HTML
-errorMessage msg =
-  HH.div
-    [ HP.classes [ CN.alert, CN.alertDanger ] ]
-    [ HH.text msg ]
+eval ∷ ∀ o. Query ~> DSL o
+eval = case _ of
+  SetName newName next → do
+    modify (_ { name = Just newName })
+    pure next
+  SelectScheme newScheme next → do
+    { scheme, input } ← H.get
+    when (scheme /= newScheme) do
+      let configValue = note Nothing (S.matchSchemeConfig input =<< newScheme)
+      modify (_ { scheme = newScheme, configValue = configValue })
+    pure next
+  Update (SQ.Modified esm) next → do
+    modify (_ { configValue = lmap Just esm })
+    pure next
+  Dismiss next → do
+    H.raise D.Dismiss
+    pure next
+  Mount (path × config) next → do
+    modify (_ { status = S.Saving })
+    success ← handleQuasar "There was a problem saving the mount"
+      =<< QM.saveMount path config
+    when success $ H.raise (D.Bubble (V.inj _mounted unit))
+    pure next
+  Unmount next → do
+    H.gets _.input >>= case _ of
+      S.Edit { path } → do
+        modify (_ { status = S.Unmounting })
+        success ← handleQuasar "There was a problem removing the mount"
+          =<< FS.delete (R.Mount (either R.Database R.View path))
+        when success $ H.raise (D.Bubble (V.inj _deleted path))
+      _ →
+        pure unit
+    pure next
 
-btnCancel ∷ MCS.State -> HTML
-btnCancel state@{ unMounting, saving } =
-  HH.button
-    [ HP.classes [ CN.btn, CN.btnDefault ]
-    , HP.enabled $ not saving && not unMounting
-    , HP.type_ HP.ButtonButton
-    , HE.onClick (HE.input_ RaiseDismiss)
-    ]
-    [ HH.text "Cancel" ]
+handleQuasar ∷ ∀ a o. String → Either QM.QError a → DSL o Boolean
+handleQuasar errorPrefix = case _ of
+  Left err → do
+    case GE.fromQError err of
+      Left msg →
+        H.modify (_
+          { error = Just $ errorPrefix <> ": " <> msg
+          , status = S.Idle
+          })
+      Right ge → do
+        H.modify (_ { status = S.Idle })
+        GE.raiseGlobalError ge
+    pure false
+  Right _ → do
+    H.raise D.Dismiss
+    pure true
 
-btnDelete ∷ MCS.State -> HTML
-btnDelete state@{ unMounting, saving } =
-  HH.button
-    [ HP.classes
-        $ fold
-          [ [ CN.btn, CN.btnDefault, HH.ClassName "btn-careful" ]
-          , guard unMounting $> HH.ClassName "btn-loading"
-          ]
-    , HE.onClick (HE.input_ RaiseMountDelete)
-    , HP.type_ HP.ButtonButton
-    , HP.enabled $ not saving && not unMounting
-    ]
-    $ fold
-      [ guard unMounting *> progressSpinner "Unmounting"
-      , pure $ HH.text "Unmount"
-      ]
+modify ∷ ∀ o. (S.State → S.State) → DSL o Unit
+modify f = H.modify (S.validate ∘ f ∘ (_ { error = Nothing }))
 
-btnMount ∷ MCS.State → HTML
-btnMount state@{ new, saving, unMounting } =
-  HH.button
-    [ HP.classes
-        $ fold
-          [ [ CN.btn, CN.btnPrimary ]
-          , guard saving $> HH.ClassName "btn-loading"
-          ]
-    , HP.enabled $ not saving && not unMounting && MCS.canSave state
-    ]
-    $ fold
-      [ guard saving *> progressSpinner loadingText
-      , pure $ HH.text text
-      ]
-  where
-  text = if new then "Mount" else "Save changes"
-  loadingText = if new then "Mounting" else "Saving changes"
+_deleted ∷ SProxy "deleted"
+_deleted = SProxy
 
-progressSpinner ∷ String → Array HTML
-progressSpinner alt =
-  [ RC.spinner
-  , HH.span [ HP.class_ CN.srOnly ] [ HH.text alt ]
-  ]
-
-eval ∷ Query ~> DSL
-eval (ModifyState f next) = H.modify f *> validateInput $> next
-eval (SelectScheme newScheme next) = do
-  currentScheme ← map MCS.scheme <$> H.gets _.settings
-  when (currentScheme /= newScheme) do
-    H.modify (MCS._settings .~ map MCS.initialSettings newScheme)
-    validateInput
-  pure next
-eval (RaiseDismiss next) = do
-  H.raise Message.Dismiss
-  pure next
-eval (Save k) = do
-  { new, parent, name } ← H.get
-  let name' = fromMaybe "" name
-  let parent' = fromMaybe rootDir parent
-  newName ←
-    if new then Api.getNewName parent' name' else pure (pure name')
-  case newName of
-    Left err → do
-      handleQError err
-      pure $ k Nothing
-    Right newName' → do
-      result ← querySettings (H.request (SQ.Submit parent' newName'))
-      mount ← case result of
-        Just (Right m) → pure (Just m)
-        Just (Left err) → do
-          handleQError err
-          pure Nothing
-        Nothing → pure Nothing
-      H.modify (MCS._saving .~ false)
-      pure $ k mount
-eval (PreventDefaultAndNotifySave ev next) = do
-  state ← H.get
-  H.liftEff (DOM.preventDefault ev)
-  H.modify (MCS._saving .~ true)
-  H.raise $ Message.MountSave $ Resource.Database <$> MCS.originalPath state
-  pure next
-eval (Validate next) = validateInput $> next
-eval (RaiseMountDelete next) = do
-  H.raise Message.MountDelete
-  H.modify (MCS._unMounting .~ true)
-  pure next
-
-handleQError ∷ Api.QError → DSL Unit
-handleQError err =
-  case GE.fromQError err of
-    Left msg → H.modify (MCS._message ?~ formatError msg)
-    Right ge → GE.raiseGlobalError ge
-
-validateInput ∷ DSL Unit
-validateInput = do
-  state ← H.get
-  message ← runExceptT do
-    liftMaybe (MCS.validate state)
-    liftMaybe ∘ join =<< lift (querySettings (H.request SQ.Validate))
-  H.modify (MCS._message .~ either Just (const Nothing) message)
-  where
-  liftMaybe ∷ Maybe String → ExceptT String DSL Unit
-  liftMaybe = maybe (pure unit) throwError
-
-formatError ∷ String → String
-formatError err =
-  "There was a problem saving the mount: " <> extract err
-  where
-  extract msg =
-    either (const msg) id (jsonParser msg >>= decodeJson >>= (_ .? "error"))
-
-querySettings ∷ forall a. (forall s. SQ.SettingsQuery s a) → DSL (Maybe a)
-querySettings q = (map MCS.scheme <$> H.gets _.settings) >>= \s →
-  case s of
-    Just MS.MongoDB → H.query' CS.cpMongoDB unit q
-    Just MS.SQL2 → H.query' CS.cpSQL unit q
-    Just MS.Couchbase → H.query' CS.cpCouchbase unit q
-    Just MS.MarkLogic → H.query' CS.cpMarkLogic unit q
-    Just MS.SparkFTP → H.query' CS.cpSparkFTP unit q
-    Just MS.SparkHDFS → H.query' CS.cpSparkHDFS unit q
-    Just MS.SparkLocal → H.query' CS.cpSparkLocal unit q
-    Nothing → pure Nothing
+_mounted ∷ SProxy "mounted"
+_mounted = SProxy

@@ -14,114 +14,92 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.FileSystem.Dialog.Share.Component
-  ( Query(..)
-  , component
-  ) where
+module SlamData.FileSystem.Dialog.Share.Component (dialog) where
 
 import SlamData.Prelude
 
-import Control.UI.Browser (select)
-
+import Clipboard as C
 import Data.Foreign (toForeign)
-
+import DOM.Classy.Element (toElement)
+import DOM.HTML.HTMLInputElement (select)
+import DOM.HTML.Types (readHTMLInputElement)
 import Halogen as H
-import Halogen.HTML.Events as HE
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-
-import DOM.HTML.Types (readHTMLElement)
-import DOM.Classy.Element (toElement)
-import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
-import SlamData.FileSystem.Dialog.Component.Message (Message(..))
+import SlamData.Dialog.Component as D
 import SlamData.Monad (Slam)
 import SlamData.Render.ClassName as CN
 import SlamData.Render.Icon as I
-
 import Utils.DOM as DOM
-
-import Clipboard as C
+import Utils.Path (dropWorkspaceExt)
 
 data Query a
-  = SelectElement DOM.Event a
-  | PreventDefault DOM.Event a
-  | ReceiveUrl String a
-  | Init a
-  | Cancel a
+  = Init a
+  | SelectElement DOM.MouseEvent a
+  | Copy DOM.MouseEvent a
+  | Dismiss a
 
-copyButtonRef ∷ H.RefLabel
-copyButtonRef = H.RefLabel "copy"
-
-component ∷ H.Component HH.HTML Query String Message Slam
-component =
-  H.lifecycleComponent
-    { initialState: id
-    , initializer: Just (H.action Init)
-    , finalizer: Nothing
-    , receiver: HE.input ReceiveUrl
-    , render
-    , eval
-    }
+dialog ∷ ∀ o. { name ∷ String, url ∷ String } → D.DialogSpec o Slam
+dialog { name, url } =
+  D.dialog
+    $ D.withTitle ("Share “" <> dropWorkspaceExt name <> "”")
+    >>> D.withInitialState url
+    >>> D.withClass (H.ClassName "sd-share-dialog")
+    >>> D.withRender render
+    >>> D.withInitializer Init
+    >>> D.withEval eval
+    >>> D.withButton
+        (D.button
+          $ D.withLabel "Dismiss"
+          >>> D.withAction (const (Just Dismiss)))
 
 render ∷ String → H.ComponentHTML Query
 render url =
-  modalDialog
-    [ modalHeader "Link to deck"
-    , modalBody
-        $ HH.form
-            [ HE.onSubmit (HE.input PreventDefault) ]
-            [ HH.div
-                [ HP.classes [ CN.inputGroup ]
-                , HE.onClick $ HE.input (SelectElement ∘ DOM.toEvent)
-                ]
-                [ HH.input
-                    [ HP.classes [ CN.formControl ]
-                    , HP.value url
-                    , HP.readOnly true
-                    , HP.title "Sharing URL"
-                    , ARIA.label "Sharing URL"
-                    ]
-                , HH.span
-                    [ HP.classes [ CN.inputGroupBtn ] ]
-                    [ HH.button
-                        [ HP.classes [ CN.btn, CN.btnDefault ]
-                        , HE.onClick (HE.input_ Cancel)
-                        , HP.ref copyButtonRef
-                        , HP.id_ "copy-button"
-                        ]
-                        [ I.copySm ]
-                    ]
-                ]
-            ]
-    , modalFooter
+  HH.div
+    [ HP.classes [ CN.inputGroup ]
+    , HE.onClick (HE.input SelectElement)
+    ]
+    [ HH.input
+        [ HP.classes [ CN.formControl ]
+        , HP.value url
+        , HP.readOnly true
+        , HP.title "Sharing URL"
+        , ARIA.label "Sharing URL"
+        ]
+    , HH.span
+        [ HP.classes [ CN.inputGroupBtn ] ]
         [ HH.button
-            [ HP.id_ "copy-button"
-            , HP.classes [ CN.btn, CN.btnDefault ]
-            , HE.onClick (HE.input_ Cancel)
+            [ HP.classes [ CN.btn, CN.btnDefault ]
+            , HE.onClick (HE.input Copy)
+            , HP.ref copyButtonRef
+            , HP.id_ "copy-button"
             ]
-            [ HH.text "Dismiss" ]
+            [ I.copySm ]
         ]
     ]
 
-eval ∷ Query ~> H.ComponentDSL String Query Message Slam
+eval ∷ ∀ o. Query ~> H.ComponentDSL String Query (D.Message o) Slam
 eval = case _ of
   Init next → do
     url ← H.get
-    H.getHTMLElementRef copyButtonRef >>= traverse_ \htmlEl → do
+    H.getHTMLElementRef copyButtonRef >>= traverse_ \htmlEl →
       H.liftEff $ C.fromElement (toElement htmlEl) (pure url)
     pure next
   SelectElement ev next → do
     H.liftEff $ DOM.currentTarget ev
-      # readHTMLElement ∘ toForeign
+      # readHTMLInputElement ∘ toForeign
       # runExcept
       # traverse_ select
     pure next
-  PreventDefault ev next →
-    H.liftEff (DOM.preventDefault ev) $> next
-  ReceiveUrl url next → do
-    st ← H.get
-    when (st ≠ url) $ H.put url
+  Copy ev next → do
+    H.liftEff (DOM.preventDefault ev)
+    H.raise D.Dismiss
     pure next
-  Cancel next →
-    H.raise Dismiss $> next
+  Dismiss next → do
+    H.raise D.Dismiss
+    pure next
+
+copyButtonRef ∷ H.RefLabel
+copyButtonRef = H.RefLabel "copy"
