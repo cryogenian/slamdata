@@ -14,13 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.FileSystem.Dialog where
+module SlamData.FileSystem.Dialog
+  ( module SlamData.FileSystem.Dialog
+  , module Exports
+  ) where
 
 import SlamData.Prelude
 
+import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import SlamData.Dialog.Component as D
+import SlamData.Dialog.Component (Message(..)) as Exports
 import SlamData.Dialog.Message.Component as Message
 import SlamData.FileSystem.Dialog.Download.Component as Download
 import SlamData.FileSystem.Dialog.Mount.Component as Mount
@@ -33,7 +38,7 @@ import SlamData.Monad (Slam)
 import Utils.Path as UP
 
 type Query = D.Query Definition Action
-type Message = D.Message Action
+type Message' = D.Message Action
 
 data Definition
   = Error String
@@ -48,6 +53,9 @@ type Action = Variant
   , renamed ∷ Unit
   , mounted ∷ Unit
   )
+
+component ∷ H.Component HH.HTML Query (Maybe Definition) Message' Slam
+component = D.component dialog
 
 dialog ∷ Definition → D.DialogSpec Action Slam
 dialog = case _ of

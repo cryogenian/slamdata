@@ -68,7 +68,7 @@ data Query a
   | PreventDefault Event (Query a)
   | HandleError GlobalError a
   | HandleListing Listing.Message a
-  | HandleDialog Dialog.Message a
+  | HandleDialog Dialog.Message' a
   | HandleNotifications Notification.Message a
   | HandleSignInMessage SignInMessage a
   | HandleSearch Search.Message a

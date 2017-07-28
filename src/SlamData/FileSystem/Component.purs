@@ -58,7 +58,6 @@ import SlamData.AdminUI.Component as AdminUI
 import SlamData.AdminUI.Types as AdminUI.Types
 import SlamData.Common.Sort (notSort)
 import SlamData.Config as Config
-import SlamData.Dialog.Component as Dialog
 import SlamData.Dialog.License.Component as LicenseDialog
 import SlamData.Dialog.Render as RenderDialog
 import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
@@ -131,7 +130,7 @@ render state@{ version, sort, salt, path } =
           , HH.slot' CS.cpListing unit Listing.component unit $ HE.input HandleListing
           ]
       , HH.slot' CS.cpLicenseDialog unit LicenseDialog.component state.licenseProblem (HE.input_ (HandleLicenseProblem Nothing))
-      , HH.slot' CS.cpDialog unit (Dialog.component Dialog.dialog) state.dialog $ HE.input HandleDialog
+      , HH.slot' CS.cpDialog unit Dialog.component state.dialog $ HE.input HandleDialog
       , HH.slot' CS.cpNotify unit (NC.component NC.Hidden) unit $ HE.input HandleNotifications
       , HH.slot' CS.cpAdminUI unit AdminUI.component unit $ HE.input HandleAdminUI
       ]
