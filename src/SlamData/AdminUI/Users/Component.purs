@@ -107,11 +107,13 @@ component =
                 ]
             , HH.slot
                 unit
-                (AC.component AC.defaultConfig { containerClass = H.ClassName "sd-admin-ui-autocomplete"
-                                               , placeholder = "Search by group"
-                                               , autofirst = true
-                                               , itemFilter = String.contains ∘ String.Pattern
-                                               })
+                (AC.component
+                   AC.defaultConfig
+                     { containerClass = H.ClassName "sd-admin-ui-autocomplete"
+                     , placeholder = "Search by group"
+                     , autofirst = true
+                     , itemFilter = String.contains ∘ String.Pattern
+                     })
                 (maybe [] (map QA.printGroupPath) state.allGroups)
                 (HE.input HandleGroupFilter)
             , HH.button
