@@ -86,12 +86,12 @@ getTransform tp state = do
   jc ← Pr.lookup tp state.dimMap
   jc ^? D._value ∘ D._transform ∘ _Just
 
-transforms ∷ T.Projection → State → Array Tr.Transform
+transforms ∷ Pr.Projection → State → Array Tr.Transform
 transforms prj state =
   let
-    mbTr = join $ state.dimMap ^? T.unpackProjection prj ∘ _Just ∘ D._value ∘ D._transform
+    mbTr = join $ Pr.lookup prj state.dimMap ^? _Just ∘ D._value ∘ D._transform
     available = DMD.availableTransforms prj mbTr
-    axis = state.dimMap ^? T.unpackProjection prj ∘ _Just ∘ D._value ∘ D._projection
+    axis = Pr.lookup prj state.dimMap ^? _Just ∘ D._value ∘ D._projection
     axisType = Ax.axisType  <$> axis <*> pure state.axes
   in A.nub $ fromMaybe [] do
     at ← axisType

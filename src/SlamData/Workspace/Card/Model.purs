@@ -212,8 +212,8 @@ cardModelOfType (port × varMap) = case_
   # on CT._cache (const $ Cache Nothing)
   # on CT._open (const $ Open Nothing)
   # on CT._downloadOptions
-      (const $ DownloadOptions $ DLO.initialState
-       { targetName = runFileName ∘ fileName <$> Port.extractFilePath varMap })
+      ( const $ DownloadOptions $ DLO.initialState
+        { targetName = Path.runFileName ∘ PU.anyFileName <$> Port.extractAnyFilePath varMap })
   # on CT._draftboard (const $ Draftboard DB.emptyModel)
   # on CT._tabs (const $ Tabs Tabs.initialModel)
   # on CT._structureEditor (const $ StructureEditor StructureEditor.initialModel)

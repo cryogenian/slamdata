@@ -21,7 +21,7 @@ module SlamData.Workspace.Card.Error
 
 import SlamData.Prelude
 import Data.List as L
-import Data.Variant (case_, on)
+import Data.Variant (on)
 import SlamData.GlobalError as GE
 import SlamData.Quasar.Error (QError)
 import SlamData.Workspace.Card.Cache.Error as CCE

@@ -51,8 +51,8 @@ module SlamData.Workspace.Card.Port
 import SlamData.Prelude
 
 import Control.Monad.Aff (Aff)
-import Data.Argonaut (JCursor, Json)
-import Data.Lens (Prism', prism', Traversal', wander, Lens', lens, (^.), view)
+import Data.Argonaut (Json)
+import Data.Lens (Prism', prism', Traversal', wander, lens)
 import Data.List as List
 import Data.Map as Map
 import Data.Set as Set
@@ -64,8 +64,6 @@ import SlamData.Download.Model (DownloadOptions)
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.CardType.ChartType (ChartType)
-import SlamData.Workspace.Card.CardType.FormInputType (FormInputType)
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Port.VarMap (Var(..), VarMap, URLVarMap, VarMapValue(..), Resource(..))
@@ -73,7 +71,6 @@ import SlamData.Workspace.Card.Port.VarMap as VM
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.PivotTable.Model as PTM
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-import SqlSquared as Sql
 import Text.Markdown.SlamDown as SD
 import Utils.Path as PU
 

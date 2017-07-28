@@ -25,7 +25,6 @@ import Data.Lens (preview, _Just)
 import Data.List as List
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Query as Quasar
-import SlamData.Workspace.Card.Chart.PivotTableRenderer.Model as M
 import SlamData.Workspace.Card.Eval.Common as CEC
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.State as ES

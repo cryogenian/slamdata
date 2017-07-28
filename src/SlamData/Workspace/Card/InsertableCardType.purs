@@ -27,7 +27,6 @@ import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port.VarMap as VM
 import SlamData.Workspace.Card.CardType (CardType)
-import Utils as Utils
 
 data InsertableCardType
   = CacheCard
@@ -75,7 +74,7 @@ inputs =
   , SetupDownloadCard × [ Data ]
   , SetupMarkdownCard × [ None, Variables ]
   , TableCard × [ Data, Process ]
-  , TroubleshootCard × [ Chart, Form, Data, Process, Download, Markdown, Variables ]
+  , TroubleshootCard × [ Viz, Data, Process, Download, Markdown, Variables ]
   , TabsCard × [ None ]
   , StructureEditorCard × [ Data, Process ]
   , ShowVizCard × [ Viz ]
@@ -247,7 +246,7 @@ fromOut = uncurry case _, _ of
     | otherwise → Data
   Port.DownloadOptions _, _ → Download
   Port.SlamDown _, _ → Markdown
-  Port.ChartInstructions _, _ → viz
+  Port.ChartInstructions _, _ → Viz
   Port.PivotTable _, _ → Viz
   Port.SetupSelect _, _ → Viz
   Port.SetupInput _, _ → Viz

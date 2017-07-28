@@ -20,14 +20,12 @@ import SlamData.Prelude
 
 import Control.Monad.Free (Free, foldFree, hoistFree, liftF)
 import Control.Monad.State (State, modify, execState, gets)
-
 import Data.Lens (view, Lens', lens, (%~), (^.))
 import Data.List as L
 import Data.Lens.Iso (Iso', iso, withIso)
-
+import Data.Lens.Record (prop)
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.DimensionMap.Projection as Pr
-
 import Unsafe.Coerce (unsafeCoerce)
 
 type AxesLens' s r = Lens' (Ax.AxisTypeAnnotated s r) s
@@ -265,11 +263,11 @@ addSource prj fld = liftF $ Source fld (packAxesLens prj) id
 
 addAll ∷ Field → DimensionM Field
 addAll fld = do
-  f1 ← addSource _.time fld
-  f2 ← addSource _.date f1
-  f3 ← addSource _.datetime f2
-  f4 ← addSource _.value f3
-  addSource _.category f4
+  f1 ← addSource (prop (SProxy ∷ SProxy "time")) fld
+  f2 ← addSource (prop (SProxy ∷ SProxy "date")) f1
+  f3 ← addSource (prop (SProxy ∷ SProxy "datetime")) f2
+  f4 ← addSource (prop (SProxy ∷ SProxy "value")) f3
+  addSource (prop (SProxy ∷ SProxy "category")) f4
 
 
 isFilteredBy ∷ Field → Field → DimensionM Field
