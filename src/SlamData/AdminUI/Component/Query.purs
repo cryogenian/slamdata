@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Quasar.Advanced.Types as QA
 import SlamData.AdminUI.Component.State (DatabaseState, GroupsState, MySettingsState, ServerState, TabIndex)
-import SlamData.AdminUI.Dialog.Component as Dialog
+import SlamData.AdminUI.Dialog as Dialog
 import SlamData.AdminUI.Users.Component as Users
 import SlamData.Workspace.MillerColumns.Component as Miller
 import Utils.DOM as DOM
@@ -39,7 +39,7 @@ data Query a
   | DefaultThemeChanged String a
   | HandleColumns (Miller.Message GroupItem QA.GroupPath) a
   | HandleColumnOrItem GroupMessage a
-  | HandleDialog Dialog.Message a
+  | HandleDialog Dialog.Message' a
   | HandleUsers Users.Message a
 
 data GroupItem = GroupItem { path ∷ QA.GroupPath, name ∷ String }

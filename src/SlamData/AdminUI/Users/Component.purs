@@ -28,8 +28,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Quasar.Advanced.Types as QA
-import SlamData.AdminUI.Dialog.Component (Dialog)
-import SlamData.AdminUI.Dialog.Component as Dialog
+import SlamData.AdminUI.Dialog as Dialog
 import SlamData.Autocomplete.Component as AC
 import SlamData.Monad (Slam)
 import SlamData.Quasar.Class (class QuasarDSL)
@@ -54,7 +53,7 @@ data GroupFilter
   | GroupFilter (Array QA.UserId)
   | InvalidGroupFilter String
 
-data Message = RaiseDialog Dialog
+data Message = RaiseDialog Dialog.Definition
 
 type State =
   { filter ∷ String
@@ -196,11 +195,10 @@ component =
           _ ← H.query unit (H.action (AC.Close AC.CuzSelect))
           pure next
         DeleteUser userId next → do
-          H.raise (RaiseDialog (Dialog.ConfirmUserDeletion userId))
+          H.raise (RaiseDialog (Dialog.DeleteUser userId))
           pure next
         EditUser userId next → do
-          groups ← crawlGroups userId
-          H.raise (RaiseDialog (Dialog.EditUserPermissions { userId, groups }))
+          H.raise (RaiseDialog (Dialog.UserPermissions userId))
           pure next
         HandleGroupFilter msg next → case msg of
           AC.Changed "" → do

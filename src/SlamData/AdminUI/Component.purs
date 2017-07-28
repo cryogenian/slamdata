@@ -25,12 +25,13 @@ import Data.Lens.Record (prop)
 import Data.Newtype (over)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
+import Data.Variant as V
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Quasar.Advanced.Types as QA
-import SlamData.AdminUI.Dialog.Component as Dialog
+import SlamData.AdminUI.Dialog as Dialog
 import SlamData.AdminUI.Group as Group
 import SlamData.AdminUI.Types as AT
 import SlamData.AdminUI.Users.Component as Users
@@ -71,14 +72,10 @@ render state =
         , guard (not state.open) $> H.ClassName "hidden"
         ]
     ]
-    $ join
-      [ maybe [] dialog state.dialog
-      , pure $ tabHeader state.active
-      , pure $ tabBody state
-      ]
-  where
-  dialog dlg =
-    [ HH.slot' AT.cpDialog dlg (Dialog.component dlg) unit (HE.input AT.HandleDialog) ]
+    [ HH.slot' AT.cpDialog unit Dialog.component state.dialog (HE.input AT.HandleDialog)
+    , tabHeader state.active
+    , tabBody state
+    ]
 
 tabHeader ∷ AT.TabIndex → AT.HTML
 tabHeader active =
@@ -381,30 +378,26 @@ eval = case _ of
             Nothing
       pure next
     AT.DeleteGroup { path } → do
-      H.modify (_ { dialog = Just (Dialog.ConfirmGroupDeletion path) })
+      H.modify (_ { dialog = Just (Dialog.DeleteGroup path) })
       pure next
     AT.DisplayUsers { path } → do
       H.modify (_ { active = AT.Users })
       _ ← H.query' AT.cpUsers unit (H.action (Users.SetGroupFilter path))
       pure next
   AT.HandleDialog msg next → do
+    let dismissDialog = H.modify (_ { dialog = Nothing })
     case msg of
-      Dialog.Confirm (Dialog.ConfirmGroupDeletion path) → do
-        deleteGroup path >>= case _ of
-          Right _ →
+      Dialog.Bubble v → do
+        dismissDialog
+        v # (V.case_
+          # V.on Dialog._deleteUser Users.deleteUser
+          # V.on Dialog._deleteGroup (\group → do
+            _ ← deleteGroup group
             H.query' AT.cpGroups unit (H.action Miller.Reload) $> unit
-          Left err → do
-            Notification.error
-              ("Failed to delete the group at " <> QA.printGroupPath path)
-              (Just (Notification.Details (Exception.message err)))
-              Nothing
-              Nothing
-            pure unit
-      Dialog.Confirm (Dialog.ConfirmUserDeletion uid) → Users.deleteUser uid
-      Dialog.Confirm (Dialog.EditUserPermissions _) → do
-        pure unit
-      Dialog.Dismiss → pure unit
-    H.modify (_ { dialog = Nothing })
+            pure unit)
+          # V.on (SProxy ∷ SProxy "permissionsChanged") pure)
+      Dialog.Dismiss →
+        dismissDialog
     pure next
   AT.HandleUsers (Users.RaiseDialog dlg) next → do
     H.modify (_ { dialog = Just dlg })

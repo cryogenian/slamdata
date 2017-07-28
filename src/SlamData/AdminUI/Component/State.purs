@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Data.List (List)
 import Data.List as L
-import SlamData.AdminUI.Dialog.Component as Dialog
+import SlamData.AdminUI.Dialog as Dialog
 
 type State =
   { open ∷ Boolean
@@ -31,7 +31,7 @@ type State =
       , server ∷ ServerState
       , groups ∷ GroupsState
       }
-  , dialog ∷ Maybe Dialog.Dialog
+  , dialog ∷ Maybe Dialog.Definition
   }
 
 data TabIndex
