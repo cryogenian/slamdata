@@ -172,9 +172,15 @@ renderSelectScheme scheme =
     ]
   where
     renderOption s =
-      HH.option
-        [ HP.selected (scheme == Just s) ]
-        [ HH.text (typeToString s) ]
+      let
+        label = typeToString s
+      in
+        -- We do a string comparison on the label rather than the value to
+        -- allow for the `Unknown` case to match, regardless of the inner
+        -- mount type
+        HH.option
+          [ HP.selected (typeToString <$> scheme == Just label) ]
+          [ HH.text label ]
 
 eval ∷ ∀ o. Query ~> DSL o
 eval = case _ of
