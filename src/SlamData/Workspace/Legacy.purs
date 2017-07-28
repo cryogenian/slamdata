@@ -213,7 +213,7 @@ pruneLegacyData
   ⇒ DirPath
   → m (Either QE.QError Unit)
 pruneLegacyData path = runExceptT do
-  children ← ExceptT $ liftQuasar (QF.dirMetadata path)
+  children ← ExceptT $ liftQuasar (QF.dirMetadata path Nothing)
   let
     tmpDir = path </> Pathy.dir ".tmp"
     deckDirs = flip foldMap children case _ of
