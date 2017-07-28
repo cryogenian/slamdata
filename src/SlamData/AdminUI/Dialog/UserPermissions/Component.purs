@@ -18,6 +18,7 @@ module SlamData.AdminUI.Dialog.UserPermissions.Component (dialog) where
 
 import SlamData.Prelude
 
+import Control.Monad.Eff.Exception as Exception
 import Data.Array as Array
 import Data.String as String
 import Halogen as H
@@ -29,6 +30,7 @@ import SlamData.AdminUI.Users as Users
 import SlamData.Autocomplete.Component as AC
 import SlamData.Dialog.Component as D
 import SlamData.Monad (Slam)
+import SlamData.Notification as Notification
 import SlamData.Quasar.Security (addUsersToGroup, removeUsersFromGroup)
 import SlamData.Render.ClassName as CN
 
@@ -119,16 +121,28 @@ dialog userId =
         refresh userId
         pure next
       Delete group next → do
-        -- TOOD(Christoph): Actually display an error here
-        _ ← removeUsersFromGroup group [userId]
-        refresh userId
+        removeUsersFromGroup group [userId] >>= case _ of
+          Left err →
+          Notification.error
+            ("Failed to delete user: " <> QA.runUserId userId <> " from: " <> QA.printGroupPath group)
+            (Just (Notification.Details (Exception.message err)))
+            Nothing
+            Nothing
+          Right _ →
+            refresh userId
         pure next
       Add group next → do
-        -- TOOD(Christoph): Actually display an error here
-        _ ← addUsersToGroup group [userId]
-        _ ← H.query unit (H.action (AC.Input ""))
-        _ ← H.query unit (H.action (AC.Close AC.CuzEscape))
-        refresh userId
+        addUsersToGroup group [userId] >>= case _ of
+          Left err →
+          Notification.error
+            ("Failed to add user: " <> QA.runUserId userId <> " to group: " <> QA.printGroupPath group)
+            (Just (Notification.Details (Exception.message err)))
+            Nothing
+            Nothing
+          Right _ → do
+            _ ← H.query unit (H.action (AC.Input ""))
+            _ ← H.query unit (H.action (AC.Close AC.CuzEscape))
+            refresh userId
         pure next
       HandleGroupSelection msg next → case msg of
         AC.Changed g → do
