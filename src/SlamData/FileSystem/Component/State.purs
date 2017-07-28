@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Data.Path.Pathy (rootDir)
 import SlamData.Common.Sort (Sort(..))
-import SlamData.FileSystem.Dialog as DialogT
+import SlamData.FileSystem.Dialog as Dialog
 import SlamData.FileSystem.Routing.Salt (Salt(..))
 import SlamData.License as License
 import Utils.Path (DirPath)
@@ -35,7 +35,7 @@ type State =
   , isUnconfigured ∷ Boolean
   , showHiddenFiles ∷ Boolean
   , presentIntroVideo ∷ Boolean
-  , dialog ∷ Maybe DialogT.Definition
+  , dialog ∷ Maybe Dialog.Definition
   , licenseProblem ∷ Maybe License.LicenseProblem
   }
 

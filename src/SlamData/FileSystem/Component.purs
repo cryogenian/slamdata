@@ -58,7 +58,7 @@ import SlamData.AdminUI.Component as AdminUI
 import SlamData.AdminUI.Types as AdminUI.Types
 import SlamData.Common.Sort (notSort)
 import SlamData.Config as Config
-import SlamData.Dialog.Component as NewDialog
+import SlamData.Dialog.Component as Dialog
 import SlamData.Dialog.License.Component as LicenseDialog
 import SlamData.Dialog.Render as RenderDialog
 import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
@@ -131,7 +131,7 @@ render state@{ version, sort, salt, path } =
           , HH.slot' CS.cpListing unit Listing.component unit $ HE.input HandleListing
           ]
       , HH.slot' CS.cpLicenseDialog unit LicenseDialog.component state.licenseProblem (HE.input_ (HandleLicenseProblem Nothing))
-      , HH.slot' CS.cpNewDialog unit (NewDialog.component Dialog.dialog) state.dialog $ HE.input HandleDialog
+      , HH.slot' CS.cpDialog unit (Dialog.component Dialog.dialog) state.dialog $ HE.input HandleDialog
       , HH.slot' CS.cpNotify unit (NC.component NC.Hidden) unit $ HE.input HandleNotifications
       , HH.slot' CS.cpAdminUI unit AdminUI.component unit $ HE.input HandleAdminUI
       ]
@@ -332,13 +332,13 @@ eval = case _ of
         presentMountHint items path
         resort
         pure next
-  HandleDialog (NewDialog.Bubble msg) next → do
+  HandleDialog (Dialog.Bubble msg) next → do
     msg # (V.case_
       # V.on (SProxy ∷ SProxy "mounted") (const repopulate)
       # V.on (SProxy ∷ SProxy "renamed") (const repopulate)
       # V.on (SProxy ∷ SProxy "deleted") handleDeleted)
     pure next
-  HandleDialog NewDialog.Dismiss next → do
+  HandleDialog Dialog.Dismiss next → do
     H.modify (_ { dialog = Nothing })
     pure next
   HandleHeader (Header.GlobalMenuMessage GlobalMenu.OpenAdminUI) next → do
