@@ -65,7 +65,6 @@ type State item =
   }
 
 data Message item = Changed String | Selected item
-type Input = Array
 
 type HTML item = H.ComponentHTML (Query item)
 type DSL item m = H.ComponentDSL (State item) (Query item) (Message item) m
@@ -93,7 +92,7 @@ component
   ∷ ∀ item e m
   . MonadEff (dom ∷ DOM | e) m
   ⇒ Config item
-  → H.Component HH.HTML (Query item) (Input item) (Message item) m
+  → H.Component HH.HTML (Query item) (Array item) (Message item) m
 component { containerClass, placeholder, autofirst, itemFilter, itemText, itemDisplay } =
   H.lifecycleComponent
    { initialState
