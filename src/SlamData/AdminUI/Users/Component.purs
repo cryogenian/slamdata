@@ -39,6 +39,7 @@ data Query a
   | FetchUsers a
   | SetFilter String a
   | SetGroupFilter QA.GroupPath a
+  | NewUser a
   | DeleteUser QA.UserId a
   | EditUser QA.UserId a
   | Select Int a
@@ -117,7 +118,7 @@ component =
                 (maybe [] (map QA.printGroupPath) state.allGroups)
                 (HE.input HandleGroupFilter)
             , HH.button
-                [ HE.onClick (HE.input_ FetchUsers)
+                [ HE.onClick (HE.input_ NewUser)
                 , HP.classes (map H.ClassName ["btn", "btn-success"])
                 ]
                 [ HH.text "New User" ]
@@ -193,6 +194,9 @@ component =
           setGroupFilter path
           _ ← H.query unit (H.action (AC.Input (QA.printGroupPath path)))
           _ ← H.query unit (H.action (AC.Close AC.CuzSelect))
+          pure next
+        NewUser next → do
+          H.raise (RaiseDialog Dialog.NewUser)
           pure next
         DeleteUser userId next → do
           H.raise (RaiseDialog (Dialog.DeleteUser userId))

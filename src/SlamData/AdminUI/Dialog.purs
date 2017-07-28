@@ -25,6 +25,7 @@ import Data.Variant as V
 import Halogen as H
 import Halogen.HTML as HH
 import Quasar.Advanced.Types as QA
+import SlamData.AdminUI.Dialog.NewUser.Component as NewUser
 import SlamData.AdminUI.Dialog.UserPermissions.Component as UserPermissions
 import SlamData.Dialog.Component (Message(..)) as Exports
 import SlamData.Dialog.Component as D
@@ -37,12 +38,13 @@ type Message' = D.Message Action
 data Definition
   = DeleteGroup QA.GroupPath
   | DeleteUser QA.UserId
+  | NewUser
   | UserPermissions QA.UserId
 
 type Action = Variant
   ( deleteGroup ∷ QA.GroupPath
   , deleteUser ∷ QA.UserId
-  , permissionsChanged ∷ Unit
+  , refreshUsers ∷ Unit
   )
 
 component ∷ H.Component HH.HTML Query (Maybe Definition) Message' Slam
@@ -74,8 +76,11 @@ dialog = case _ of
       , class_: HH.ClassName "sd-admin-ui-delete-user-dialog"
       , action: Right ("Delete" × V.inj _deleteUser userId)
       }
+  NewUser →
+    NewUser.dialog
   UserPermissions userId →
     UserPermissions.dialog userId
 
+_refreshUsers = SProxy ∷ SProxy "refreshUsers"
 _deleteUser = SProxy ∷ SProxy "deleteUser"
 _deleteGroup = SProxy ∷ SProxy "deleteGroup"

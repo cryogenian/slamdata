@@ -14,12 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.AdminUI.Dialog.UserPermissions.Component (dialog) where
+module SlamData.AdminUI.Dialog.NewUser.Component (dialog) where
 
 import SlamData.Prelude
 
 import Data.Array as Array
 import Data.String as String
+import Data.Variant as V
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -29,36 +30,36 @@ import SlamData.AdminUI.Users as Users
 import SlamData.Autocomplete.Component as AC
 import SlamData.Dialog.Component as D
 import SlamData.Monad (Slam)
-import SlamData.Quasar.Security (addUsersToGroup, removeUsersFromGroup)
+import SlamData.Quasar.Security (addUsersToGroup)
 import SlamData.Render.ClassName as CN
 
 data Query a
   = Init a
-  | Delete QA.GroupPath a
-  | Add QA.GroupPath a
+  | ChangeUserId String a
+  | Add a
   | HandleGroupSelection (AC.Message String) a
   | Dismiss a
 
 type State =
-  { groups ∷ Array QA.GroupPath
+  { userId ∷ String
   , allGroups ∷ Array QA.GroupPath
   , refreshing ∷ Boolean
   , groupSelection ∷ Maybe QA.GroupPath
   }
 
 initialState ∷ State
-initialState = { groups: [], allGroups: [], refreshing: true, groupSelection: Nothing }
+initialState = { userId: "", allGroups: [], refreshing: true, groupSelection: Nothing }
 
 type ChildSlot = Unit
-type Message o = Variant o
+type Message o = Variant (refreshUsers ∷ Unit | o)
 type HTML = H.ParentHTML Query (AC.Query String) ChildSlot Slam
 type DSL o = H.ParentDSL State Query (AC.Query String) ChildSlot (D.Message (Message o)) Slam
 
-dialog ∷ ∀ o. QA.UserId → D.DialogSpec (Message o) Slam
-dialog userId =
+dialog ∷ ∀ o. D.DialogSpec (Message o) Slam
+dialog =
   D.dialog
-    $ D.withTitle ("Edit Permissions — " <> QA.runUserId userId)
-    >>> D.withClass (H.ClassName "sd-admin-ui-user-permissions")
+    $ D.withTitle "New User"
+    >>> D.withClass (H.ClassName "sd-admin-ui-user-new-user")
     >>> D.withInitialState initialState
     >>> D.withInitializer Init
     >>> D.withParentRender render
@@ -66,15 +67,26 @@ dialog userId =
     >>> D.withPending _.refreshing
     >>> D.withButton
         (D.button
-          $ D.withLabel "Confirm"
-          >>> D.withClass CN.btnPrimary
+         $ D.withLabel "Cancel"
+          >>> D.withClass CN.btn
           >>> D.withAction (const (Just Dismiss)))
+    >>> D.withButton
+        (D.button
+          $ D.withLabel "Add user"
+          >>> D.withClass CN.btnPrimary
+          >>> D.withAction (const (Just Add)))
   where
     render ∷ State → HTML
-    render { groups, allGroups, groupSelection, refreshing } =
+    render { userId, allGroups, groupSelection, refreshing } =
       HH.div_
-        [ HH.div
-            [ HP.class_ (HH.ClassName "sd-admin-ui-user-permissions-add-group") ]
+        [ HH.input
+            [ HP.value userId
+            , HP.placeholder "User id"
+            , HP.class_ (H.ClassName "form-control")
+            , HE.onValueInput (HE.input ChangeUserId)
+            ]
+        , HH.div
+            [ HP.class_ (HH.ClassName "sd-admin-ui-user-new-user-group") ]
             [ HH.slot
                 unit
                 (AC.component
@@ -84,51 +96,28 @@ dialog userId =
                      , autofirst = true
                      , itemFilter = String.contains ∘ String.Pattern
                      })
-                (map QA.printGroupPath (allGroups `Array.difference` groups))
+                (map QA.printGroupPath allGroups)
                 (HE.input HandleGroupSelection)
-            , addButton
             ]
-        , HH.ul
-            [ HP.class_ (HH.ClassName "sd-admin-ui-user-permissions-groups") ]
-            (map renderGroup groups)
         ]
-      where
-        addButton =
-          let
-            props = case groupSelection of
-              Nothing →
-                [ HP.disabled true ]
-              Just group →
-                [ HE.onClick (HE.input_ (Add group)) ]
-          in
-           HH.button ([HP.classes ([CN.btn, H.ClassName "btn-success"])] <> props) [ HH.text "Add"]
 
-        renderGroup group =
-           HH.li
-             [ HP.class_ (HH.ClassName "sd-admin-ui-user-permissions-group") ]
-             [ HH.div
-                 [ HP.class_ (HH.ClassName "sd-admin-ui-user-permissions-group-label") ]
-                 [ HH.text (QA.printGroupPath group) ]
-             , HH.div
-                 [ HP.class_ (HH.ClassName "sd-admin-ui-user-permissions-group-actions") ]
-                 [ HH.a [ HE.onClick (HE.input_ (Delete group)) ] [ HH.text "Delete"] ]
-             ]
     eval ∷ Query ~> DSL o
     eval = case _ of
       Init next → do
-        refresh userId
+        refresh
         pure next
-      Delete group next → do
-        -- TOOD(Christoph): Actually display an error here
-        _ ← removeUsersFromGroup group [userId]
-        refresh userId
+      ChangeUserId new next → do
+        H.modify (_ { userId = new })
         pure next
-      Add group next → do
+      Add next → do
         -- TOOD(Christoph): Actually display an error here
-        _ ← addUsersToGroup group [userId]
-        _ ← H.query unit (H.action (AC.Input ""))
-        _ ← H.query unit (H.action (AC.Close AC.CuzEscape))
-        refresh userId
+        H.gets _.groupSelection >>= case _ of
+          Nothing →
+            displayError "Select a valid group."
+          Just group → do
+            { userId } ← H.get
+            void $ addUsersToGroup group [QA.UserId userId]
+        H.raise (D.Bubble (V.inj (SProxy ∷ SProxy "refreshUsers") unit))
         pure next
       HandleGroupSelection msg next → case msg of
         AC.Changed g → do
@@ -144,9 +133,11 @@ dialog userId =
         H.raise D.Dismiss
         pure next
 
-refresh ∷ ∀ o. QA.UserId → DSL o Unit
-refresh userId = do
+displayError ∷ ∀ o. String → DSL o Unit
+displayError _ = pure unit
+
+refresh ∷ ∀ o. DSL o Unit
+refresh = do
   H.modify (_ { refreshing = true })
-  groups ← Users.crawlGroups userId
   allGroups ← Users.fetchAllGroups
-  H.modify (_ { groups = groups, allGroups = allGroups, refreshing = false })
+  H.modify (_ { allGroups = allGroups, refreshing = false })
