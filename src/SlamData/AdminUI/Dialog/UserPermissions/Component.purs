@@ -57,7 +57,7 @@ type DSL o = H.ParentDSL State Query (AC.Query String) ChildSlot (D.Message (Mes
 dialog ∷ ∀ o. QA.UserId → D.DialogSpec (Message o) Slam
 dialog userId =
   D.dialog
-    $ D.withTitle "Edit Permissions"
+    $ D.withTitle ("Edit Permissions — " <> QA.runUserId userId)
     >>> D.withClass (H.ClassName "sd-admin-ui-user-permissions")
     >>> D.withInitialState initialState
     >>> D.withInitializer Init
@@ -126,6 +126,8 @@ dialog userId =
       Add group next → do
         -- TOOD(Christoph): Actually display an error here
         _ ← addUsersToGroup group [userId]
+        _ ← H.query unit (H.action (AC.Input ""))
+        _ ← H.query unit (H.action (AC.Close AC.CuzEscape))
         refresh userId
         pure next
       HandleGroupSelection msg next → case msg of
