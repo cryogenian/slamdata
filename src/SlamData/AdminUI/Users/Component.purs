@@ -20,7 +20,6 @@ module SlamData.AdminUI.Users.Component where
 
 import SlamData.Prelude
 
-import Control.Monad.Fork (fork)
 import Data.Array as Array
 import Data.Path.Pathy as Pathy
 import Data.String as String
