@@ -39,7 +39,19 @@ data BackAction
   | Share
   | Unshare
 
-derive instance eqBackAction ∷ Eq BackAction
+instance eqBackAction ∷ Eq BackAction where
+  eq Trash Trash = true
+  eq Rename Rename = true
+  eq Embed Embed = true
+  eq Publish Publish = true
+  eq DeleteDeck DeleteDeck = true
+  eq Mirror Mirror = true
+  eq Wrap Wrap = true
+  eq (WrapChoice c1) (WrapChoice c2) = CT.eq_ c1 c2
+  eq Unwrap Unwrap = true
+  eq Share Share = true
+  eq Unshare Unshare = true
+  eq _ _ = false
 
 type BackSideOptions =
   { deckId ∷ DeckId
@@ -77,8 +89,8 @@ toActionListAction unwrappable activeCard cardDefs action =
       , icon
       , description
       , children: toActionListAction unwrappable activeCard cardDefs <$>
-          [ WrapChoice CT.Draftboard
-          , WrapChoice CT.Tabs
+          [ WrapChoice CT.draftboard
+          , WrapChoice CT.tabs
           ]
       }
     _ → Action.mkDo
@@ -113,7 +125,7 @@ toActionListAction unwrappable activeCard cardDefs action =
     DeleteDeck →
       I.IconHTML I.cardAndDeckActionsDeleteDeck
     WrapChoice cty →
-      CT.cardIcon cty
+      CT.icon cty
 
   name ∷ String
   name = case action of
@@ -127,7 +139,7 @@ toActionListAction unwrappable activeCard cardDefs action =
     Wrap → "Wrap"
     Unwrap → "Collapse"
     Unshare → "Unshare deck"
-    WrapChoice cty → CT.cardName cty
+    WrapChoice cty → CT.name cty
 
   description = name
 

@@ -55,7 +55,7 @@ import Leaflet.Core as LC
 
 import SlamData.Effects (SlamDataEffects)
 
-import SlamData.Workspace.Card.Chart.PivotTableRenderer.Common (PTree)
+import SlamData.Workspace.Card.Viz.Renderer.PivotTable.Common (PTree)
 import SlamData.Workspace.Card.Model as CM
 import SlamData.Workspace.Card.Port (Resource, PivotTablePort)
 import SlamData.Workspace.Card.Setups.Axis (Axes)
@@ -111,7 +111,7 @@ data EvalState
 initialEvalState ∷ CM.AnyCardModel → Maybe EvalState
 initialEvalState = case _ of
   CM.Tabs { tabs } → ActiveTab <$> (guard (Array.length tabs > 0) $> 0)
-  CM.Geo _ →
+  CM.Viz _ →
     Just $ Geo { leaflet: Nothing, build: const $ pure $ [ ] × [ ] , layers: [ ], controls: [ ] }
   _ → Nothing
 
