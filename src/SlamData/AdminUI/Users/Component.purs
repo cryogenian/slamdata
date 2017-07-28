@@ -21,7 +21,6 @@ module SlamData.AdminUI.Users.Component where
 import SlamData.Prelude
 
 import Data.Array as Array
-import Data.Path.Pathy as Pathy
 import Data.String as String
 import Halogen as H
 import Halogen.HTML as HH
@@ -29,10 +28,9 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Quasar.Advanced.Types as QA
 import SlamData.AdminUI.Dialog as Dialog
+import SlamData.AdminUI.Users (allUsers, fetchAllGroups, fetchTransitiveUsers)
 import SlamData.Autocomplete.Component as AC
 import SlamData.Monad (Slam)
-import SlamData.Quasar.Class (class QuasarDSL)
-import SlamData.Quasar.Security (groupInfo, removeUsersFromGroup)
 import SlamData.Render.Common as R
 import SlamData.Render.Icon as I
 
@@ -220,64 +218,3 @@ setGroupFilter path = do
       H.modify (_ { groupFilter = GroupFilter users })
     _ →
       H.modify (_ { groupFilter = InvalidGroupFilter (QA.printGroupPath path) })
-
-allUsers ∷ ∀ m. Monad m ⇒ QuasarDSL m ⇒ m (Array QA.UserId)
-allUsers = do
-  groupInfo (QA.GroupPath Pathy.rootDir) >>= case _ of
-    Left _ →
-      -- TODO(Christoph): We should display an Error here
-      pure []
-    Right { allMembers } →
-      pure allMembers
-
-fetchAllGroups ∷ ∀ m . Monad m ⇒ QuasarDSL m ⇒ m (Array QA.GroupPath)
-fetchAllGroups = do
-  result ← groupInfo (QA.GroupPath Pathy.rootDir)
-  pure (either (const []) _.subGroups result)
-
-fetchTransitiveUsers
-  ∷ ∀ m
-  . Monad m
-  ⇒ QuasarDSL m
-  ⇒ QA.GroupPath
-  → m (Array QA.UserId)
-fetchTransitiveUsers path = do
-  result ← groupInfo path
-  pure (either (const []) _.allMembers result)
-
-crawlGroups ∷ ∀ m . Monad m ⇒ QuasarDSL m ⇒ QA.UserId → m (Array QA.GroupPath)
-crawlGroups userId =
-  map
-    -- Drop the root directory, because every User is member of it implicitly
-    (fromMaybe [] ∘ Array.tail)
-    (go (QA.GroupPath Pathy.rootDir))
-  where
-    go path =
-      groupInfo path >>= case _ of
-        Left _ →
-          -- TODO(Christoph): We should display an Error here, but I'm not sure
-          -- if we should still continue
-          pure []
-        Right { allMembers, subGroups, members } | userId `Array.elem` allMembers → do
-          -- We only consider the group hierarchy one level at a time, because we
-          -- need to filter on group membership
-          paths ← traverse go (Array.filter (isDirectSubgroup path) subGroups)
-          let addPath = if userId `Array.elem` members then Array.cons path else id
-          pure (addPath (fold paths))
-        Right _ →
-          -- The user did not exist within this part of the group hierarchy
-          pure []
-
-isDirectSubgroup ∷ QA.GroupPath → QA.GroupPath → Boolean
-isDirectSubgroup (QA.GroupPath parent) (QA.GroupPath child) =
-  case Pathy.peel child of
-    Nothing → -- Should never happen
-      false
-    Just (childPrefix × _) →
-      Pathy.identicalPath parent childPrefix
-
-deleteUser ∷ ∀ m. Monad m ⇒ QuasarDSL m ⇒ QA.UserId → m Unit
-deleteUser userId = do
-  groups ← crawlGroups userId
-  for_ groups \group →
-    removeUsersFromGroup group [userId]

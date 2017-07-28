@@ -34,7 +34,8 @@ import Quasar.Advanced.Types as QA
 import SlamData.AdminUI.Dialog as Dialog
 import SlamData.AdminUI.Group as Group
 import SlamData.AdminUI.Types as AT
-import SlamData.AdminUI.Users.Component as Users
+import SlamData.AdminUI.Users as Users
+import SlamData.AdminUI.Users.Component as UC
 import SlamData.LocalStorage.Class as LS
 import SlamData.LocalStorage.Keys as LK
 import SlamData.Monad (Slam)
@@ -119,7 +120,7 @@ tabBody state =
           [ HP.class_ (HH.ClassName "sd-admin-ui-server") ]
           (renderServerForm state.formState.server)
       AT.Users →
-        [ HH.slot' AT.cpUsers unit Users.component unit (HE.input AT.HandleUsers) ]
+        [ HH.slot' AT.cpUsers unit UC.component unit (HE.input AT.HandleUsers) ]
       AT.Groups →
         pure $ HH.div
           [ HP.class_ (HH.ClassName "sd-admin-ui-groups") ]
@@ -382,7 +383,7 @@ eval = case _ of
       pure next
     AT.DisplayUsers { path } → do
       H.modify (_ { active = AT.Users })
-      _ ← H.query' AT.cpUsers unit (H.action (Users.SetGroupFilter path))
+      _ ← H.query' AT.cpUsers unit (H.action (UC.SetGroupFilter path))
       pure next
   AT.HandleDialog msg next → do
     let dismissDialog = H.modify (_ { dialog = Nothing })
@@ -399,6 +400,6 @@ eval = case _ of
       Dialog.Dismiss →
         dismissDialog
     pure next
-  AT.HandleUsers (Users.RaiseDialog dlg) next → do
+  AT.HandleUsers (UC.RaiseDialog dlg) next → do
     H.modify (_ { dialog = Just dlg })
     pure next

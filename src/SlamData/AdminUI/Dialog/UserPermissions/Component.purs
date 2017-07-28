@@ -18,40 +18,52 @@ module SlamData.AdminUI.Dialog.UserPermissions.Component (dialog) where
 
 import SlamData.Prelude
 
+import Data.Array as Array
+import Data.String as String
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
 import Quasar.Advanced.Types as QA
+import SlamData.AdminUI.Users as Users
+import SlamData.Autocomplete.Component as AC
 import SlamData.Dialog.Component as D
 import SlamData.Monad (Slam)
+import SlamData.Quasar.Security (addUsersToGroup, removeUsersFromGroup)
 import SlamData.Render.ClassName as CN
 
 data Query a
-  = Delete QA.GroupPath a
+  = Init a
+  | Delete QA.GroupPath a
   | Add QA.GroupPath a
+  | HandleGroupSelection (AC.Message String) a
   | Dismiss a
 
 type State =
   { groups ∷ Array QA.GroupPath
   , allGroups ∷ Array QA.GroupPath
   , refreshing ∷ Boolean
+  , groupSelection ∷ Maybe QA.GroupPath
   }
 
 initialState ∷ State
-initialState = { groups: [], allGroups: [], refreshing: true }
+initialState = { groups: [], allGroups: [], refreshing: true, groupSelection: Nothing }
 
+type ChildSlot = Unit
 type Message o = Variant o
-type HTML = H.ComponentHTML Query
-type DSL o =  H.ComponentDSL State Query (D.Message (Message o)) Slam
+type HTML = H.ParentHTML Query (AC.Query String) ChildSlot Slam
+type DSL o = H.ParentDSL State Query (AC.Query String) ChildSlot (D.Message (Message o)) Slam
 
 dialog ∷ ∀ o. QA.UserId → D.DialogSpec (Message o) Slam
 dialog userId =
   D.dialog
     $ D.withTitle "Edit Permissions"
+    >>> D.withClass (H.ClassName "sd-admin-ui-user-permissions")
     >>> D.withInitialState initialState
-    >>> D.withClass (H.ClassName "sd-admin-ui-user-permissions-dialog")
-    >>> D.withRender render
+    >>> D.withInitializer Init
+    >>> D.withParentRender render
     >>> D.withEval eval
-    >>> D.withPending (_.refreshing)
+    >>> D.withPending _.refreshing
     >>> D.withButton
         (D.button
           $ D.withLabel "Confirm"
@@ -59,10 +71,80 @@ dialog userId =
           >>> D.withAction (const (Just Dismiss)))
   where
     render ∷ State → HTML
-    render _ =
-      HH.text "hi"
+    render { groups, allGroups, groupSelection, refreshing } =
+      HH.div_
+        [ HH.div
+            [ HP.class_ (HH.ClassName "sd-admin-ui-user-permissions-add-group") ]
+            [ HH.slot
+                unit
+                (AC.component
+                   AC.defaultConfig
+                     { containerClass = H.ClassName "sd-admin-ui-autocomplete"
+                     , placeholder = "Add user to group"
+                     , autofirst = true
+                     , itemFilter = String.contains ∘ String.Pattern
+                     })
+                (map QA.printGroupPath (allGroups `Array.difference` groups))
+                (HE.input HandleGroupSelection)
+            , addButton
+            ]
+        , HH.ul
+            [ HP.class_ (HH.ClassName "sd-admin-ui-user-permissions-groups") ]
+            (map renderGroup groups)
+        ]
+      where
+        addButton =
+          let
+            props = case groupSelection of
+              Nothing →
+                [ HP.disabled true ]
+              Just group →
+                [ HE.onClick (HE.input_ (Add group)) ]
+          in
+           HH.button ([HP.classes ([CN.btn, H.ClassName "btn-success"])] <> props) [ HH.text "Add"]
+
+        renderGroup group =
+           HH.li
+             [ HP.class_ (HH.ClassName "sd-admin-ui-user-permissions-group") ]
+             [ HH.div
+                 [ HP.class_ (HH.ClassName "sd-admin-ui-user-permissions-group-label") ]
+                 [ HH.text (QA.printGroupPath group) ]
+             , HH.div
+                 [ HP.class_ (HH.ClassName "sd-admin-ui-user-permissions-group-actions") ]
+                 [ HH.a [ HE.onClick (HE.input_ (Delete group)) ] [ HH.text "Delete"] ]
+             ]
     eval ∷ Query ~> DSL o
     eval = case _ of
-      Delete group next → pure next
-      Add group next → pure next
-      Dismiss next → pure next
+      Init next → do
+        refresh userId
+        pure next
+      Delete group next → do
+        -- TOOD(Christoph): Actually display an error here
+        _ ← removeUsersFromGroup group [userId]
+        refresh userId
+        pure next
+      Add group next → do
+        -- TOOD(Christoph): Actually display an error here
+        _ ← addUsersToGroup group [userId]
+        refresh userId
+        pure next
+      HandleGroupSelection msg next → case msg of
+        AC.Changed g → do
+          { allGroups } ← H.get
+          let selection = do
+                path ← hush (QA.parseGroupPath g)
+                guard (Array.elem path allGroups)
+                pure path
+          H.modify (_ { groupSelection = selection })
+          pure next
+        AC.Selected _ → pure next
+      Dismiss next → do
+        H.raise D.Dismiss
+        pure next
+
+refresh ∷ ∀ o. QA.UserId → DSL o Unit
+refresh userId = do
+  H.modify (_ { refreshing = true })
+  groups ← Users.crawlGroups userId
+  allGroups ← Users.fetchAllGroups
+  H.modify (_ { groups = groups, allGroups = allGroups, refreshing = false })
