@@ -32,17 +32,14 @@ import Data.List as L
 import Data.Map as Map
 import Data.NonEmpty as NE
 import Data.Set as Set
-import Quasar.Advanced.QuasarAF (QError)
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class ParQuasarDSL)
 import SlamData.Quasar.Query as QQ
-import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Common as CEC
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port.VarMap as VM
-import SlamData.Workspace.Card.Setups.Axis (buildAxes)
 import SlamData.Workspace.Card.Setups.Common.Eval (analyze)
 import SlamData.Workspace.Card.Setups.Common.Sql (numFuncs)
 import SlamData.Workspace.Card.Setups.Dimension as D
@@ -58,7 +55,7 @@ eval
   ⇒ MonadState CEM.CardState m
   ⇒ MonadTell CEM.CardLog m
   ⇒ MonadThrow
-      (Variant ( pivotTable ∷ PivotTableError
+      (Variant ( pivotTable ∷ PE.Error
                , qerror ∷ CE.QError
                , resource ∷ CE.ResourceError
                | v)) m
@@ -74,12 +71,12 @@ eval options port = do
   _ × axes ← analyze resource =<< get
   put $ Just $ CEM.Analysis { axes, records: [], resource }
   when (Array.null options.columns) do
-    throwPivotTableError PivotTableNoColumnSelectedError
+    PE.throwError PE.NoColumnSelected
   let
     port' × sql = mkSql options var
   resource' ←
     CEC.localEvalResource (Sql.Query numFuncs sql) varMap
-      >>= pivotTableError PivotTableQuasarError
+      >>= either CE.throwQError pure
   pure
     $ Port.PivotTable port'
     × VM.insert cardId (VM.Var Port.defaultResourceVar) (VM.Resource resource') varMap
@@ -199,8 +196,8 @@ escapeColumn = case _ of
 
 pivotTableError
   ∷ ∀ e a m v
-  . MonadThrow (Variant (pivotTable ∷ PivotTableError | v)) m
-  ⇒ (e → PivotTableError)
+  . MonadThrow (Variant (pivotTable ∷ PE.Error | v)) m
+  ⇒ (e → PE.Error)
   → Either e a
   → m a
-pivotTableError f = either (throwPivotTableError ∘ f) pure
+pivotTableError f = either (PE.throwError ∘ f) pure

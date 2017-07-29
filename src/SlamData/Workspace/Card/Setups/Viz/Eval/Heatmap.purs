@@ -22,6 +22,7 @@ import Color as C
 import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array as A
 import Data.Foreign as Frn
+import Data.Lens ((^?))
 import Data.List as L
 import Data.Map as M
 import Data.Int as Int
@@ -50,7 +51,7 @@ import SlamData.Workspace.Card.Setups.Auxiliary.Heatmap as Heatmap
 import SqlSquared as Sql
 import Utils.Foldable (enumeratedFor_)
 
-eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Resource → m Port.Out)
+eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Port → m Port.Out)
 eval dimMap aux =
   BCE.chartSetupEval buildSql buildPort aux'
   where

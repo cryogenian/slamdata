@@ -42,7 +42,7 @@ import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
 import SqlSquared as Sql
 
-eval ∷ ∀ m. VizEval m (P.DimMap → Port.Resource → m Port.Out)
+eval ∷ ∀ m. VizEval m (P.DimMap → Port.Port → m Port.Out)
 eval dimMap =
   BCE.chartSetupEval buildSql buildPort $ Just unit
   where

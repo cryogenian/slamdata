@@ -55,7 +55,7 @@ decodeItem = decodeJson >=> \obj → do
 
   pure { dims, series }
 
-eval ∷ ∀ m. VizEval m (P.DimMap → Port.Resource → m Port.Out)
+eval ∷ ∀ m. VizEval m (P.DimMap → Port.Port → m Port.Out)
 eval dimMap =
   BCE.chartSetupEval buildSql buildPort $ Just unit
   where

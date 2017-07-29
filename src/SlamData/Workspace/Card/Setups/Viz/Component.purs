@@ -115,8 +115,14 @@ render state =
       ]
 
   aux = fromMaybe [ ] do
-    auxState ← lm.lookup state.vizType state.auxes
+    traceAnyA "UNO"
+    traceAnyA state
+    auxState ← spy $ lm.lookup state.vizType state.auxes
+    traceAnyA "DUO"
+    traceAnyA auxState
     comp ← Aux.vizTypeAux state.vizType
+    traceAnyA "TRES"
+    traceAnyA comp
     pure
       $ A.singleton
       $ HH.div_
@@ -181,11 +187,8 @@ setupEval = case _ of
         H.modify _{ vizTypePickerExpanded = false }
         H.raise CC.modelUpdate
       VT.ExplainNotWorking vizType → do
-        st ← H.get
-        traceAnyA st
         for_ st.axes \axes →
           W.showDialog $ Dialog.VizUnavailable {vizType, axes}
-
       _ → pure unit
     pure next
   Q.HandleDims msg next → do

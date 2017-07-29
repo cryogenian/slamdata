@@ -25,8 +25,6 @@ import SlamData.Prelude
 import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.State.Class (class MonadState)
 import Control.Monad.Writer.Class (class MonadTell)
-import Data.StrMap as SM
-import Data.List ((:))
 import Data.Variant (on, default)
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
@@ -83,23 +81,23 @@ evalCard trans port = CEM.localVarMap >>= \varMap → case trans, port of
   Error msg, _ → CE.throw msg
   _, Port.CardError err → throwError err
   Pass, _ → pure (port × varMap)
-  Table m, _ → Table.eval m port varMap
+  Table m, _ → Table.eval m port
   Viz _, Port.PivotTable p →
     PivotTable.eval PTM.initialModel p varMap
   Viz m, Port.SetupSelect lp →
     default (pure $ Port.ResourceKey Port.defaultResourceVar × varMap)
-      # on VizM._select (\model → Viz.evalLabeled model lp =<< extractResource varMap)
+      # on VizM._select (\model → Viz.evalLabeled model lp)
       $ m
   Viz m, Port.SetupInput tlp →
     default (pure $ Port.ResourceKey Port.defaultResourceVar × varMap)
-      # on VizM._input (\model → Viz.evalTextLike model tlp =<< extractResource varMap)
+      # on VizM._input (\model → Viz.evalTextLike model tlp)
       $ m
   Viz m, Port.GeoChart r →
     default (pure $ Port.ResourceKey Port.defaultResourceVar × varMap)
-      # on VizM._geo (\_ → tapResource (Geo.eval r) varMap)
+      # on VizM._geo (\_ → tapResource (Geo.eval r) port)
       $ m
   Viz _, Port.ChartInstructions { options } →
-    tapResource (Viz.evalChart options) varMap
+    tapResource (Viz.evalChart options) port
   Viz _, _ →
     pure $ Port.ResourceKey Port.defaultResourceVar × varMap
   Composite, _ → Port.varMapOut <$> Common.evalComposite
@@ -111,8 +109,8 @@ evalCard trans port = CEM.localVarMap >>= \varMap → case trans, port of
   Cache path, _ → Cache.eval path =<< CEM.extractResource port
   Open res, _ → Open.evalOpen res varMap
   Variables model, _ → VariablesE.eval model
-  SetupViz model, _ → SetupViz.eval model varMap =<< extractResource varMap
-  DownloadOptions model, _ → tapResource (DOptions.eval model) varMap
+  SetupViz model, _ → SetupViz.eval model port
+  DownloadOptions model, _ → tapResource (DOptions.eval model) port
   e, i → CE.throw $ "Card received unexpected input type; " <> tagEval e <> " | " <> Port.tagPort i
 
 modelToEval ∷ Model.AnyCardModel → Eval

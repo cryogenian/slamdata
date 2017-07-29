@@ -20,10 +20,24 @@ import SlamData.Prelude
 
 import Data.Codec.Argonaut as CA
 import Data.ListMap as LM
+import Data.Variant as V
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.VizType as VT
 import SlamData.Workspace.Card.Setups.DimensionMap.Projection as Pr
 import SlamData.Workspace.Card.Setups.Auxiliary as Aux
+import SlamData.Workspace.Card.Setups.Auxiliary.Area as Area
+import SlamData.Workspace.Card.Setups.Auxiliary.Bar as Bar
+import SlamData.Workspace.Card.Setups.Auxiliary.Funnel as Funnel
+import SlamData.Workspace.Card.Setups.Auxiliary.Gauge as Gauge
+import SlamData.Workspace.Card.Setups.Auxiliary.Graph as Graph
+import SlamData.Workspace.Card.Setups.Auxiliary.Heatmap as Heatmap
+import SlamData.Workspace.Card.Setups.Auxiliary.Line as Line
+import SlamData.Workspace.Card.Setups.Auxiliary.Metric as Metric
+import SlamData.Workspace.Card.Setups.Auxiliary.PunchCard as PunchCard
+import SlamData.Workspace.Card.Setups.Auxiliary.Scatter as Scatter
+import SlamData.Workspace.Card.Setups.Auxiliary.GeoHeatmap as GeoHeatmap
+import SlamData.Workspace.Card.Setups.Auxiliary.GeoMarker as GeoMarker
+import SlamData.Workspace.Card.Setups.PivotTable.Model as PivotTable
 import Test.StrongCheck.Gen as Gen
 
 lm ∷ ∀ a. LM.Module VT.VizType a
@@ -39,7 +53,21 @@ initial ∷ Model
 initial =
   { dimMaps: lm.empty
   , vizType: CT.pie
-  , auxes: lm.empty
+  , auxes: LM.fromFoldable
+      [ CT.area × V.inj CT._area Area.initial
+      , CT.bar × V.inj CT._bar Bar.initial
+      , CT.funnel × V.inj CT._funnel Funnel.initial
+      , CT.gauge × V.inj CT._gauge Gauge.initial
+      , CT.graph × V.inj CT._graph Graph.initial
+      , CT.heatmap × V.inj CT._heatmap Heatmap.initial
+      , CT.line × V.inj CT._line Line.initial
+      , CT.metric × V.inj CT._metric Metric.initial
+      , CT.punchCard × V.inj CT._punchCard PunchCard.initial
+      , CT.scatter × V.inj CT._scatter Scatter.initial
+      , CT.geoHeatmap × V.inj CT._geoHeatmap GeoHeatmap.initial
+      , CT.geoMarker × V.inj CT._geoMarker GeoMarker.initial
+      , CT.pivot × V.inj CT._pivot PivotTable.initialModel
+      ]
   }
 
 eq_ ∷ Model → Model → Boolean

@@ -27,11 +27,10 @@ import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.State (class MonadState, get, put)
 import Control.Monad.Writer.Class (class MonadTell)
 import Data.Argonaut (Json)
-import Data.Lens (preview, (?~) )
+import Data.Lens (preview, (?~), (^?))
 import Data.List as L
 import Data.Map as Map
 import Data.Set as Set
-import Data.StrMap as SM
 import Data.Variant (on)
 import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
@@ -44,19 +43,15 @@ import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Common as CEC
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.State as CES
-import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port.VarMap as VM
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Viz.Model (Model)
 import SlamData.Workspace.Card.Viz.Renderer.Input.Model as TLR
 import SlamData.Workspace.Card.Viz.Renderer.Select.Model as LR
-import SqlSquared (Sql)
 import SqlSquared (SqlQuery)
 import SqlSquared as Sql
-
 import Utils (stringToNumber)
 import Utils.SqlSquared (all, asRel, variRelation)
 
@@ -93,7 +88,6 @@ evalLabeled
   ⇒ ParQuasarDSL m
   ⇒ LR.Model
   → Port.SetupSelectPort
-  → Port.Resource
   → m Port.Out
 evalLabeled m p = do
   resourceVar × r ← CEM.extractResourcePair Port.Initial
@@ -138,7 +132,8 @@ evalLabeled m p = do
              ?~ ( Sql.binop Sql.In
                     ( Sql.binop Sql.FieldDeref
                         ( Sql.ident "res" )
-                        ( QQ.jcursorToSql Nothing p.cursor ))
+                        ( maybe (Sql.splice Nothing) (QQ.jcursorToSql Nothing)
+                          $ p.projection ^? D._value ∘ D._projection ))
                     ( Sql.vari defaultSelectionVar)))
 
   put $ Just $ CEM.AutoSelect {lastUsedResource: r, autoSelect: selected}
@@ -156,7 +151,6 @@ evalTextLike
   ⇒ ParQuasarDSL m
   ⇒ TLR.Model
   → Port.SetupInputPort
-  → Port.Resource
   → m Port.Out
 evalTextLike m p = do
   resourceVar × r ← CEM.extractResourcePair Port.Initial
@@ -168,6 +162,7 @@ evalTextLike m p = do
       # on Inp._date (const $ Sql.invokeFunction "DATE" $ pure $ Sql.string m.value)
       # on Inp._datetime (const $ Sql.invokeFunction "TIMESTAMP" $ pure $ Sql.string m.value)
       # on Inp._text (const $ Sql.string m.value)
+      $ p.formInputType
 
     sql =
       Sql.buildSelect
@@ -178,22 +173,23 @@ evalTextLike m p = do
              ?~ ( Sql.binop Sql.Eq
                     ( Sql.binop Sql.FieldDeref
                         ( Sql.ident "res" )
-                        ( QQ.jcursorToSql Nothing p.cursor ))
+                        ( maybe (Sql.splice Nothing) (QQ.jcursorToSql Nothing)
+                          $ p.projection ^? D._value ∘ D._projection ))
                     (Sql.vari defaultSelectionVar) ))
 
   eval (Sql.Query mempty sql) selection r
-  eval sql r
 
 evalChart
   ∷ ∀ m
   . MonadState CEM.CardState m
   ⇒ MonadThrow CE.CardError m
   ⇒ QuasarDSL m
+  ⇒ MonadAsk CEM.CardEnv m
   ⇒ (Array Json → DSL OptionI)
   → Port.Resource
   → m Port.Port
 evalChart buildOptions resource = do
-  let path = resource ^. Port._filePath
-  results ← CE.liftQ $ QQ.all path
-  put $ Just $ ES.ChartOptions (buildOptions results)
+  CEM.CardEnv { path } ← ask
+  results ← CE.liftQ $ CEC.sampleResource path resource Nothing
+  put $ Just $ CES.ChartOptions (buildOptions results)
   pure $ Port.ResourceKey Port.defaultResourceVar

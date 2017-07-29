@@ -50,7 +50,7 @@ decodeItem = decodeJson >=> \obj → do
   weight ← map (fromMaybe zero ∘ Sem.maybeNumber) $ obj .? "weight"
   pure { source, target, weight }
 
-eval ∷ ∀ m. VizEval m (P.DimMap → Port.Resource → m Port.Out)
+eval ∷ ∀ m. VizEval m (P.DimMap → Port.Port → m Port.Out)
 eval dimMap =
   BCE.chartSetupEval buildSql buildPort $ Just unit
   where

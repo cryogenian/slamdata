@@ -49,7 +49,7 @@ import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
 import SqlSquared as Sql
 import Unsafe.Coerce (unsafeCoerce)
 
-eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Resource → m Port.Out)
+eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Port → m Port.Out)
 eval dimMap aux = BCE.chartSetupEval buildSql buildPort aux'
   where
   aux' = prj CT._geoHeatmap aux

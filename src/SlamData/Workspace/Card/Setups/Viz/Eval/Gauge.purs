@@ -42,7 +42,7 @@ import SlamData.Workspace.Card.Setups.Auxiliary as Aux
 import SlamData.Workspace.Card.Setups.Auxiliary.Gauge as Gauge
 
 
-eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Resource → m Port.Out)
+eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Port → m Port.Out)
 eval dimMap aux =
   BCE.chartSetupEval buildSql buildPort aux'
   where

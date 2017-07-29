@@ -25,6 +25,7 @@ import Data.Array as A
 import Data.Foldable as F
 import Data.Foreign (readNumber)
 import Data.Int as Int
+import Data.Lens ((^?))
 import Data.List as L
 import Data.Map as M
 import Data.Set as Set
@@ -54,7 +55,7 @@ import SqlSquared as Sql
 import Utils (hush')
 import Utils.Array (enumerate)
 
-eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Resource → m Port.Out)
+eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Port → m Port.Out)
 eval dimMap aux =
   BCE.chartSetupEval buildSql buildPort aux'
   where

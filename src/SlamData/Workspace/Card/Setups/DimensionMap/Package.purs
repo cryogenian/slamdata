@@ -28,7 +28,7 @@ import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.VizType as VT
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Setups.DimensionMap.DSL (field, addSource, isFilteredBy, isActiveWhen, optional)
+import SlamData.Workspace.Card.Setups.DimensionMap.DSL (field, addSource, isFilteredBy, isActiveWhen, optional, addAll)
 import SlamData.Workspace.Card.Setups.DimensionMap.DSL as DSL
 import SlamData.Workspace.Card.Setups.DimensionMap.Projection as Pr
 
@@ -321,10 +321,7 @@ packages = lm.union customMap $ map interpret mapFromFree
   , CT.pie × do
       category ←
         field Pr.category
-          >>= addSource Ax._category
-          >>= addSource Ax._time
-          >>= addSource Ax._date
-          >>= addSource Ax._datetime
+          >>= addAll
 
       value ←
         field Pr.value
@@ -332,15 +329,16 @@ packages = lm.union customMap $ map interpret mapFromFree
 
       donut ←
         optional Pr.donut
-          >>= addSource Ax._category
+          >>= addAll
           >>= addSource Ax._time
           >>= isFilteredBy category
           >>= isActiveWhen category
+          >>= isFilteredBy value
 
       parallel ←
         optional Pr.parallel
-          >>= addSource Ax._category
-          >>= addSource Ax._time
+          >>= addAll
+          >>= isFilteredBy value
           >>= isFilteredBy category
           >>= isFilteredBy donut
           >>= isActiveWhen category
@@ -349,11 +347,7 @@ packages = lm.union customMap $ map interpret mapFromFree
  , CT.line × do
       dimension ←
         field Pr.dimension
-          >>= addSource Ax._category
-          >>= addSource Ax._value
-          >>= addSource Ax._time
-          >>= addSource Ax._date
-          >>= addSource Ax._datetime
+          >>= addAll
 
       value ←
         field Pr.value
@@ -375,8 +369,10 @@ packages = lm.union customMap $ map interpret mapFromFree
 
       series ←
         optional Pr.series
-          >>= addSource Ax._category
-          >>= addSource Ax._time
+          >>= addAll
+          >>= isFilteredBy value
+          >>= isFilteredBy secondValue
+          >>= isFilteredBy size
           >>= isFilteredBy dimension
           >>= isActiveWhen dimension
       pure unit
@@ -384,11 +380,7 @@ packages = lm.union customMap $ map interpret mapFromFree
   , CT.bar × do
       category ←
         field Pr.category
-          >>= addSource Ax._category
-          >>= addSource Ax._value
-          >>= addSource Ax._time
-          >>= addSource Ax._date
-          >>= addSource Ax._datetime
+          >>= addAll
 
       value ←
         field Pr.value
@@ -397,28 +389,24 @@ packages = lm.union customMap $ map interpret mapFromFree
 
       stack ←
         optional Pr.stack
-          >>= addSource Ax._category
-          >>= addSource Ax._time
+          >>= addAll
           >>= isFilteredBy category
+          >>= isFilteredBy value
           >>= isActiveWhen category
 
       parallel ←
         optional Pr.parallel
-          >>= addSource Ax._category
-          >>= addSource Ax._time
+          >>= addAll
           >>= isFilteredBy category
           >>= isFilteredBy stack
+          >>= isFilteredBy value
           >>= isActiveWhen category
       pure unit
 
   , CT.area × do
       dimension ←
         field Pr.dimension
-          >>= addSource Ax._time
-          >>= addSource Ax._value
-          >>= addSource Ax._date
-          >>= addSource Ax._datetime
-          >>= addSource Ax._category
+          >>= addAll
 
       value ←
         field Pr.value
@@ -427,11 +415,7 @@ packages = lm.union customMap $ map interpret mapFromFree
 
       series ←
         optional Pr.series
-          >>= addSource Ax._time
-          >>= addSource Ax._value
-          >>= addSource Ax._date
-          >>= addSource Ax._datetime
-          >>= addSource Ax._category
+          >>= addAll
           >>= isFilteredBy value
           >>= isFilteredBy dimension
           >>= isActiveWhen dimension
@@ -452,22 +436,28 @@ packages = lm.union customMap $ map interpret mapFromFree
           >>= addSource Ax._value
           >>= isFilteredBy abscissa
           >>= isFilteredBy ordinate
+
       series ←
         optional Pr.series
-          >>= addSource Ax._category
+          >>= addAll
+          >>= isFilteredBy ordinate
+          >>= isFilteredBy abscissa
+          >>= isFilteredBy size
+          >>= isActiveWhen ordinate
+          >>= isActiveWhen abscissa
+
       parallel ←
         optional Pr.parallel
-          >>= addSource Ax._category
+          >>= addAll
           >>= isFilteredBy series
+          >>= isActiveWhen series
+
       pure unit
 
   , CT.radar × do
       category ←
         field Pr.category
-          >>= addSource Ax._category
-          >>= addSource Ax._time
-          >>= addSource Ax._date
-          >>= addSource Ax._datetime
+          >>= addAll
 
       value ←
         field  Pr.value
@@ -475,27 +465,25 @@ packages = lm.union customMap $ map interpret mapFromFree
 
       multiple ←
         optional Pr.multiple
-          >>= addSource Ax._category
-          >>= addSource Ax._time
+          >>= addAll
           >>= isFilteredBy category
+          >>= isFilteredBy value
           >>= isActiveWhen category
 
       parallel ←
         optional Pr.parallel
-          >>= addSource Ax._category
-          >>= addSource Ax._time
+          >>= addAll
           >>= isFilteredBy category
           >>= isFilteredBy multiple
+          >>= isFilteredBy value
           >>= isActiveWhen category
+
       pure unit
 
   , CT.funnel × do
       category ←
         field Pr.category
-          >>= addSource Ax._category
-          >>= addSource Ax._time
-          >>= addSource Ax._date
-          >>= addSource Ax._datetime
+          >>= addAll
 
       value ←
         field Pr.value
@@ -503,10 +491,8 @@ packages = lm.union customMap $ map interpret mapFromFree
 
       series ←
         optional Pr.series
-          >>= addSource Ax._category
-          >>= addSource Ax._time
-          >>= addSource Ax._date
-          >>= addSource Ax._datetime
+          >>= addAll
+          >>= isFilteredBy value
           >>= isFilteredBy category
           >>= isActiveWhen category
 
@@ -528,8 +514,8 @@ packages = lm.union customMap $ map interpret mapFromFree
 
       color ←
         optional Pr.color
-          >>= addSource Ax._category
-          >>= addSource Ax._time
+          >>= addAll
+          >>= isFilteredBy size
           >>= isFilteredBy source
           >>= isFilteredBy target
 
@@ -538,19 +524,11 @@ packages = lm.union customMap $ map interpret mapFromFree
   , CT.heatmap × do
       abscissa ←
         field Pr.abscissa
-          >>= addSource Ax._category
-          >>= addSource Ax._value
-          >>= addSource Ax._time
-          >>= addSource Ax._date
-          >>= addSource Ax._datetime
+          >>= addAll
 
       ordinate ←
         field Pr.ordinate
-          >>= addSource Ax._category
-          >>= addSource Ax._value
-          >>= addSource Ax._time
-          >>= addSource Ax._date
-          >>= addSource Ax._datetime
+          >>= addAll
           >>= isFilteredBy abscissa
 
       value ←
@@ -561,8 +539,9 @@ packages = lm.union customMap $ map interpret mapFromFree
 
       series ←
         optional Pr.series
-          >>= addSource Ax._category
-          >>= addSource Ax._time
+          >>= addAll
+          >>= isFilteredBy value
+          >>= isActiveWhen value
           >>= isFilteredBy abscissa
           >>= isFilteredBy ordinate
           >>= isActiveWhen abscissa
@@ -592,14 +571,14 @@ packages = lm.union customMap $ map interpret mapFromFree
 
       parallel ←
         optional Pr.parallel
-          >>= addSource Ax._category
-          >>= addSource Ax._time
+          >>= addAll
+          >>= isFilteredBy value
           >>= isActiveWhen value
 
       multiple ←
         optional Pr.multiple
-          >>= addSource Ax._category
-          >>= addSource Ax._time
+          >>= addAll
+          >>= isFilteredBy value
           >>= isActiveWhen value
           >>= isFilteredBy parallel
 
@@ -608,11 +587,7 @@ packages = lm.union customMap $ map interpret mapFromFree
   , CT.boxplot × do
       dimension ←
         field Pr.dimension
-          >>= addSource Ax._category
-          >>= addSource Ax._value
-          >>= addSource Ax._time
-          >>= addSource Ax._date
-          >>= addSource Ax._datetime
+          >>= addAll
 
       value ←
         field Pr.flatValue
@@ -621,16 +596,16 @@ packages = lm.union customMap $ map interpret mapFromFree
 
       series ←
         optional Pr.series
-          >>= addSource Ax._category
-          >>= addSource Ax._time
+          >>= addAll
+          >>= isFilteredBy dimension
           >>= isFilteredBy dimension
           >>= isActiveWhen dimension
 
 
       parallel ←
         optional Pr.parallel
-          >>= addSource Ax._category
-          >>= addSource Ax._time
+          >>= addAll
+          >>= isFilteredBy value
           >>= isFilteredBy dimension
           >>= isFilteredBy series
           >>= isActiveWhen dimension
@@ -639,30 +614,24 @@ packages = lm.union customMap $ map interpret mapFromFree
   , CT.punchCard × do
       abscissa ←
         field Pr.abscissa
-          >>= addSource Ax._category
-          >>= addSource Ax._time
-          >>= addSource Ax._date
-          >>= addSource Ax._datetime
+          >>= addAll
 
       ordinate ←
         field Pr.ordinate
-          >>= addSource Ax._category
-          >>= addSource Ax._time
-          >>= addSource Ax._date
-          >>= addSource Ax._datetime
+          >>= addAll
 
       value ←
         field Pr.value
           >>= addSource Ax._value
+          >>= isFilteredBy abscissa
+          >>= isFilteredBy ordinate
+
       pure unit
 
   , CT.candlestick × do
       dimension ←
         field Pr.dimension
-          >>= addSource Ax._category
-          >>= addSource Ax._time
-          >>= addSource Ax._date
-          >>= addSource Ax._datetime
+          >>= addAll
 
       open ←
         field Pr.open
@@ -688,12 +657,13 @@ packages = lm.union customMap $ map interpret mapFromFree
 
       parallel ←
         optional Pr.parallel
-          >>= addSource Ax._category
-          >>= addSource Ax._time
-          >>= addSource Ax._date
-          >>= addSource Ax._datetime
+          >>= addAll
           >>= isFilteredBy dimension
           >>= isActiveWhen dimension
+          >>= isFilteredBy open
+          >>= isFilteredBy close
+          >>= isFilteredBy high
+          >>= isFilteredBy low
 
       pure unit
 

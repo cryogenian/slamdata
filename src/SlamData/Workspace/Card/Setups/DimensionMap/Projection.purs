@@ -30,6 +30,7 @@ import Data.StrMap as SM
 import Data.String.Gen as SG
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Transform.Aggregation as Ag
+import SlamData.Workspace.Card.Setups.Transform as Tr
 import Test.StrongCheck.Gen as Gen
 
 newtype Projection = Projection
@@ -39,6 +40,7 @@ newtype Projection = Projection
   , select ∷ String
   , deselectable ∷ Boolean
   , labelless ∷ Boolean
+  , transforms ∷ Maybe Tr.Transform → Array Tr.Transform
   , key ∷ String
   }
 
@@ -59,6 +61,9 @@ isDeselectable (Projection {deselectable}) = deselectable
 
 isLabelless ∷ Projection → Boolean
 isLabelless (Projection {labelless}) = labelless
+
+availableTransforms ∷ Projection → Maybe Tr.Transform → Array Tr.Transform
+availableTransforms (Projection {transforms}) = transforms
 
 newtype ProjectionMap a = ProjectionMap (SM.StrMap a)
 
@@ -130,6 +135,7 @@ dimension = Projection
   , select: "Choose dimension"
   , deselectable: true
   , labelless: false
+  , transforms: Tr.categoricalTransforms
   , key: "dimension"
   }
 
@@ -141,6 +147,7 @@ high = Projection
   , select: "Choose measure for high position"
   , deselectable: false
   , labelless: false
+  , transforms: const Tr.aggregationTransforms
   , key: "high"
   }
 
@@ -152,6 +159,7 @@ low = Projection
   , select: "Choose measure for low position"
   , deselectable: false
   , labelless: false
+  , transforms: const Tr.aggregationTransforms
   , key: "low"
   }
 
@@ -163,6 +171,7 @@ open = Projection
   , select: "Choose measure for open position"
   , deselectable: false
   , labelless: false
+  , transforms: const Tr.aggregationTransforms
   , key: "open"
   }
 
@@ -174,6 +183,7 @@ close = Projection
   , select: "Choose measure for close position"
   , deselectable: false
   , labelless: false
+  , transforms: const Tr.aggregationTransforms
   , key: "close"
   }
 
@@ -185,6 +195,7 @@ parallel = Projection
   , select: "Choose parallel"
   , deselectable: true
   , labelless: false
+  , transforms: Tr.categoricalTransforms
   , key: "parallel"
   }
 
@@ -196,6 +207,7 @@ value = Projection
   , select: "Choose measure"
   , deselectable: false
   , labelless: false
+  , transforms: const Tr.aggregationTransforms
   , key: "value"
   }
 
@@ -207,6 +219,7 @@ flatValue = Projection
   , select: "Choose measure"
   , deselectable: false
   , labelless: false
+  , transforms: const Tr.aggregationTransforms
   , key: "flatValue"
   }
 
@@ -218,6 +231,7 @@ series = Projection
   , select: "Choose series"
   , deselectable: true
   , labelless: false
+  , transforms: Tr.categoricalTransforms
   , key: "series"
   }
 
@@ -229,6 +243,7 @@ category = Projection
   , select: "Choose category"
   , deselectable: true
   , labelless: false
+  , transforms: Tr.categoricalTransforms
   , key: "category"
   }
 
@@ -240,6 +255,7 @@ stack = Projection
   , select: "Choose stack"
   , deselectable: true
   , labelless: false
+  , transforms: Tr.categoricalTransforms
   , key: "stack"
   }
 
@@ -251,6 +267,7 @@ source = Projection
   , select: "Choose source"
   , deselectable: true
   , labelless: false
+  , transforms: Tr.categoricalTransforms
   , key: "source"
   }
 
@@ -262,6 +279,7 @@ target = Projection
   , select: "Choose target"
   , deselectable: true
   , labelless: false
+  , transforms: Tr.categoricalTransforms
   , key: "target"
   }
 
@@ -273,6 +291,7 @@ abscissa = Projection
   , select: "Choose x-axis"
   , deselectable: true
   , labelless: false
+  , transforms: Tr.categoricalTransforms
   , key: "abscissa"
   }
 
@@ -284,6 +303,7 @@ ordinate = Projection
   , select: "Choose y-axis"
   , deselectable: false
   , labelless: false
+  , transforms: const Tr.aggregationTransforms
   , key: "ordinate"
   }
 
@@ -295,6 +315,7 @@ secondValue = Projection
   , select: "Choose measure"
   , deselectable: false
   , labelless: false
+  , transforms: const Tr.aggregationTransforms
   , key: "secondValue"
   }
 
@@ -306,6 +327,7 @@ donut = Projection
   , select: "Choose donut"
   , deselectable: true
   , labelless: false
+  , transforms: Tr.categoricalTransforms
   , key: "donut"
   }
 
@@ -317,6 +339,7 @@ multiple = Projection
   , select: "Choose multiple"
   , deselectable: true
   , labelless: false
+  , transforms: Tr.categoricalTransforms
   , key: "multiple"
   }
 
@@ -328,6 +351,7 @@ size = Projection
   , select: "Choose size"
   , deselectable: false
   , labelless: false
+  , transforms: const Tr.aggregationTransforms
   , key: "size"
   }
 
@@ -339,6 +363,7 @@ color = Projection
   , select: "Choose color"
   , deselectable: true
   , labelless: false
+  , transforms: Tr.categoricalTransforms
   , key: "color"
   }
 
@@ -350,6 +375,7 @@ scatterOrdinate = Projection
   , select: "Choose y-axis"
   , deselectable: true
   , labelless: false
+  , transforms: Tr.categoricalTransforms
   , key: "ordinate"
   }
 
@@ -361,6 +387,7 @@ scatterSize = Projection
   , select: "Choose size"
   , deselectable: true
   , labelless: false
+  , transforms: const Tr.aggregationTransforms
   , key: "size"
   }
 
@@ -372,6 +399,7 @@ lat = Projection
   , select: "Choose latitude"
   , deselectable: true
   , labelless: false
+  , transforms: Tr.categoricalTransforms
   , key: "lat"
   }
 
@@ -383,6 +411,7 @@ lng = Projection
   , select: "Choose longitude"
   , deselectable: true
   , labelless: false
+  , transforms: Tr.categoricalTransforms
   , key: "lng"
   }
 
@@ -394,6 +423,7 @@ intensity = Projection
   , select: "Choose intensity"
   , deselectable: false
   , labelless: false
+  , transforms: const Tr.aggregationTransforms
   , key: "intensity"
   }
 
@@ -405,6 +435,7 @@ formValue = Projection
   , select: "Choose form input"
   , deselectable: false
   , labelless: false
+  , transforms: const Tr.aggregationTransforms
   , key: "value"
   }
 
@@ -416,6 +447,7 @@ formLabel = Projection
   , select: "Choose form label"
   , deselectable: true
   , labelless: true
+  , transforms: Tr.categoricalTransforms
   , key: "label"
   }
 
@@ -427,6 +459,7 @@ formSelected = Projection
   , select: "Choose selected values"
   , deselectable: true
   , labelless: true
+  , transforms: Tr.categoricalTransforms
   , key: "selected"
   }
 
@@ -438,6 +471,7 @@ dimIx ix = Projection
   , select: "Choose measure"
   , deselectable: false
   , labelless: false
+  , transforms: Tr.categoricalTransforms
   , key: show ix
   }
 

@@ -67,8 +67,8 @@ renderSelection state = case state ^. ST._selected of
       { options: ST.transforms tp state
       , selection: (\a → a × a) <$> ST.getTransform tp state
       , title: "Choose transformation"
-      , toLabel: \t -> { text: Tr.prettyPrintTransform t, icon: Nothing }
-      , deselectable: (DMD.getDefaults tp).deselectable
+      , toLabel: \t -> { text: T.prettyPrintTransform t, icon: Nothing }
+      , deselectable: Pr.isDeselectable tp
       , toSelection: case _ of
           T.Numeric (N.Floor _) → Just $ HCP.proxy TPC.transformFloor
           T.Numeric (N.Round _) → Just $ HCP.proxy TPC.transformRound

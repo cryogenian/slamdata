@@ -90,7 +90,7 @@ transforms ∷ Pr.Projection → State → Array Tr.Transform
 transforms prj state =
   let
     mbTr = join $ Pr.lookup prj state.dimMap ^? _Just ∘ D._value ∘ D._transform
-    available = DMD.availableTransforms prj mbTr
+    available = Pr.availableTransforms prj mbTr
     axis = Pr.lookup prj state.dimMap ^? _Just ∘ D._value ∘ D._projection
     axisType = Ax.axisType  <$> axis <*> pure state.axes
   in A.nub $ fromMaybe [] do

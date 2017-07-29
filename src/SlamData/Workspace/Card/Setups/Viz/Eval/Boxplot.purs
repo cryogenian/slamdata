@@ -95,7 +95,7 @@ decodeItem = decodeJson >=> \obj → do
        , parallel
        }
 
-eval ∷ ∀ m. VizEval m (P.DimMap → Port.Resource → m Port.Out)
+eval ∷ ∀ m. VizEval m (P.DimMap → Port.Port → m Port.Out)
 eval dimMap =
   BCE.chartSetupEval buildSql buildPort aux'
   where
