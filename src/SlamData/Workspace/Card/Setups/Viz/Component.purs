@@ -31,6 +31,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.CSS as HCSS
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as ARIA
 import SlamData.Render.Icon as I
 import SlamData.Render.ClassName as CN
 import SlamData.Wiring as W
@@ -100,6 +101,7 @@ render state =
       , HP.classes
           [ HH.ClassName "sd-viztype-button"
           ]
+      , ARIA.label "Select visualization type"
       ]
       $ ( icon )
       ⊕ ( pure ∘ HH.p_ ∘ pure ∘ HH.text ∘ VCT.name $ state.vizType )
@@ -115,14 +117,8 @@ render state =
       ]
 
   aux = fromMaybe [ ] do
-    traceAnyA "UNO"
-    traceAnyA state
-    auxState ← spy $ lm.lookup state.vizType state.auxes
-    traceAnyA "DUO"
-    traceAnyA auxState
+    auxState ← lm.lookup state.vizType state.auxes
     comp ← Aux.vizTypeAux state.vizType
-    traceAnyA "TRES"
-    traceAnyA comp
     pure
       $ A.singleton
       $ HH.div_

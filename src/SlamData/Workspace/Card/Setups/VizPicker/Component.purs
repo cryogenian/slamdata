@@ -133,7 +133,7 @@ render state =
 
 description ∷ Action → String
 description = case _ of
-  Set vt → "Set vizualization type to " ⊕ (VT.name $ expand vt)
+  Set vt → "Set visualization type to " ⊕ (VT.name $ expand vt)
   Explain vt → "Find why " ⊕ (VT.name $ expand vt) ⊕ " is unavailable for this data set"
 
 

@@ -190,7 +190,6 @@ test = do
       "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type != :type AND gender IN :gender AND year > :year AND country = :country"
     Interact.runQuery
     Interact.accessNextCardInLastDeck
-    Interact.selectBuildChart
     Interact.insertPivotCard
     Interact.addColumn "discipline"
     Interact.addColumn "country"
@@ -225,7 +224,6 @@ test = do
       "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type != :type AND gender IN :gender AND year > :year AND country = :country"
     Interact.runQuery
     Interact.accessNextCardInLastDeck
-    Interact.selectBuildChart
     Interact.insertPivotCard
 
     Interact.addColumn "discipline"

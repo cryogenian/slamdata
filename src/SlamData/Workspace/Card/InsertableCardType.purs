@@ -69,6 +69,7 @@ inputs =
   , SearchCard × [ Data, Process ]
   , SetupDownloadCard × [ Data, Process ]
   , SetupMarkdownCard × [ None, Data, Process, Variables ]
+  , ShowMarkdownCard × [ Markdown ]
   , QueryCard × [ None, Data, Variables ]
   , SearchCard × [ Data ]
   , SetupDownloadCard × [ Data ]
@@ -79,6 +80,7 @@ inputs =
   , StructureEditorCard × [ Data, Process ]
   , ShowVizCard × [ Viz ]
   , SetupVizCard × [ Data, Process ]
+  , SetupVariablesCard × [ None ]
   ]
 
 outputs ∷ Array (InsertableCardType × Array InsertableCardIOType)

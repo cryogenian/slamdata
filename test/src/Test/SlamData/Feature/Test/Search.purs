@@ -62,7 +62,6 @@ test = do
     Interact.insertSearchCardInLastDeck
     Interact.provideSearchStringInLastSearchCard "springfield"
     Interact.accessNextCardInFirstDeck
-    Interact.selectBuildChart
     Interact.insertPivotCard
     Interact.addColumn "city"
     Interact.addColumn "pop"
@@ -86,7 +85,6 @@ test = do
     Interact.insertSearchCardInLastDeck
     Interact.provideSearchStringInLastSearchCard "OR"
     Interact.accessNextCardInLastDeck
-    Interact.selectBuildChart
     Interact.insertPivotCard
     Interact.addColumn "city"
     Interact.addColumn "state"
@@ -110,7 +108,6 @@ test = do
     Interact.provideSearchStringInLastSearchCard
           "city:springfield state:or pop:>20000"
     Interact.accessNextCardInLastDeck
-    Interact.selectBuildChart
     Interact.insertPivotCard
     Interact.addColumn "city"
     Interact.addColumn "state"
@@ -139,7 +136,6 @@ test = do
     Interact.insertSearchCardInLastDeck
     Interact.provideSearchStringInLastSearchCard "city:portland -state:OR"
     Interact.accessNextCardInLastDeck
-    Interact.selectBuildChart
     Interact.insertPivotCard
     Interact.addColumn "city"
     Interact.addColumn "state"

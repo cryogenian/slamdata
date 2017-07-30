@@ -336,11 +336,6 @@ _filePath ∷ Traversal' Resource PU.FilePath
 _filePath = wander \f s → case s of
   File fp → File <$> f fp
   Mount (View fp) → map (Mount ∘ View) $ f fp
-  Directory dp → case P.peel dp of
-    Nothing → pure s
-    Just (parentDir × peeled) → case peeled of
-      Right _ → pure s
-      Left dn → map File $ f (parentDir </> P.file (P.runDirName dn))
   _ → pure s
 
 _dirPath ∷ Traversal' Resource PU.DirPath

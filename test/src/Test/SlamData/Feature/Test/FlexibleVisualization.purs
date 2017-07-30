@@ -81,7 +81,6 @@ test =
 
     Interact.runQuery
     Interact.accessNextCardInLastDeck
-    Interact.selectBuildChart
     Interact.insertBuildBarChartCard
     Expect.categoryEnabledInLastBuildChartCard
     Interact.activateCategoryForChartBuilder
