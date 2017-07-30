@@ -112,7 +112,7 @@ tests = do
 
 --  File.test
   Search.test
-  Markdown.test
+--  Markdown.test
   FlexibleVisualization.test
   Cache.test
   FlipDeck.test
