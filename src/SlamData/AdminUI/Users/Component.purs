@@ -35,6 +35,7 @@ import SlamData.Render.Icon as I
 
 data Query a
   = Init a
+  | Refresh a
   | FetchUsers a
   | SetFilter String a
   | SetGroupFilter QA.GroupPath a
@@ -171,6 +172,14 @@ component =
           users ← allUsers
           H.modify (_ { allGroups = Just allGroups, users = Just users })
           pure next
+        Refresh next → do
+          allGroups ← fetchAllGroups
+          users ← allUsers
+          H.query unit (H.request AC.GetInput) >>= case _ of
+            Just input → updateGroupFilter input
+            Nothing → H.modify (_ { groupFilter = NoFilter })
+          H.modify (_ { allGroups = Just allGroups, users = Just users })
+          pure next
         Select ix next → do
           H.modify (_ { selected = Just ix })
           pure next
@@ -202,15 +211,18 @@ component =
           H.raise (RaiseDialog (Dialog.UserPermissions userId))
           pure next
         HandleGroupFilter msg next → case msg of
-          AC.Changed "" → do
-            H.modify (_ { groupFilter = NoFilter })
-            pure next
           AC.Changed s → do
-            case QA.parseGroupPath s of
-              Right path → setGroupFilter path
-              Left _ → H.modify (_ { groupFilter = InvalidGroupFilter s })
+            updateGroupFilter s
             pure next
           AC.Selected _ → pure next
+
+updateGroupFilter ∷ String → DSL Unit
+updateGroupFilter = case _ of
+  "" →
+    H.modify (_ { groupFilter = NoFilter })
+  s → case QA.parseGroupPath s of
+    Right path → setGroupFilter path
+    Left _ → H.modify (_ { groupFilter = InvalidGroupFilter s })
 
 setGroupFilter ∷ QA.GroupPath → DSL Unit
 setGroupFilter path = do

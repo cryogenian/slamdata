@@ -49,6 +49,7 @@ data Query item a
   = Init a
   | UpdateItems (Array item) a
   | Input String a
+  | GetInput (String → a)
   | Select item a
   | ItemClick item MouseEvent a
   | Focus a
@@ -164,6 +165,9 @@ component { containerClass, placeholder, autofirst, itemFilter, itemText, itemDi
     eval ∷ Query item ~> DSL item m
     eval = case _ of
      Init a → pure a
+     GetInput f → do
+       inputText ← H.gets _.inputText
+       pure (f inputText)
      UpdateItems items a → do
        H.modify (_ { items = items })
        pure a

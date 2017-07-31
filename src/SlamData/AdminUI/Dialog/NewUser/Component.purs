@@ -123,6 +123,7 @@ dialog =
               else do
                 void $ addUsersToGroup group [QA.UserId userId]
                 H.raise (D.Bubble (V.inj (SProxy ∷ SProxy "refreshUsers") unit))
+                H.raise D.Dismiss
         pure next
       HandleGroupSelection msg next → case msg of
         AC.Changed g → do

@@ -21,6 +21,7 @@ import SlamData.Prelude
 import Control.Monad.Eff.Exception as Exception
 import Data.Array as Array
 import Data.String as String
+import Data.Variant as V
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -52,7 +53,7 @@ initialState ∷ State
 initialState = { groups: [], allGroups: [], refreshing: true, groupSelection: Nothing }
 
 type ChildSlot = Unit
-type Message o = Variant o
+type Message o = Variant (refreshUsers ∷ Unit | o)
 type HTML = H.ParentHTML Query (AC.Query String) ChildSlot Slam
 type DSL o = H.ParentDSL State Query (AC.Query String) ChildSlot (D.Message (Message o)) Slam
 
@@ -123,25 +124,27 @@ dialog userId =
       Delete group next → do
         removeUsersFromGroup group [userId] >>= case _ of
           Left err →
-          Notification.error
-            ("Failed to delete user: " <> QA.runUserId userId <> " from: " <> QA.printGroupPath group)
-            (Just (Notification.Details (Exception.message err)))
-            Nothing
-            Nothing
-          Right _ →
+            Notification.error
+              ("Failed to delete user: " <> QA.runUserId userId <> " from: " <> QA.printGroupPath group)
+              (Just (Notification.Details (Exception.message err)))
+              Nothing
+              Nothing
+          Right _ → do
+            H.raise (D.Bubble (V.inj (SProxy ∷ SProxy "refreshUsers") unit))
             refresh userId
         pure next
       Add group next → do
         addUsersToGroup group [userId] >>= case _ of
           Left err →
-          Notification.error
-            ("Failed to add user: " <> QA.runUserId userId <> " to group: " <> QA.printGroupPath group)
-            (Just (Notification.Details (Exception.message err)))
-            Nothing
-            Nothing
+            Notification.error
+              ("Failed to add user: " <> QA.runUserId userId <> " to group: " <> QA.printGroupPath group)
+              (Just (Notification.Details (Exception.message err)))
+              Nothing
+              Nothing
           Right _ → do
             _ ← H.query unit (H.action (AC.Input ""))
             _ ← H.query unit (H.action (AC.Close AC.CuzEscape))
+            H.raise (D.Bubble (V.inj (SProxy ∷ SProxy "refreshUsers") unit))
             refresh userId
         pure next
       HandleGroupSelection msg next → case msg of

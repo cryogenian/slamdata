@@ -389,18 +389,19 @@ eval = case _ of
     let dismissDialog = H.modify (_ { dialog = Nothing })
     case msg of
       Dialog.Bubble v → do
-        dismissDialog
         v # (V.case_
           # V.on Dialog._deleteUser (\userId → do
             Users.deleteUser userId
             _ ← H.query' AT.cpUsers unit (H.action UC.FetchUsers)
+            dismissDialog
             pure unit)
           # V.on Dialog._refreshUsers (\_ → do
-            _ ← H.query' AT.cpUsers unit (H.action UC.FetchUsers)
+            _ ← H.query' AT.cpUsers unit (H.action UC.Refresh)
             pure unit)
           # V.on Dialog._deleteGroup (\group → do
             _ ← deleteGroup group
             _ ← H.query' AT.cpGroups unit (H.action Miller.Reload)
+            dismissDialog
             pure unit))
       Dialog.Dismiss →
         dismissDialog
