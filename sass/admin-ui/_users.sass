@@ -28,64 +28,6 @@
     cursor: pointer
     padding: $padding-base-horizontal $padding-base-vertical
 
-.sd-admin-ui-autocomplete .visually-hidden
-  position: absolute
-  clip: rect(0, 0, 0, 0)
-
-.sd-admin-ui-autocomplete
-  display: inline-block
-  position: relative
-  flex: 1 1 auto
-
-.sd-admin-ui-autocomplete > input
-  display: block
-  width: 100%
-  height: 100%
-  border: 0.1rem solid $miller-column-border-color
-
-.sd-admin-ui-autocomplete > ul
-  position: absolute
-  left: 0
-  z-index: 1
-  min-width: 100%
-  box-sizing: border-box
-  list-style: none
-  padding: 0
-  margin: 0
-  background: $body-bg
-
-  border-radius: 0.3rem
-  margin: 0
-  border: 0.1rem solid $miller-column-border-color
-  box-shadow: 0.05rem 0.2rem 0.6rem rgba(0,0,0,0.2)
-  text-shadow: none
-
-.sd-admin-ui-autocomplete > ul > li
-  position: relative
-  padding: 0.2rem 0.5rem
-  cursor: pointer
-
-.sd-admin-ui-autocomplete > ul > li:hover
-  background: hsl(200, 40%, 80%)
-  color: black
-
-.sd-admin-ui-autocomplete > ul > li[aria-selected="true"]
-  background: hsl(205, 40%, 40%)
-  color: white
-
-  .sd-admin-ui-autocomplete mark
-    background: hsl(65, 100%, 50%)
-
-  .sd-admin-ui-autocomplete li:hover mark
-    background: hsl(68, 100%, 41%)
-
-  .sd-admin-ui-autocomplete li[aria-selected="true"] mark
-    background: hsl(86, 100%, 21%)
-    color: inherit
-
-.sd-admin-ui-autocomplete > ul:empty
-    display: none
-
 .sd-admin-ui-users-search
   position: relative
   flex: 2 1 auto
