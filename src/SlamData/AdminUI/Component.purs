@@ -95,7 +95,7 @@ tabBody ∷ AT.State → AT.HTML
 tabBody state =
   HH.div
     [HP.class_ $ HH.ClassName "sd-admin-ui-tab-body"]
-    (activeTab <> [closeButton])
+    (if state.open then activeTab <> [closeButton] else [])
   where
     closeButton =
       HH.div
