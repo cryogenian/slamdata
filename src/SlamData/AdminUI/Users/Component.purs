@@ -1,4 +1,3 @@
-
 {-
 Copyright 2017 SlamData, Inc.
 
