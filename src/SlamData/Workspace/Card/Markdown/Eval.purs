@@ -18,7 +18,8 @@ module SlamData.Workspace.Card.Markdown.Eval
 
 import SlamData.Prelude
 
-import Control.Monad.Eff.Class (class MonadEff, liftEff)
+import Control.Monad.Eff.Class (class MonadEff)
+import Control.Monad.State.Class (class MonadState, put)
 import Control.Monad.Writer.Class (class MonadTell)
 import Data.Array as A
 import Data.HugeInt as HI
@@ -36,8 +37,10 @@ import SlamData.Quasar.Query as Quasar
 import SlamData.SqlSquared.Tagged as SqlT
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
+import SlamData.Workspace.Card.Eval.State as CES
 import SlamData.Workspace.Card.Markdown.Component.State as MDS
 import SlamData.Workspace.Card.Markdown.Error (MarkdownError(..), throwMarkdownError)
+import SlamData.Workspace.Card.Markdown.Interpret (formFieldDefaultValue)
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Port as Port
 import SqlSquared as Sql
@@ -51,16 +54,19 @@ import Utils.Path (DirPath)
 
 evalMarkdownForm
   ∷ ∀ m
-  . MonadEff SlamDataEffects m
-  ⇒ Monad m
+  . Monad m
+  ⇒ MonadState CEM.CardState m
   ⇒ MD.Model
   → SD.SlamDownP Port.VarMapValue
   → Port.DataMap
   → m Port.Out
 evalMarkdownForm model doc varMap = do
-  let inputState = SDH.formStateFromDocument doc
-  thisVarMap ← liftEff $ MDS.formStateToVarMap inputState model
-  pure (Port.Variables × map Right thisVarMap `SM.union` varMap)
+  let
+    inputState = SDH.formStateFromDocument doc
+    outputState = MDS.updateFormState inputState model
+    formVarMap = Right ∘ formFieldDefaultValue <$> outputState
+  put $ Just $ CES.SlamDown outputState
+  pure (Port.Variables × formVarMap `SM.union` varMap)
 
 evalMarkdown
   ∷ ∀ m v

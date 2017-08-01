@@ -21,14 +21,17 @@ import Prelude
 import Control.Monad.Aff (Aff, Canceler, forkAff, delay)
 import Control.Monad.Aff.AVar (AVAR, AVar, makeVar, putVar, takeVar)
 import Control.Monad.Aff.Bus as Bus
-import Control.Monad.Aff.EventLoop as EventLoop
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
-
+import Control.Monad.Aff.EventLoop as EventLoop
+import Control.Monad.State (class MonadState, state)
 import Data.Either as E
 import Data.Time.Duration (Milliseconds)
-
+import Data.Tuple (Tuple(..))
 import Halogen as H
 import Halogen.Query.EventSource as ES
+
+modify ∷ ∀ s m. MonadState s m => (s -> s) -> m s
+modify f = state \st → let st' = f st in Tuple st' st'
 
 sendAfter
   ∷ ∀ s f g p o m eff

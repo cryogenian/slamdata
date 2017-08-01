@@ -20,42 +20,48 @@ import SlamData.Prelude
 
 import Data.Array (filter)
 import Data.Lens (Lens', lens)
+import Data.String as Str
 import Data.String.Regex as Rx
 import Data.String.Regex.Flags as RXF
 import Data.StrMap as SM
+import Quasar.Mount.View as QMV
 
 type State =
-  { initialQuery :: Maybe String
-  , vars :: Array (Tuple String String)
+  { query ∷ String
+  , vars ∷ Array (Tuple String String)
   }
 
-_initialQuery :: Lens' State (Maybe String)
-_initialQuery = lens _.initialQuery (_ { initialQuery = _ })
-
-_vars :: Lens' State (Array (Tuple String String))
+_vars ∷ Lens' State (Array (Tuple String String))
 _vars = lens _.vars (_ { vars = _ })
 
-initialState :: State
+initialState ∷ State
 initialState =
-  { initialQuery: Nothing
+  { query: ""
   , vars: [emptyVar]
   }
 
-stateFromViewInfo :: { query :: String, vars :: SM.StrMap String } -> State
-stateFromViewInfo { query, vars } =
+fromConfig ∷ QMV.Config → State
+fromConfig { query, vars } =
   processState
-    { initialQuery: Just query
+    { query
     , vars: SM.toUnfoldable vars
     }
 
-emptyVar :: Tuple String String
+toConfig ∷ State → Either String QMV.Config
+toConfig { query, vars }
+  | Str.trim query == "" =
+      Left "Please enter a query"
+  | otherwise =
+      Right { query, vars: SM.fromFoldable (filter (not isEmptyVar) vars) }
+
+emptyVar ∷ Tuple String String
 emptyVar = Tuple "" ""
 
-processState :: State -> State
+processState ∷ State -> State
 processState s = s { vars = filter (not isEmptyVar) s.vars <> [emptyVar] }
 
-isEmptyVar :: Tuple String String -> Boolean
+isEmptyVar ∷ Tuple String String -> Boolean
 isEmptyVar (Tuple name value) = Rx.test rxEmpty name && Rx.test rxEmpty value
 
-rxEmpty :: Rx.Regex
+rxEmpty ∷ Rx.Regex
 rxEmpty = unsafePartial fromRight $ Rx.regex "^\\s*$" RXF.noFlags

@@ -19,6 +19,7 @@ module SlamData.Dialog.Render where
 import SlamData.Prelude
 
 import Halogen.HTML as H
+import Halogen.HTML.Properties as HP
 
 import SlamData.Render.ClassName as CN
 import SlamData.Render.Common (classedDiv)
@@ -37,3 +38,9 @@ modalBody = classedDiv (H.ClassName "deck-dialog-body") <<< pure
 
 modalFooter :: forall f p. Array (H.HTML p (f Unit)) -> H.HTML p (f Unit)
 modalFooter = classedDiv (H.ClassName "deck-dialog-footer")
+
+renderError ∷ ∀ p f. String → H.HTML p (f Unit)
+renderError msg =
+  H.div
+    [ HP.classes [ CN.alert, CN.alertDanger, H.ClassName ("sd-dialog-error-box") ] ]
+    [ H.text msg ]
