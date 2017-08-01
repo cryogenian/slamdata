@@ -56,7 +56,7 @@ renderURL authHeaders opts =
              $ append authHeaders
              $ toHeaders opts
              $ Just (opts.targetName <> ext))
-    ext = extension opts.compress opts.options
+    ext = extension (shouldCompress opts) opts.options
   in
     Q.encodeURI (P.printPath QP.data_ <> R.resourcePath opts.resource) <> headers
 
@@ -213,8 +213,11 @@ codecPrecisionMode = C.basicCodec dec enc
     Readable → "Readable"
     Precise → "Precise"
 
+alwaysCompress ∷ ∀ r. DownloadModel r → Boolean
+alwaysCompress = not R.isFile ∘ _.resource
+
 shouldCompress ∷ ∀ r. DownloadModel r → Boolean
-shouldCompress state = not R.isFile state.resource || state.compress
+shouldCompress = alwaysCompress || _.compress
 
 extension ∷ Boolean → Either CSVOptions JSONOptions → String
 extension compress options
@@ -231,22 +234,25 @@ validFilename s =
     else Right s
 
 toHeaders
-  ∷ forall r
-  . { compress ∷ Boolean
-    , options ∷ Either CSVOptions JSONOptions
-    | r
-    }
+  ∷ ∀ r
+  . DownloadModel r
   → Maybe String
   → Array RequestHeader
 toHeaders r filename =
   [ RequestHeader "Accept-Encoding" "gzip"
-  , Accept $ MediaType $ mimeType r.options <> ";disposition=\"attachment" <> encFilename <> "\""
+  , Accept $ MediaType
+      $ mimeCompress (shouldCompress r)
+      <> mimeType r.options
+      <> ";disposition=\"attachment" <> encFilename <> "\""
   ]
   where
   encFilename ∷ String
   encFilename = case filename of
     Nothing → ""
     Just fn → "; filename*=UTF-8''" <> Global.encodeURIComponent fn
+
+  mimeCompress ∷ Boolean → String
+  mimeCompress = if _ then "application/zip," else ""
 
   mimeType ∷ Either CSVOptions JSONOptions → String
   mimeType (Left (CSVOptions opts)) =
