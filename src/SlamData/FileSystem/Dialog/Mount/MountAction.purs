@@ -1,5 +1,5 @@
 {-
-Copyright 2016 SlamData, Inc.
+Copyright 2017 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,18 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.FileSystem.Dialog.Download.Component.Query where
+module SlamData.FileSystem.Dialog.Mount.MountAction where
 
-import SlamData.Download.Model
-import DOM.Event.Types (Event)
-import Network.HTTP.RequestHeader (RequestHeader)
+import SlamData.Prelude
 
-data Query a
-  = TargetTyped String a
-  | ToggleCompress a
-  | SetOutput OutputType a
-  | RaiseDismiss a
-  | ModifyCSVOpts (CSVOptions -> CSVOptions) a
-  | ModifyJSONOpts (JSONOptions -> JSONOptions) a
-  | SetAuthHeaders (Array RequestHeader) a
-  | PreventDefaultAndNewTab String Event a
+import Quasar.Types (AnyPath)
+import Quasar.Mount as QM
+import SlamData.Monad (Slam)
+
+data MountAction
+  = SaveMount AnyPath QM.MountConfig (String → Slam Unit)
+  | DeleteMount AnyPath

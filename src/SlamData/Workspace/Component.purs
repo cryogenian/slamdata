@@ -27,12 +27,12 @@ import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Eff.Ref (readRef)
 import Control.Monad.Fork (fork)
 import Control.UI.Browser as Browser
-import DOM.Classy.Event (currentTarget, target) as DOM
-import DOM.Classy.Node (toNode) as DOM
 import Data.Argonaut as J
 import Data.Coyoneda (liftCoyoneda)
 import Data.List as List
 import Data.Time.Duration (Milliseconds(..))
+import DOM.Classy.Event (currentTarget, target) as DOM
+import DOM.Classy.Node (toNode) as DOM
 import Halogen as H
 import Halogen.Component.Utils (busEventSource)
 import Halogen.Component.Utils.Throttled (throttledEventSource_)
@@ -43,6 +43,7 @@ import Halogen.Query.EventSource as ES
 import SlamData.AdminUI.Component as AdminUI
 import SlamData.AdminUI.Types as AdminUI.Types
 import SlamData.AuthenticationMode as AuthenticationMode
+import SlamData.Dialog.License.Component as LicenseDialog
 import SlamData.FileSystem.Resource as R
 import SlamData.GlobalError as GE
 import SlamData.GlobalMenu.Bus (SignInMessage(..))
@@ -67,7 +68,7 @@ import SlamData.Workspace.Card.Model as CM
 import SlamData.Workspace.Card.Open.Model as Open
 import SlamData.Workspace.Card.Table.Model as JT
 import SlamData.Workspace.Class (navigate, Routes(..))
-import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, cpAdminUI, cpDeck, cpDialog, cpGuide, cpHeader, cpNotify)
+import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, cpAdminUI, cpDeck, cpDialog, cpLicenseDialog, cpGuide, cpHeader, cpNotify)
 import SlamData.Workspace.Component.Query (Query(..))
 import SlamData.Workspace.Component.State (State, initialState)
 import SlamData.Workspace.Deck.Common as DeckCommon
@@ -148,6 +149,9 @@ render accessType state =
   dialogSlot =
     HH.slot' cpDialog unit Dialog.component unit (HE.input HandleDialog)
 
+  licenseDialogSlot =
+    HH.slot' cpLicenseDialog unit LicenseDialog.component state.licenseProblem (HE.input_ (HandleLicenseProblem Nothing))
+
   adminUISlot =
     HH.slot' cpAdminUI unit AdminUI.component unit (HE.input HandleAdminUI)
 
@@ -181,7 +185,7 @@ eval = case _ of
     H.subscribe $ busEventSource (H.request ∘ PresentStepByStepGuide) bus.stepByStep
     H.subscribe $ busEventSource (flip HandleSignInMessage ES.Listening) auth.signIn
     H.subscribe $ busEventSource (flip HandleWorkspace ES.Listening) bus.workspace
-    H.subscribe $ busEventSource (flip HandleLicenseProblem ES.Listening) bus.licenseProblems
+    H.subscribe $ busEventSource (flip (HandleLicenseProblem ∘ Just) ES.Listening) bus.licenseProblems
     H.subscribe $ busEventSource (flip HandleDeck ES.Listening) bus.decks
     H.subscribe $ throttledEventSource_ (Milliseconds 100.0) onResize (H.request Resize)
     notifyDaysRemainingIfNeeded
@@ -265,7 +269,7 @@ eval = case _ of
   HandleWorkspace (Wiring.ShowDialog dlg) next →
     H.query' cpDialog unit (H.action (Dialog.Show dlg)) $> next
   HandleLicenseProblem problem next →
-    H.query' cpDialog unit (H.action (Dialog.Show $ Dialog.LicenseProblem problem)) $> next
+    H.modify (_ { licenseProblem = problem }) $> next
   HandleDeck msg next → case msg of
     Wiring.DeckFocused deckId → do
       cursor ← H.gets _.cursor

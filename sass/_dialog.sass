@@ -1,0 +1,150 @@
+.sd-dialog-container
+  display: flex
+  flex-flow: column nowrap
+  position: fixed
+  z-index: 9000
+  overflow: auto
+  top: 0
+  right: 0
+  bottom: 0
+  left: 0
+  width: 100%
+  min-height: 100%
+  padding: 1rem
+  background: rgba(0, 0, 0, 0.625)
+
+// ----------------------------------------------------------------------------
+
+.sd-dialog
+  flex: 0 0 auto
+  position: relative
+  z-index: 9001
+  box-shadow: 0 1.9rem 3.8rem rgba(0, 0, 0, 0.4), 0 1.5rem 1.2rem rgba(0, 0, 0, 0.4)
+  min-height: 0
+  min-width: 45%
+  width: min-content
+  max-width: 100%
+  margin: auto
+  padding: 1rem
+  background: $modal-content-bg
+
+  h4
+    flex: 0 0 auto
+    line-height: 2
+    padding-bottom: $padding-base-horizontal
+    margin: 0
+
+  .deck-dialog-cardpath-card
+    display: inline-block
+    font-size: 1.28rem
+    white-space: nowrap
+
+    &:not(:first-child)::before
+      content: " ➜ "
+
+    .deck-dialog-cardpath-card:not(:last-child)
+      margin-right: 0.4rem
+
+    .sd-dialog-footer
+      flex: 0 0 auto
+      padding: 1.6rem
+
+      .btn:not(.btn-careful)
+        margin-left: $padding-base-horizontal
+        float: right
+
+      .alert-danger
+        margin-bottom: $padding-base-horizontal
+
+    .deck-dialog-footer.share
+      margin-top: 0
+
+    .btn > .sd-icon
+      margin-right: 0.8rem
+
+    textarea
+      resize: none
+      height: 16rem
+      min-height: 6rem
+
+  textarea
+    resize: none
+    height: 16rem
+    min-height: 6rem
+
+  video
+    max-width: 100%
+    width: 100%
+    border-bottom: 0.1rem solid $color-separator
+    border-top: 0.1rem solid $color-separator
+
+  .container-fluid
+    padding: 0
+
+// ----------------------------------------------------------------------------
+
+.sd-dialog-header
+  display: flex
+  justify-content: space-between
+
+  .sd-spinner
+    font-size: 150%
+    margin-top: 0.2rem
+
+// ----------------------------------------------------------------------------
+
+.sd-dialog-body
+  position: relative
+  min-height: 4rem
+
+  form
+    .textarea-copy-button
+      position: absolute
+      top: 0
+      right: 0
+
+
+// ----------------------------------------------------------------------------
+
+.sd-dialog-footer
+  padding-top: $padding-base-horizontal
+  padding-right: 0rem
+  display: flex
+  justify-content: space-between
+
+  &.share
+    margin-top: 0
+
+  .btn
+    margin-left: $padding-base-horizontal
+    float: right
+
+    .sd-icon
+      margin-right: 0.8rem
+
+  .alert-danger
+    margin-bottom: $padding-base-horizontal
+
+.sd-dialog-footer-right
+  margin-left: auto
+
+// ----------------------------------------------------------------------------
+
+.sd-dialog-loading
+  text-align: center
+
+  > .sd-icon
+    font-size: 2.8rem
+
+.sd-dialog-error-box.alert
+  // this is BS-padding rather than SD-padding, but looks better with the
+  // dialogs as they are currently
+  margin: 1.5rem 0 0
+
+// ----------------------------------------------------------------------------
+
+@import dialog/download
+@import dialog/embed
+@import dialog/mount
+@import dialog/picker
+@import dialog/rename

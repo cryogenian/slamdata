@@ -17,7 +17,6 @@ limitations under the License.
 module SlamData.Render.Common
   ( row
   , content
-  , fadeWhen
   , classedDiv
   , formGroup
   , clearFieldIcon
@@ -44,10 +43,6 @@ row = HH.div [ HP.class_ $ H.ClassName "row" ]
 
 content ∷ ∀ p f. Array (HTML p f) → HTML p f
 content = HH.div [ HP.class_ CN.content ]
-
-fadeWhen ∷ Boolean → Array ClassName
-fadeWhen true = [ CN.fade ]
-fadeWhen false = [ CN.fade, CN.in_ ]
 
 classedDiv ∷ ∀ f p. ClassName → Array (HTML p (f Unit)) → HTML p (f Unit)
 classedDiv cls = HH.div [ HP.classes [ cls ] ]

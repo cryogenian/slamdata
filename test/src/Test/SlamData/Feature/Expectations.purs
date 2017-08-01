@@ -23,6 +23,8 @@ import Test.SlamData.Feature.Expectations.Cards
        , displayMarkdownCardPresented
        , dropdownInLastMdCard
        , fieldInLastMdCard
+       , addColumnIsPresent
+       , logoIsPresent
        , labelInLastMdCard
        , measureDisabledInLastChartCard
        , measureInLastChartCard

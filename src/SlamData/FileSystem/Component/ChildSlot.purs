@@ -19,9 +19,9 @@ module SlamData.FileSystem.Component.ChildSlot where
 import SlamData.Prelude
 
 import Halogen.Component.ChildPath as CP
-
 import SlamData.AdminUI.Types as AdminUI
-import SlamData.FileSystem.Dialog.Component as Dialog
+import SlamData.Dialog.License.Component as LicenseDialog
+import SlamData.FileSystem.Dialog as Dialog
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Search.Component as Search
 import SlamData.Header.Component as Header
@@ -30,14 +30,16 @@ import SlamData.Notification.Component as Notify
 type ChildQuery
   = Listing.Query
   ⨁ Search.Query
-  ⨁ Dialog.Query
+  ⨁ LicenseDialog.Query
   ⨁ Header.Query
   ⨁ Notify.Query
   ⨁ AdminUI.Query
+  ⨁ Dialog.Query
   ⨁ Const Void
 
 type ChildSlot
   = Unit
+  ⊹ Unit
   ⊹ Unit
   ⊹ Unit
   ⊹ Unit
@@ -57,11 +59,11 @@ cpSearch
       Unit ChildSlot
 cpSearch = CP.cp2
 
-cpDialog
+cpLicenseDialog
   ∷ CP.ChildPath
-      Dialog.Query ChildQuery
+      LicenseDialog.Query ChildQuery
       Unit ChildSlot
-cpDialog = CP.cp3
+cpLicenseDialog = CP.cp3
 
 cpHeader
   ∷ CP.ChildPath
@@ -80,3 +82,9 @@ cpAdminUI
       AdminUI.Query ChildQuery
       Unit ChildSlot
 cpAdminUI = CP.cp6
+
+cpDialog
+  ∷ CP.ChildPath
+      Dialog.Query ChildQuery
+      Unit ChildSlot
+cpDialog = CP.cp7

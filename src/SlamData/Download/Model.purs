@@ -26,13 +26,39 @@ import Data.Codec.Argonaut.Migration as CAM
 import Data.Codec.Argonaut.Variant as CAV
 import Data.Lens (Lens', lens)
 import Data.MediaType (MediaType(..))
+import Data.Path.Pathy as P
 import Data.String as Str
 import Data.String.Regex as Rx
 import Data.String.Regex.Flags as RXF
 import Data.Variant as V
 import Global as Global
+import Quasar.Paths as QP
 import Network.HTTP.RequestHeader (RequestHeader(..))
-import SlamData.FileSystem.Resource (Resource, isFile)
+import SlamData.Quasar as Q
+import SlamData.FileSystem.Resource as R
+
+type DownloadModel r =
+  { resource ∷ R.Resource
+  , targetName ∷ String
+  , compress ∷ Boolean
+  , options ∷ Either CSVOptions JSONOptions
+  | r
+  }
+
+renderURL ∷ ∀ r. Array RequestHeader → DownloadModel r → String
+renderURL authHeaders opts =
+  let
+    headers =
+      "?request-headers="
+        <> (Global.encodeURIComponent
+             $ show
+             $ Q.reqHeadersToJSON
+             $ append authHeaders
+             $ toHeaders opts
+             $ Just (opts.targetName <> ext))
+    ext = extension opts.compress opts.options
+  in
+    Q.encodeURI (P.printPath QP.data_ <> R.resourcePath opts.resource) <> headers
 
 type DownloadOptions = Either CSVOptions JSONOptions
 
@@ -187,8 +213,8 @@ codecPrecisionMode = C.basicCodec dec enc
     Readable → "Readable"
     Precise → "Precise"
 
-shouldCompress ∷ ∀ r. { source ∷ Resource, compress ∷ Boolean | r } → Boolean
-shouldCompress state = not isFile state.source || state.compress
+shouldCompress ∷ ∀ r. DownloadModel r → Boolean
+shouldCompress state = not R.isFile state.resource || state.compress
 
 extension ∷ Boolean → Either CSVOptions JSONOptions → String
 extension compress options
@@ -200,7 +226,7 @@ extension compress options
 
 validFilename ∷ String → Either String String
 validFilename s =
-  if isJust (Str.indexOf (Str.Pattern "/") s)
+  if not Str.null s && isJust (Str.indexOf (Str.Pattern "/") s)
     then Left s
     else Right s
 

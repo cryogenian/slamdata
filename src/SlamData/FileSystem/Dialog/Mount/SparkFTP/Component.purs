@@ -15,62 +15,51 @@ limitations under the License.
 -}
 
 module SlamData.FileSystem.Dialog.Mount.SparkFTP.Component
-  ( comp
+  ( component
   , Query
-  , module SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery
-  , module MCS
+  , module Q
+  , module S
   ) where
 
 import SlamData.Prelude
 
 import Data.Array as Array
-import Data.Path.Pathy (dir, (</>))
-
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-
-import Quasar.Mount as QM
-
-import SlamData.Monad (Slam)
+import Quasar.Mount.SparkFTP as QMS
 import SlamData.FileSystem.Dialog.Mount.Common.Render as MCR
-import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..), SettingsMessage(..))
-import SlamData.FileSystem.Dialog.Mount.SparkFTP.Component.State as MCS
-import SlamData.FileSystem.Resource (Mount(..))
-import SlamData.Quasar.Mount as API
-import SlamData.Quasar.Error as QE
+import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery as Q
+import SlamData.FileSystem.Dialog.Mount.SparkFTP.Component.State as S
+import SlamData.Monad (Slam)
 import SlamData.Render.ClassName as CN
 
-type Query = SettingsQuery MCS.State
+type Query = Q.SettingsQuery S.State
+type Message = Q.SettingsMessage QMS.Config
 
-comp ∷ MCS.State → H.Component HH.HTML Query Unit SettingsMessage Slam
-comp initialState =
+component ∷ H.Component HH.HTML Query (Maybe QMS.Config) Message Slam
+component =
   H.component
-    { initialState: const initialState
+    { initialState: maybe S.initialState S.fromConfig
     , render
-    , eval
+    , eval: Q.eval (S.vToE ∘ S.toConfig)
     , receiver: const Nothing
     }
 
-render ∷ MCS.State → H.ComponentHTML Query
+render ∷ S.State → H.ComponentHTML Query
 render state =
-  HH.div
-    [ HP.class_ CN.mountSpark ]
-    [ MCR.section "Spark Server" [ MCR.host state MCS._sparkHost ]
-    , MCR.section "FTP Server" [ MCR.host state MCS._ftpHost ]
+  HH.div_
+    [ MCR.section "Spark Server" [ MCR.host state S._sparkHost ]
+    , MCR.section "FTP Server" [ MCR.host state S._ftpHost ]
     , MCR.section "Authentication"
-      [ HH.div
-        [ HP.class_ CN.mountUserInfo ]
-        [ MCR.label "Username" [ MCR.input state MCS._user [] ]
-        , MCR.label "Password" [ MCR.input state MCS._password [ HP.type_ HP.InputPassword ] ]
-        ]
-      ]
-    , MCR.section "Root"
         [ HH.div
-            [ HP.class_ CN.mountPath ]
-            [ MCR.label "Path" [ MCR.input state MCS._path [] ] ]
+            [ HP.class_ CN.mountUserInfo ]
+            [ MCR.label "Username" [ MCR.input state S._user [] ]
+            , MCR.label "Password" [ MCR.input state S._password [ HP.type_ HP.InputPassword ] ]
+            ]
         ]
+    , MCR.section "Root" [ MCR.label "Path" [ MCR.input state S._path [] ] ]
     , MCR.section "Advanced Settings"
         [ MCR.propListTable (Array.mapWithIndex renderPropRow (state.props <> [ "" × "" ])) ]
     ]
@@ -82,8 +71,8 @@ render state =
         (guard (key ≠ "") $> "")
           <> [ key ]
           <> state.availableProps
-      updateFnKey = MCS.updatePropAt ix ∘ flip Tuple value
-      updateFnVal = MCS.updatePropAt ix ∘ Tuple key
+      updateFnKey = S.updatePropAt ix ∘ flip Tuple value
+      updateFnVal = S.updatePropAt ix ∘ Tuple key
       classes = [ CN.formControl ]
     in
     HH.tr_
@@ -91,7 +80,7 @@ render state =
           [ HH.select
               [ HP.value key
               , HP.classes classes
-              , HE.onSelectedIndexChange (map (H.action ∘ ModifyState ∘ updateFnKey) ∘ Array.index values)
+              , HE.onSelectedIndexChange (map (H.action ∘ Q.ModifyState ∘ updateFnKey) ∘ Array.index values)
               ]
               (values <#> HH.option_ ∘ pure ∘ HH.text)
           ]
@@ -100,23 +89,7 @@ render state =
               [ HP.value value
               , HP.type_ HP.InputText
               , HP.classes classes
-              , HE.onValueInput (HE.input (ModifyState ∘ updateFnVal))
+              , HE.onValueInput (HE.input (Q.ModifyState ∘ updateFnVal))
               ]
           ]
       ]
-
-eval ∷ Query ~> H.ComponentDSL MCS.State Query SettingsMessage Slam
-eval = case _ of
-  ModifyState f next → do
-    H.modify f
-    H.raise Modified
-    pure next
-  Validate k →
-    k <<< either Just (const Nothing) <<< MCS.vToE <<< MCS.toConfig <$> H.get
-  Submit parent name k →
-    k <$> runExceptT do
-      st ← lift H.get
-      config ← except $ lmap QE.msgToQError $ MCS.vToE $ MCS.toConfig st
-      let path = parent </> dir name
-      ExceptT $ API.saveMount (Left path) (QM.SparkFTPConfig config)
-      pure $ Database path
