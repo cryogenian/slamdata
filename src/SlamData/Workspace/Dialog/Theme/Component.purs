@@ -83,10 +83,11 @@ render { custom, option, submitting } =
       ]
       [ HH.h4_ [ HH.text "Theme deck" ]
       , HH.fieldset
-          [ HP.class_ $ HH.ClassName "deck-dialog-body" ]
+          [ HP.class_ $ HH.ClassName "deck-dialog-body"
+          , HP.disabled $ submitting
+          ]
           [ HH.select
               [ HP.class_ CN.formControl
-              , HP.disabled submitting
               , HP.required true
               , HE.onValueChange
                   $ HE.input
@@ -97,7 +98,7 @@ render { custom, option, submitting } =
               [ HP.class_ CN.formControl
               , HP.type_ HP.InputUrl
               , HP.placeholder "Custom CSS URL"
-              , HP.disabled $ submitting || option /= Option.Custom
+              , HP.disabled $ option /= Option.Custom
               , HE.onValueInput $ HE.input UpdateCustom
               ]
           ]
