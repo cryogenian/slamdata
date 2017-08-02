@@ -1,5 +1,5 @@
 {-
-Copyright 2016 SlamData, Inc.
+Copyright 2017 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ limitations under the License.
 
 module SlamData.Workspace.Class
   ( class WorkspaceDSL
+  , changeTheme
   , navigate
   , navigateToDeck
   , navigateToIndex
@@ -35,6 +36,7 @@ import DOM (DOM)
 import Halogen.Query (HalogenM)
 
 import SlamData.FileSystem.Routing (parentURL)
+import SlamData.Theme.Theme (Theme)
 import SlamData.Wiring (Wiring)
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Action as WA
@@ -42,15 +44,19 @@ import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Routing (Routes(..))
 
 class WorkspaceDSL (m ∷ Type → Type) where
+  changeTheme ∷ Theme → m Unit
   navigate ∷ Routes → m Unit
 
 instance workspaceDSLMaybeT ∷ (Monad m, WorkspaceDSL m) ⇒ WorkspaceDSL (MaybeT m) where
+  changeTheme = lift ∘ changeTheme
   navigate = lift ∘ navigate
 
 instance workspaceDSLExceptT ∷ (Monad m, WorkspaceDSL m) ⇒ WorkspaceDSL (ExceptT e m) where
+  changeTheme = lift ∘ changeTheme
   navigate = lift ∘ navigate
 
 instance workspaceDSLHalogenM ∷ (Monad m, WorkspaceDSL m) ⇒ WorkspaceDSL (HalogenM s f g p o m) where
+  changeTheme = lift ∘ changeTheme
   navigate = lift ∘ navigate
 
 navigateToDeck

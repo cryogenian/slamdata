@@ -1,5 +1,5 @@
 {-
-Copyright 2016 SlamData, Inc.
+Copyright 2017 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -59,6 +59,7 @@ import SlamData.Quasar.Aff (runQuasarF)
 import SlamData.Quasar.Auth (class QuasarAuthDSL)
 import SlamData.Quasar.Auth.Authentication as Auth
 import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
+import SlamData.Theme.Theme (Theme)
 import SlamData.Wiring (Wiring)
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Class (class WorkspaceDSL)
@@ -77,6 +78,7 @@ data SlamF eff a
   | Par (SlamA eff a)
   | Fork (FF.Fork (SlamM eff) a)
   | Ask (Wiring → a)
+  | ChangeTheme Theme a
   | Navigate Routing.Routes a
 
 newtype SlamM eff a = SlamM (Free (SlamF eff) a)
@@ -128,6 +130,7 @@ instance globalErrorDSLSlamM ∷ GE.GlobalErrorDSL (SlamM eff) where
   raiseGlobalError = SlamM ∘ liftF ∘ flip Halt unit
 
 instance workspaceDSLSlamM ∷ WorkspaceDSL (SlamM eff) where
+  changeTheme = SlamM ∘ liftF ∘ flip ChangeTheme unit
   navigate = SlamM ∘ liftF ∘ flip Navigate unit
 
 instance localStorageDSLSlamM :: LocalStorageDSL (SlamM eff) where
@@ -198,6 +201,8 @@ runSlam wiring@(Wiring.Wiring { auth, bus }) = foldFree go ∘ unSlamM
       goFork f
     Ask k →
       pure (k wiring)
+    ChangeTheme theme a →
+      pure a
     Navigate (Routing.WorkspaceRoute path deckIds action varMaps) a → do
       let
         path' = foldr (\y x → x </> P.dir (DeckId.toString y)) path deckIds
