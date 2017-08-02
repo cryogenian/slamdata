@@ -18,7 +18,7 @@ module SlamData.Workspace.Dialog.Types where
 
 import SlamData.Prelude
 import Data.Map as Map
-import SlamData.Theme as Theme
+import SlamData.Theme.Theme as Theme
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.InsertableCardType (InsertableCardType)

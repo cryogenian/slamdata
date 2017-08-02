@@ -21,7 +21,7 @@ import Data.Argonaut as J
 import Data.Codec.Argonaut as CA
 import Data.Codec.Argonaut.Compat as CAC
 import Data.Codec.Argonaut.Migration as CAM
-import SlamData.Theme as Theme
+import SlamData.Theme.Theme as Theme
 import SlamData.Workspace.Card.CardId as CID
 
 type Deck =

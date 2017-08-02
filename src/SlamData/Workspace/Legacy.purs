@@ -17,7 +17,6 @@ limitations under the License.
 module SlamData.Workspace.Legacy where
 
 import SlamData.Prelude
-
 import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.Aff.Future (defer, wait)
 import Control.Monad.Eff.Exception as Exn
@@ -34,7 +33,7 @@ import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Error as QE
-import SlamData.Theme as Theme
+import SlamData.Theme.Theme as Theme
 import SlamData.Wiring.Cache as Cache
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardId as CID

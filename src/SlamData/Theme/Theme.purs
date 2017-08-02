@@ -11,19 +11,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Theme
+module SlamData.Theme.Theme
   ( Theme(..)
-  , getURI
   , codec
+  , default
+  , defaultLabel
+  , getCustomValue
+  , getURI
+  , toLabel
   ) where
 
 import SlamData.Prelude
+
 import Data.Argonaut as J
 import Data.Codec as C
 import Data.Codec.Argonaut as JC
 import Data.Codec.Argonaut.Variant as JCV
-import Data.Variant as V
 import Data.URI as URI
+import Data.Variant as V
 
 data Theme
   = Light
@@ -32,11 +37,29 @@ data Theme
 
 derive instance eqTheme ∷ Eq Theme
 
+default ∷ Theme
+default = Light
+
 _Light = SProxy ∷ SProxy "light"
 
 _Dark = SProxy ∷ SProxy "dark"
 
 _Custom = SProxy ∷ SProxy "custom"
+
+toLabel ∷ Theme → String
+toLabel = case _ of
+  Light → "Light"
+  Dark → "Dark"
+  Custom _ → "Custom"
+
+defaultLabel ∷ String
+defaultLabel =
+  toLabel default
+
+getCustomValue ∷ Theme → String
+getCustomValue = case _ of
+  Custom c → show c
+  _ → ""
 
 builtInThemeUri ∷ String → URI.URIRef
 builtInThemeUri t =

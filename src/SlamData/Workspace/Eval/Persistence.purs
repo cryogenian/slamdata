@@ -48,7 +48,7 @@ import SlamData.LocalStorage.Keys as LSK
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Error as QE
-import SlamData.Theme as Theme
+import SlamData.Theme.Theme as Theme
 import SlamData.Wiring (Wiring)
 import SlamData.Wiring as Wiring
 import SlamData.Wiring.Cache as Cache
