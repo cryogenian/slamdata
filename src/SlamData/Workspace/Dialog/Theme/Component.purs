@@ -47,6 +47,16 @@ initialState mt =
   , submitting: false
   }
 
+toTheme ∷ State → Maybe Theme.Theme
+toTheme s = case s.option of
+  Option.Light →
+    Just Theme.Light
+  Option.Dark →
+    Just Theme.Dark
+  -- TODO: Custom
+  _ →
+    Nothing
+
 data Query a
   = PreventDefaultAndSave DOM.Event a
   | UpdateOption Option.Option a
@@ -76,6 +86,12 @@ render { custom, option, submitting } =
         , HP.selected $ option == o
         ]
         [ HH.text $ Option.toLabel o ]
+
+    nameThemeOption ∷ String
+    nameThemeOption = "themeOption"
+
+    nameThemeCustomURL ∷ String
+    nameThemeCustomURL = "themeCustomURL"
   in
     HH.form
       [ HP.class_ $ HH.ClassName "deck-dialog-theme"
@@ -86,17 +102,25 @@ render { custom, option, submitting } =
           [ HP.class_ $ HH.ClassName "deck-dialog-body"
           , HP.disabled $ submitting
           ]
-          [ HH.select
+          [ HH.label
+              [ HP.for nameThemeOption ]
+              [ HH.text "Theme" ]
+          , HH.select
               [ HP.class_ CN.formControl
+              , HP.name nameThemeOption
               , HP.required true
               , HE.onValueChange
                   $ HE.input
                   $ UpdateOption ∘ fromMaybe Option.Default ∘ preview Option.valuePrism'
               ]
               $ option' <$> Option.options
+          , HH.label
+              [ HP.for nameThemeCustomURL ]
+              [ HH.text "Custom Theme URL" ]
           , HH.input
               [ HP.class_ CN.formControl
               , HP.type_ HP.InputUrl
+              , HP.name nameThemeCustomURL
               , HP.placeholder "Custom CSS URL"
               , HP.disabled $ option /= Option.Custom
               , HE.onValueInput $ HE.input UpdateCustom
@@ -122,7 +146,8 @@ eval ∷ Query ~> H.ComponentDSL State Query Message Slam
 eval = case _ of
   PreventDefaultAndSave ev next → do
     H.liftEff (DOM.preventDefault ev)
-    H.raise ∘ Rename =<< H.gets _.name
+    maybeTheme ← H.gets toTheme
+    for_ maybeTheme (H.raise ∘ Theme)
     pure next
   UpdateOption option next →
     H.modify _ { option = option } $> next
