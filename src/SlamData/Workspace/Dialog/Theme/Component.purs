@@ -79,23 +79,26 @@ component =
 render ∷ State → H.ComponentHTML Query
 render { custom, option, submitting } =
   let
-    option' ∷ ∀ p i. Option.Option → H.HTML p i
-    option' o =
-      HH.option
-        [ HP.value $ review Option.valuePrism' o
-        , HP.selected $ option == o
-        ]
-        [ HH.text $ Option.toLabel o ]
-
     nameThemeOption ∷ String
     nameThemeOption = "themeOption"
 
     nameThemeCustomURL ∷ String
     nameThemeCustomURL = "themeCustomURL"
+
+    isCustomOption ∷ Boolean
+    isCustomOption = option == Option.Custom
+
+    renderOption ∷ ∀ p i. Option.Option → H.HTML p i
+    renderOption o =
+      HH.option
+        [ HP.value $ review Option.valuePrism' o
+        , HP.selected $ option == o
+        ]
+        [ HH.text $ Option.toLabel o ]
   in
     HH.form
       [ HP.class_ $ HH.ClassName "deck-dialog-theme"
-      --, HE.onSubmit
+      , HE.onSubmit $ HE.input PreventDefaultAndSave
       ]
       [ HH.h4_ [ HH.text "Theme deck" ]
       , HH.fieldset
@@ -107,22 +110,27 @@ render { custom, option, submitting } =
               [ HH.text "Theme" ]
           , HH.select
               [ HP.class_ CN.formControl
+              , HP.id_ nameThemeOption
               , HP.name nameThemeOption
               , HP.required true
               , HE.onValueChange
                   $ HE.input
                   $ UpdateOption ∘ fromMaybe Option.Default ∘ preview Option.valuePrism'
               ]
-              $ option' <$> Option.options
+              $ renderOption <$> Option.options
           , HH.label
               [ HP.for nameThemeCustomURL ]
               [ HH.text "Custom Theme URL" ]
           , HH.input
               [ HP.class_ CN.formControl
               , HP.type_ HP.InputUrl
+              , HP.id_ nameThemeCustomURL
               , HP.name nameThemeCustomURL
               , HP.placeholder "Custom CSS URL"
-              , HP.disabled $ option /= Option.Custom
+                -- Absolute URL pattern
+              , HP.pattern """^https?://([a-zA-Z0-9]([a-zA-ZäöüÄÖÜ0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}/\S*$"""
+              , HP.required isCustomOption
+              , HP.disabled $ not isCustomOption
               , HE.onValueInput $ HE.input UpdateCustom
               ]
           ]
