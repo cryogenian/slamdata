@@ -33,7 +33,7 @@ import Utils.DOM as DOM
 type State =
   { custom ∷ String
   , option ∷ Option.Option
-  , submitting ∷ Boolean
+  , isSubmitting ∷ Boolean
   }
 
 --_Option = SProxy ∷ SProxy "option"
@@ -44,7 +44,7 @@ initialState ∷ Maybe Theme.Theme → State
 initialState mt =
   { custom: maybe mempty Theme.getCustomValue mt
   , option: maybe Option.Default Option.fromTheme mt
-  , submitting: false
+  , isSubmitting: false
   }
 
 toTheme ∷ State → Maybe Theme.Theme
@@ -77,7 +77,7 @@ component =
     }
 
 render ∷ State → H.ComponentHTML Query
-render { custom, option, submitting } =
+render { custom, option, isSubmitting } =
   let
     nameThemeOption ∷ String
     nameThemeOption = "themeOption"
@@ -103,7 +103,7 @@ render { custom, option, submitting } =
       [ HH.h4_ [ HH.text "Theme deck" ]
       , HH.fieldset
           [ HP.class_ $ HH.ClassName "deck-dialog-body"
-          , HP.disabled $ submitting
+          , HP.disabled $ isSubmitting
           ]
           [ HH.label
               [ HP.for nameThemeOption ]
@@ -145,6 +145,7 @@ render { custom, option, submitting } =
         , HH.button
             [ HP.classes [ CN.btn, CN.btnPrimary ]
             , HP.type_ HP.ButtonSubmit
+            , HP.disabled isSubmitting
             ]
             [ HH.text "Save" ]
         ]
