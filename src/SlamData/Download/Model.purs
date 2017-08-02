@@ -26,7 +26,8 @@ import Data.Codec ((>~>))
 import Data.Codec as C
 import Data.Codec.Argonaut.Compat as CA
 import Data.Codec.Argonaut.Migration as CAM
-import Data.Lens (Lens', lens)
+import Data.Lens (Lens')
+import Data.Lens.Record as LR
 import Data.MediaType (MediaType(..))
 import Data.Newtype (un)
 import Data.Path.Pathy as P
@@ -89,20 +90,17 @@ codecCSVOptions =
 initialCSVOptions ∷ CSVOptions
 initialCSVOptions = CSVOptions CSV.defaultCSVOptions
 
-_CSVOptions ∷ Lens' CSVOptions CSV.CSVOptions
-_CSVOptions = _Newtype
-
 _colDelimiter ∷ Lens' CSVOptions String
-_colDelimiter = _CSVOptions <<< lens _.columnDelimiter (_ { columnDelimiter = _ })
+_colDelimiter = _Newtype ∘ LR.prop (SProxy ∷ SProxy "columnDelimiter")
 
 _rowDelimiter ∷ Lens' CSVOptions String
-_rowDelimiter = _CSVOptions <<< lens _.rowDelimiter (_ { rowDelimiter = _ })
+_rowDelimiter = _Newtype ∘ LR.prop (SProxy ∷ SProxy "rowDelimiter")
 
 _quoteChar ∷ Lens' CSVOptions String
-_quoteChar = _CSVOptions <<< lens _.quoteChar (_ { quoteChar = _ })
+_quoteChar = _Newtype ∘ LR.prop (SProxy ∷ SProxy "quoteChar")
 
 _escapeChar ∷ Lens' CSVOptions String
-_escapeChar = _CSVOptions <<< lens _.escapeChar (_ { escapeChar = _ })
+_escapeChar = _Newtype ∘ LR.prop (SProxy ∷ SProxy "escapeChar")
 
 type JSONOptionsRec =
   { multivalues ∷ MultiValueMode
@@ -127,14 +125,11 @@ initialJSONOptions =
     , precision: JSON.Readable
     }
 
-_JSONOptions ∷ Lens' JSONOptions JSONOptionsRec
-_JSONOptions = _Newtype
-
 _multivalues ∷ Lens' JSONOptions MultiValueMode
-_multivalues = _JSONOptions <<< lens _.multivalues (_ { multivalues = _ })
+_multivalues = _Newtype ∘ LR.prop (SProxy ∷ SProxy "multivalues")
 
 _precision ∷ Lens' JSONOptions JSON.JSONMode
-_precision = _JSONOptions <<< lens _.precision (_ { precision = _ })
+_precision = _Newtype ∘ LR.prop (SProxy ∷ SProxy "precision")
 
 data MultiValueMode = ArrayWrapped | LineDelimited
 
