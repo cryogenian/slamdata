@@ -158,7 +158,7 @@ codecJSONMode = C.basicCodec dec enc
     JSON.Readable → "Readable"
     JSON.Precise → "Precise"
 
-alwaysCompress ∷ ∀ r. R.Resource → Boolean
+alwaysCompress ∷ R.Resource → Boolean
 alwaysCompress = not R.isFile
 
 shouldCompress ∷ ∀ r. DownloadModel (resource ∷ R.Resource | r) → Boolean
