@@ -76,13 +76,13 @@ render state@{ options, targetName } =
             (\name → Modify (_ { targetName = name }))
         , guard (not DM.alwaysCompress state) $>
             HH.div
-              [ HP.classes [ CN.formGroup ] ]
+              [ HP.classes [ CN.formGroup, H.ClassName "sd-download-compress-option" ] ]
               [ HH.label_
                   [ HH.input
                       [ HP.type_ HP.InputCheckbox
                       , HE.onChecked $ HE.input (\b → Modify (_ { compress = b }))
                       ]
-                  , HH.text "Compress"
+                  , HH.text "Compress as .zip"
                   ]
               ]
         , guard (not R.isWorkspace state.resource) $> renderOptions state
