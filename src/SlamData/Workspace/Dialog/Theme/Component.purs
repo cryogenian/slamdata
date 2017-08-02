@@ -37,10 +37,6 @@ type State =
   , isSubmitting ∷ Boolean
   }
 
---_Option = SProxy ∷ SProxy "option"
-
---_Custom = SProxy ∷ SProxy "custom"
-
 initialState ∷ Maybe Theme.Theme → State
 initialState mt =
   { custom: maybe mempty Theme.getCustomValue mt
