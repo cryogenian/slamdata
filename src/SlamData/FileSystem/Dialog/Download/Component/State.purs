@@ -30,7 +30,7 @@ initialState resource =
       let name = R.resourceName resource
       in if name == "" then "archive" else name
   , compress: false
-  , options: Left DM.initialCSVOptions
+  , options: DM.initialOptions resource
   , error: Nothing
   }
 

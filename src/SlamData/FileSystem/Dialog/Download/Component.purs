@@ -85,7 +85,7 @@ render state@{ options, targetName } =
                   , HH.text "Compress"
                   ]
               ]
-        , pure $ renderOptions state
+        , guard (not R.isWorkspace state.resource) $> renderOptions state
         , pure $ renderError state
         ]
 

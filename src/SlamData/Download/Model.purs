@@ -48,6 +48,11 @@ type DownloadModel r =
   | r
   }
 
+initialOptions ∷ R.Resource → Either CSVOptions JSONOptions
+initialOptions res
+  | R.isWorkspace res = Right initialJSONOptions
+  | otherwise = Left initialCSVOptions
+
 renderURL ∷ ∀ r. Array RequestHeader → DownloadModel r → String
 renderURL authHeaders opts =
   let
