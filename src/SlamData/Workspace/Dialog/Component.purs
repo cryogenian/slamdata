@@ -130,8 +130,8 @@ render = case _ of
         case _ of
           Theme.Dismiss →
             Just $ H.action $ Raise Dismissed
-          Theme.Theme theme' →
-            Just $ H.action $ Raise (Confirm opts (Theme opts $ pure theme') true)
+          Theme.Theme maybeTheme →
+            Just $ H.action $ Raise (Confirm opts (Theme opts maybeTheme) true)
 
     Error _ str →
       HH.slot' CP.cp3 unit Error.nonModalComponent str

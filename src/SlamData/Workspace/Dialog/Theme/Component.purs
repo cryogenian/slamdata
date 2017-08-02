@@ -20,6 +20,7 @@ import SlamData.Prelude
 
 import Data.Lens.Fold (preview)
 import Data.Lens.Prism (review)
+import Data.URI as URI
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -53,7 +54,9 @@ toTheme s = case s.option of
     Just Theme.Light
   Option.Dark →
     Just Theme.Dark
-  -- TODO: Custom
+  Option.Custom →
+		-- Assuming HTML5 form validation is working (which it should)
+		URI.runParseURIRef s.custom # hush <#> Theme.Custom
   _ →
     Nothing
 
@@ -65,7 +68,7 @@ data Query a
 
 data Message
   = Dismiss
-  | Theme Theme.Theme
+  | Theme (Maybe Theme.Theme)
 
 component ∷ H.Component HH.HTML Query (Maybe Theme.Theme) Message Slam
 component =
@@ -127,7 +130,7 @@ render { custom, option, isSubmitting } =
               , HP.id_ nameThemeCustomURL
               , HP.name nameThemeCustomURL
               , HP.placeholder "Custom CSS URL"
-                -- Absolute URL pattern
+                -- Absolute URL pattern -- prevents bad submits
               , HP.pattern """^https?://([a-zA-Z0-9]([a-zA-ZäöüÄÖÜ0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}/\S*$"""
               , HP.required isCustomOption
               , HP.disabled $ not isCustomOption
@@ -156,7 +159,7 @@ eval = case _ of
   PreventDefaultAndSave ev next → do
     H.liftEff (DOM.preventDefault ev)
     maybeTheme ← H.gets toTheme
-    for_ maybeTheme (H.raise ∘ Theme)
+    H.raise (Theme maybeTheme)
     pure next
   UpdateOption option next →
     H.modify _ { option = option } $> next
