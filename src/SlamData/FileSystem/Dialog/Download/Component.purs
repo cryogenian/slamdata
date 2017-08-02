@@ -61,21 +61,33 @@ dialog res =
 render ∷ S.State → H.ComponentHTML Query
 render state@{ options, targetName } =
   HH.div_
-    [ HH.div
-        [ HP.classes [ CN.formGroup, CN.downloadSource ] ]
-        [ HH.label_
-            [ HH.span_ [ HH.text "Source" ]
-            , HH.text (R.resourcePath state.resource)
+    $ join
+        [ pure $ HH.div
+            [ HP.classes [ CN.formGroup, CN.downloadSource ] ]
+            [ HH.label_
+                [ HH.span_ [ HH.text "Source" ]
+                , HH.text (R.resourcePath state.resource)
+                ]
             ]
+        , pure $ DR.fldName
+            (DM.shouldCompress state)
+            options
+            targetName
+            (\name → Modify (_ { targetName = name }))
+        , guard (not DM.alwaysCompress state) $>
+            HH.div
+              [ HP.classes [ CN.formGroup, H.ClassName "sd-download-compress-option" ] ]
+              [ HH.label_
+                  [ HH.input
+                      [ HP.type_ HP.InputCheckbox
+                      , HE.onChecked $ HE.input (\b → Modify (_ { compress = b }))
+                      ]
+                  , HH.text "Compress as .zip"
+                  ]
+              ]
+        , guard (not R.isWorkspace state.resource) $> renderOptions state
+        , pure $ renderError state
         ]
-    , DR.fldName
-        (DM.shouldCompress state)
-        options
-        targetName
-        (\name → Modify (_ { targetName = name }))
-    , renderOptions state
-    , renderError state
-    ]
 
 renderOptions ∷ S.State → H.ComponentHTML Query
 renderOptions { options } =
