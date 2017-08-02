@@ -19,9 +19,7 @@ module SlamData.FileSystem (main) where
 import SlamData.Prelude
 
 import Ace.Config as AceConfig
-
 import Control.Coroutine (Producer, Consumer, consumer, producer, ($$), runProcess)
-
 import Control.Monad.Aff (Aff, delay)
 import Control.Monad.Aff.AVar (AVar, makeVar, makeVar', modifyVar, putVar, takeVar)
 import Control.Monad.Aff.Class (liftAff)
@@ -30,23 +28,17 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (Error, error)
 import Control.Monad.Fork (Canceler(..), fork, cancel)
 import Control.UI.Browser (setTitle, replaceLocation)
-
 import Data.Array (filter, mapMaybe, take, drop)
 import Data.Lens (Lens', lens, (%~), (<>~))
 import Data.Map as M
 import Data.Path.Pathy ((</>), rootDir, parseAbsDir, sandbox, currentDir)
 import Data.Time.Duration (Milliseconds(..))
-
 import DOM (DOM)
-
 import Halogen as H
 import Halogen.Aff as HA
 import Halogen.VDom.Driver (runUI, HalogenIO)
-
 import Quasar.Error as QE
-
 import Routing (matchesAff)
-
 import SlamData.Analytics as Analytics
 import SlamData.Common.Sort (Sort(..))
 import SlamData.Config as Config
@@ -64,10 +56,8 @@ import SlamData.Quasar.Auth.Permission as Permission
 import SlamData.Quasar.FS (children) as Quasar
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType (AccessType(..))
-
 import Text.SlamSearch.Printer (strQuery)
 import Text.SlamSearch.Types (SearchQuery)
-
 import Utils.Path (DirPath, hidePath, renderPath)
 
 type FileSystemIO = HalogenIO Query Void (Aff SlamDataEffects)
@@ -171,7 +161,7 @@ redirects driver var mbOld = case _ of
         oldQuery × oldSalt ← case old of
           Salted _ oldQuery' oldSalt' → pure $ oldQuery' × oldSalt'
           _ → Nothing
-        pure $ oldQuery ≠ query ∨ oldSalt ≡ salt
+        pure $ oldQuery ≠ query ∨ oldSalt ≠ salt
 
     if isNewPage
       then do

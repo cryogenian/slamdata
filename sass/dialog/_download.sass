@@ -1,4 +1,4 @@
-.dialog-download,
+.sd-download-dialog,
 .download-configuration
   min-width: 70rem
 
@@ -64,7 +64,7 @@
   .download-csv-delimiters
     list-style: none
     padding: 0
-    margin-top: $padding-base-horizontal
+    margin: 0
 
     &, label
       display: flex
@@ -90,35 +90,8 @@
       width: 50%
       margin: $padding-base-vertical 0
 
-  .download-array-mode
-    > label
-      width: 25%
-      float: left
-
-    ul
-      list-style: none
-      padding: 0
-      float: left
-      width: 75%
-
-      li
-        display: flex
-        flex-flow: row wrap
-        align-items: center
-
-        label, input
-          flex: 1 1 50%
-
-        label
-          cursor: pointer
-          display: inline
-
-        input
-          margin-left: 1rem
-          width: 4em
-          display: inline-block
-
   .download-json-options
+
     > div
       display: flex
       flex-flow: row wrap
@@ -127,6 +100,7 @@
     > div > label
       flex: 0 1 15.6rem
       line-height: 1.4
+      padding: $padding-base-vertical $padding-base-horizontal
 
     ul
       flex: 1 1 auto
@@ -140,5 +114,9 @@
           cursor: pointer
           display: inline
 
-  .alert
-    height: 4.2rem
+  .sd-download-compress-option
+    margin-left: 10rem
+    margin-top: -0.5rem
+    input[type=checkbox]
+      margin-right: 0.5rem
+      vertical-align: bottom

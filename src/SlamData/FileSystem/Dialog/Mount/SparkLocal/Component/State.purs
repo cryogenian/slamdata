@@ -25,21 +25,16 @@ module SlamData.FileSystem.Dialog.Mount.SparkLocal.Component.State
 import SlamData.Prelude
 
 import Data.Path.Pathy as P
-
-import Quasar.Mount.SparkLocal (Config)
 import Quasar.Mount.SparkLocal as SL
 
-type State =
-  { path ∷ String }
+type State = String
 
 initialState ∷ State
-initialState =
-  { path: "" }
+initialState = ""
 
-fromConfig ∷ Config → State
-fromConfig path =
-  { path: P.printPath path }
+fromConfig ∷ SL.Config → State
+fromConfig = P.printPath
 
-toConfig ∷ State → Either String Config
-toConfig { path } =
+toConfig ∷ State → Either String SL.Config
+toConfig path =
   maybe (Left $ "Invalid path: " <> path) Right (SL.parseDirPath path)

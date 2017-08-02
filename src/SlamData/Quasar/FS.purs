@@ -16,9 +16,11 @@ limitations under the License.
 
 module SlamData.Quasar.FS
   ( children
+  , childrenPaginated
   , getNewName
   , move
   , listing
+  , listingPaginated
   , delete
   , messageIfFileNotFound
   , dirNotAccessible
@@ -68,8 +70,17 @@ children
   ⇒ QuasarDSL m
   ⇒ DirPath
   → m (Either QError (Array R.Resource))
-children dir = runExceptT do
-  cs ← ExceptT $ listing dir
+children dir = childrenPaginated dir Nothing
+
+childrenPaginated
+  ∷ ∀ m
+  . Monad m
+  ⇒ QuasarDSL m
+  ⇒ DirPath
+  → Maybe QF.Pagination
+  → m (Either QError (Array R.Resource))
+childrenPaginated dir pagination = runExceptT do
+  cs ← ExceptT $ listingPaginated dir pagination
   let result = (R._root .~ dir) <$> cs
   -- TODO: do this somewhere more appropriate
   -- lift $ fromAff $ memoizeCompletionStrs dir result
@@ -99,8 +110,17 @@ listing
   ⇒ QuasarDSL m
   ⇒ DirPath
   → m (Either QError (Array R.Resource))
-listing p =
-  map (map toResource) <$> liftQuasar (QF.dirMetadata p)
+listing p = listingPaginated p Nothing
+
+listingPaginated
+  ∷ ∀ m
+  . Functor m
+  ⇒ QuasarDSL m
+  ⇒ DirPath
+  → Maybe QF.Pagination
+  → m (Either QError (Array R.Resource))
+listingPaginated p pagination =
+  map (map toResource) <$> liftQuasar (QF.dirMetadata p pagination)
   where
   toResource ∷ QFS.Resource → R.Resource
   toResource res = case res of
@@ -125,7 +145,7 @@ getNewName
   → String
   → m (Either QError String)
 getNewName parent name = do
-  result ← liftQuasar (QF.dirMetadata parent)
+  result ← liftQuasar (QF.dirMetadata parent Nothing)
   pure case result of
     Right items
       | exists name items → Right (getNewName' items 1)
@@ -458,7 +478,7 @@ dirNotAccessible
   ⇒ DirPath
   → m (Maybe QF.QError)
 dirNotAccessible path =
-  either Just (const Nothing) <$> liftQuasar (QF.dirMetadata path)
+  either Just (const Nothing) <$> liftQuasar (QF.dirMetadata path Nothing)
 
 fileNotAccessible
   ∷ ∀ m

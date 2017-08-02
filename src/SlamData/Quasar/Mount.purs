@@ -17,6 +17,7 @@ limitations under the License.
 module SlamData.Quasar.Mount
   ( mountInfo
   , saveMount
+  , module QM
   , module Quasar.Error
   ) where
 

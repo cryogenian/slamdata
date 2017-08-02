@@ -9,7 +9,7 @@ import Data.Maybe (Maybe(..), maybe)
 import Data.String (joinWith)
 import Selenium.Monad (attempt)
 import Test.Feature (logCurrentScreen)
-import Test.Feature.Log (sectionMsg, warnMsg)
+import Test.Feature.Log (debugMsg, sectionMsg, successMsg, warnMsg)
 import Test.Feature.Monad (Feature)
 import Test.SlamData.Feature.Monad (Connector(..))
 
@@ -51,10 +51,13 @@ scenario
   → Feature eff o Unit
   → Feature eff o Unit
 scenario { epic, before, after, title, knownIssues, connector } actions =
-  sectionMsg title' *> runHook before *> actions'
+  sectionMsg title' *> runBeforeHook before *> actions'
   where
   title' ∷ String
-  title' = epic <> ": " <> title
+  title' = space <> "\n" <> epic <> ": " <> title <> "\n" <> space
+
+  space ∷ String
+  space = "-------------------------------"
 
   knownIssuesString ∷ String
   knownIssuesString = separate $ indent <$> knownIssuesForConnector
@@ -88,25 +91,35 @@ scenario { epic, before, after, title, knownIssues, connector } actions =
     Marklogic → knownIssues.marklogic
 
   actions' ∷ Feature eff o Unit
-  actions' | knownIssuesForConnector == [] =
+  actions' | knownIssuesForConnector == [] = do
+    successMsg "-------- Starting test --------"
     attempt actions >>=
       case _ of
         Left e → logCurrentScreen *> (liftEff $ throw $ message e)
-        Right _ → runHook after
-  actions' =
-    attempt actions >>=
-      case _ of
-        Left e → logCurrentScreen *> warn (message e) *> warn knownIssuesWarning *> runHook after
-        Right _ → runHook after *> unexpectedSuccess
+        Right _ → do
+          successMsg space
+          runAfterHook after
+  actions' = do
+    pure unit
 
-  runHook ∷ Feature eff o Unit → Feature eff o Unit
-  runHook hook | knownIssuesForConnector == [] =
+  runBeforeHook ∷ Feature eff o Unit → Feature eff o Unit
+  runBeforeHook hook | knownIssuesForConnector == [] = do
+    debugMsg "--------- before test ---------"
     attempt hook >>=
       case _ of
         Left e → logCurrentScreen *> (liftEff $ throw $ message e)
         Right _ → pure unit
-  runHook hook =
+  runBeforeHook hook = do
+    warnMsg "-------- Skipping test ----------"
+    warn knownIssuesHookWarning
+
+  runAfterHook ∷ Feature eff o Unit → Feature eff o Unit
+  runAfterHook hook | knownIssuesForConnector == [] = do
+    debugMsg "---------- after test ---------"
     attempt hook >>=
       case _ of
-        Left e → logCurrentScreen *> warn (message e) *> warn knownIssuesHookWarning
+        Left e → logCurrentScreen *> (liftEff $ throw $ message e)
         Right _ → pure unit
+  runAfterHook hook = do
+    warnMsg "-------- Skipping test ----------"
+    warn knownIssuesHookWarning

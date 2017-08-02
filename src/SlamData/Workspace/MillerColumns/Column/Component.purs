@@ -31,8 +31,6 @@ import Data.Array as A
 import Data.List as L
 import Data.Time.Duration (Milliseconds(..))
 import DOM.Classy.Element (scrollTop, scrollHeight, clientHeight) as DOM
-import DOM.Classy.Event (currentTarget) as DOM
-import DOM.Classy.Node (fromNode) as DOM
 import Halogen as H
 import Halogen.Component.Proxy (proxyQI)
 import Halogen.Component.Utils.Debounced (debouncedEventSource, runDebounceTrigger, cancelDebounceTrigger)
@@ -107,15 +105,19 @@ component' (ColumnOptions colSpec) colPath =
           ]
       , renderSelected selected
       , HH.div
-          [ HP.class_ (HH.ClassName "sd-miller-column-items") ]
+          [ HP.class_ (HH.ClassName "sd-miller-column-items")
+          , HP.ref refItems
+          , HE.onScroll (HE.input_ HandleScroll)
+          ]
           [ HH.ul
-              [ HP.class_ (HH.ClassName "sd-miller-column-items-list")
-              , HE.onScroll \e → H.action ∘ HandleScroll <$> DOM.fromNode (DOM.currentTarget e)
-              ]
+              [ HP.class_ (HH.ClassName "sd-miller-column-items-list") ]
               $ A.fromFoldable (renderItem selected <$> items)
                   <> (guard (state == Loading) $> loadIndicator)
           ]
       ]
+
+  refItems ∷ H.RefLabel
+  refItems = H.RefLabel "refItems"
 
   loadIndicator ∷ HTML a i o
   loadIndicator =
@@ -190,13 +192,8 @@ component' (ColumnOptions colSpec) colPath =
       H.modify (_ { filterText = text, items = L.Nil, lastLoadRequest = Nothing })
       load
       pure next
-    HandleScroll ul next → do
-      remain ← H.liftEff do
-        height <- DOM.clientHeight ul
-        scrollTop <- DOM.scrollTop ul
-        scrollHeight <- DOM.scrollHeight ul
-        pure (scrollHeight - height - scrollTop)
-      when (remain < 20.0) load
+    HandleScroll next → do
+      fill
       pure next
     HandleMessage itemId msg next → do
       case msg of
@@ -213,13 +210,24 @@ component' (ColumnOptions colSpec) colPath =
       pure next
     FulfilLoadRequest { requestId, items, nextOffset } next → do
       expectedId ← H.gets _.lastRequestId
-      when (requestId == expectedId) $
+      when (requestId == expectedId) do
         H.modify \st' → st'
           { items = st'.items <> items
           , nextOffset = nextOffset
           , state = Loaded
           }
+        fill
       pure next
+
+  fill ∷ DSL a i o Unit
+  fill =
+    H.getHTMLElementRef refItems >>= traverse_ \items → do
+      remain ← H.liftEff do
+        height <- DOM.clientHeight items
+        scrollTop <- DOM.scrollTop items
+        scrollHeight <- DOM.scrollHeight items
+        pure (scrollHeight - height - scrollTop)
+      when (remain < 20.0) load
 
   load ∷ DSL a i o Unit
   load = do
@@ -227,7 +235,8 @@ component' (ColumnOptions colSpec) colPath =
     let
       shouldLoad = case lastLoadRequest of
         Nothing → true
-        Just { filter, offset } → filter /= filterText || offset /= nextOffset
+        Just { filter, offset } →
+          nextOffset /= Nothing && (filter /= filterText || offset /= nextOffset)
     when shouldLoad do
       let
         requestId = Req.succ lastRequestId

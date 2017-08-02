@@ -18,30 +18,26 @@ module SlamData.FileSystem.Component.Render where
 
 import SlamData.Prelude
 
-import Data.Lens ((^.))
 import Data.Path.Pathy (rootDir)
-
+import Halogen.HTML as H
 import Halogen.HTML.Core (HTML)
 import Halogen.HTML.Events as E
-import Halogen.HTML as H
 import Halogen.HTML.Properties as P
 import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Query (action)
-
 import SlamData.Common.Sort (Sort(..))
 import SlamData.FileSystem.Component.CSS as CSS
 import SlamData.FileSystem.Component.Query (Query(..))
-import SlamData.FileSystem.Component.State (State, _showHiddenFiles, _sort)
+import SlamData.FileSystem.Component.State (State)
 import SlamData.Hint as Hint
 import SlamData.Render.Icon as I
-
 import Utils.DOM as DOM
 
 sorting ∷ ∀ a. State → HTML a (Query Unit)
 sorting state =
   let
     chevron ∷ { icon ∷ H.HTML a (Query Unit), label ∷ String }
-    chevron = case state ^. _sort of
+    chevron = case state.sort of
       Asc → { icon: I.chevronUpSm, label: "Sort files by name descending" }
       Desc → { icon: I.chevronDownSm, label: "Sort files by name ascending" }
   in
@@ -80,7 +76,7 @@ toolbar state =
 
   showHide ∷ HTML p (Query Unit)
   showHide =
-    if state ^. _showHiddenFiles
+    if state.showHiddenFiles
     then toolItem HideHiddenFiles "Hide hidden files" I.eyeVisibleSm
     else toolItem ShowHiddenFiles "Show hidden files" I.eyeHiddenSm
 

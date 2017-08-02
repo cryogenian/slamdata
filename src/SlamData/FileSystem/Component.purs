@@ -26,7 +26,6 @@ import SlamData.Prelude
 import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Fork (fork)
 import Control.Monad.Rec.Class (tailRecM, Step(Done, Loop))
-import Control.UI.Browser (setLocation, locationString, clearValue)
 import Control.UI.Browser as Browser
 import Control.UI.Browser.Event as Be
 import Control.UI.File as Cf
@@ -35,13 +34,14 @@ import Data.Argonaut as J
 import Data.Array as Array
 import Data.Coyoneda (liftCoyoneda)
 import Data.Foldable as F
-import Data.Lens ((.~), preview)
+import Data.Lens (preview)
 import Data.MediaType (MediaType(..))
 import Data.MediaType.Common (textCSV, applicationJSON)
 import Data.Path.Pathy (rootDir, (</>), dir, file, parentDir, printPath)
 import Data.String as S
 import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
+import Data.Variant as V
 import DOM.Event.Event as DEE
 import Halogen as H
 import Halogen.Component.Utils (busEventSource)
@@ -53,11 +53,12 @@ import Halogen.Query.EventSource as ES
 import Quasar.Advanced.QuasarAF as QA
 import Quasar.Advanced.Types as QAT
 import Quasar.Data (QData(..))
-import Quasar.Mount as QM
+import Quasar.Error as QE
 import SlamData.AdminUI.Component as AdminUI
 import SlamData.AdminUI.Types as AdminUI.Types
 import SlamData.Common.Sort (notSort)
 import SlamData.Config as Config
+import SlamData.Dialog.License.Component as LicenseDialog
 import SlamData.Dialog.Render as RenderDialog
 import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
 import SlamData.FileSystem.Component.ChildSlot (ChildQuery, ChildSlot)
@@ -66,24 +67,13 @@ import SlamData.FileSystem.Component.CSS as FileSystemClassNames
 import SlamData.FileSystem.Component.Query (Query(..))
 import SlamData.FileSystem.Component.Render (sorting, toolbar)
 import SlamData.FileSystem.Component.State (State, initialState)
-import SlamData.FileSystem.Component.State as State
-import SlamData.FileSystem.Dialog.Component as Dialog
-import SlamData.FileSystem.Dialog.Component.Message as DialogMessage
+import SlamData.FileSystem.Dialog as Dialog
 import SlamData.FileSystem.Dialog.Mount.Component as Mount
-import SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State as Couchbase
-import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component.State as MarkLogic
-import SlamData.FileSystem.Dialog.Mount.Module.Component.State as Module
-import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MongoDB
-import SlamData.FileSystem.Dialog.Mount.SparkFTP.Component.State as SparkFTP
-import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State as SparkHDFS
-import SlamData.FileSystem.Dialog.Mount.SparkLocal.Component.State as SparkLocal
-import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Listing.Item (Item(..), itemResource, sortItem)
 import SlamData.FileSystem.Listing.Item.Component as Item
-import SlamData.FileSystem.Resource (Resource)
 import SlamData.FileSystem.Resource as R
-import SlamData.FileSystem.Routing (browseURL)
+import SlamData.FileSystem.Routing (browseURL, parentURL)
 import SlamData.FileSystem.Routing.Salt (newSalt)
 import SlamData.FileSystem.Search.Component as Search
 import SlamData.GlobalError as GE
@@ -96,10 +86,9 @@ import SlamData.Monad (Slam)
 import SlamData.Monad.License (notifyDaysRemainingIfNeeded)
 import SlamData.Notification.Component as NC
 import SlamData.Quasar (ldJSON) as API
-import SlamData.Quasar.Auth (authHeaders) as API
 import SlamData.Quasar.Class (liftQuasar)
 import SlamData.Quasar.Data (makeFile, save) as API
-import SlamData.Quasar.FS (children, delete, getNewName) as API
+import SlamData.Quasar.FS (children, getNewName) as API
 import SlamData.Quasar.Mount (mountInfo) as API
 import SlamData.Render.ClassName as CN
 import SlamData.Render.Common (content, row)
@@ -108,7 +97,7 @@ import SlamData.Workspace.Action (Action(..), AccessType(..))
 import SlamData.Workspace.Routing (mkWorkspaceURL)
 import Utils (finally)
 import Utils.DOM as DOM
-import Utils.Path (DirPath, getNameStr)
+import Utils.Path (AnyPath, DirPath)
 
 type HTML = H.ParentHTML Query ChildQuery ChildSlot Slam
 type DSL = H.ParentDSL State Query ChildQuery ChildSlot Void Slam
@@ -140,9 +129,9 @@ render state@{ version, sort, salt, path } =
           , row [ sorting state ]
           , HH.slot' CS.cpListing unit Listing.component unit $ HE.input HandleListing
           ]
-      , HH.slot' CS.cpDialog unit Dialog.component unit $ HE.input HandleDialog
-      , HH.slot' CS.cpNotify unit (NC.component NC.Hidden) unit
-          $ HE.input HandleNotifications
+      , HH.slot' CS.cpLicenseDialog unit LicenseDialog.component state.licenseProblem (HE.input_ (HandleLicenseProblem Nothing))
+      , HH.slot' CS.cpDialog unit Dialog.component state.dialog $ HE.input HandleDialog
+      , HH.slot' CS.cpNotify unit (NC.component NC.Hidden) unit $ HE.input HandleNotifications
       , HH.slot' CS.cpAdminUI unit AdminUI.component unit $ HE.input HandleAdminUI
       ]
     <> (guard state.presentIntroVideo $> renderIntroVideo)
@@ -194,23 +183,20 @@ eval = case _ of
       else
         void $ fork $ liftQuasar QA.licenseInfo >>= case _ of
           Right { status: QAT.LicenseValid } →
-            H.modify $ State._presentIntroVideo .~ true
+            H.modify (_ { presentIntroVideo = true })
           Right { status: QAT.LicenseExpired } →
             pure unit
           Left _ →
-            liftQuasar QA.serverInfo >>= traverse_
-              (_.name >>> eq "Quasar-Advanced" >>> not >>> flip when (H.modify $ State._presentIntroVideo .~ true))
+            liftQuasar QA.serverInfo >>= traverse_ \{ name } →
+              when (name /= "Quasar-Advanced") $
+                H.modify (_ { presentIntroVideo = true })
     H.subscribe $ busEventSource (flip HandleError ES.Listening) w.bus.globalError
     H.subscribe $ busEventSource (flip HandleSignInMessage ES.Listening) w.auth.signIn
-    H.subscribe $ busEventSource (flip HandleLicenseProblem ES.Listening) w.bus.licenseProblems
+    H.subscribe $ busEventSource (flip (HandleLicenseProblem ∘ Just) ES.Listening) w.bus.licenseProblems
     notifyDaysRemainingIfNeeded
     pure next
   Transition page next → do
-    H.modify
-      $ (State._isMount .~ page.isMount)
-      ∘ (State._salt .~ page.salt)
-      ∘ (State._sort .~ page.sort)
-      ∘ (State._path .~ page.path)
+    H.modify (_ { isMount = page.isMount, salt = page.salt, sort = page.sort, path = page.path })
     _ ← H.query' CS.cpListing unit $ H.action $ Listing.Reset
     _ ← H.query' CS.cpSearch unit $ H.action $ Search.SetLoading true
     _ ← H.query' CS.cpSearch unit $ H.action $ Search.SetValue $ fromMaybe "" page.query
@@ -225,17 +211,17 @@ eval = case _ of
   Resort next → do
     st ← H.get
     searchValue ← H.query' CS.cpSearch unit (H.request Search.GetValue)
-    H.liftEff $ setLocation $ browseURL searchValue (notSort st.sort) st.salt st.path
+    H.liftEff $ Browser.setLocation $ browseURL searchValue (notSort st.sort) st.salt st.path
     pure next
   SetPath path next → do
-    H.modify $ State._path .~ path
+    H.modify (_ { path = path })
     pure next
   SetSort sort next → do
-    H.modify $ State._sort .~ sort
+    H.modify (_ { sort = sort })
     resort
     pure next
   SetSalt salt next → do
-    H.modify $ State._salt .~ salt
+    H.modify (_ { salt = salt })
     pure next
   CheckIsMount path next → do
     checkIsMount path
@@ -244,21 +230,19 @@ eval = case _ of
     checkIsUnconfigured
     pure next
   SetVersion version next → do
-    H.modify $ State._version .~ Just version
+    H.modify (_ { version = Just version })
     pure next
-
   ShowHiddenFiles next → do
-    H.modify $ State._showHiddenFiles .~ true
+    H.modify (_ { showHiddenFiles = true })
     _ ← H.query' CS.cpListing unit $ H.action $ Listing.SetIsHidden false
     pure next
   HideHiddenFiles next → do
-    H.modify $ State._showHiddenFiles .~ false
+    H.modify (_ { showHiddenFiles = false })
     _ ← H.query' CS.cpListing unit $ H.action $ Listing.SetIsHidden true
     pure next
-
   Configure next → do
     path ← H.gets _.path
-    configure $ R.Database path
+    configure true (R.Database path)
     pure next
   MakeMount next → do
     parent ← H.gets _.path
@@ -293,7 +277,7 @@ eval = case _ of
     isMounted >>= if _
        then
          createWorkspace state.path \mkUrl →
-           H.liftEff $ setLocation $ mkUrl New
+           H.liftEff $ Browser.setLocation $ mkUrl New
        else
          showDialog
            $ Dialog.Error
@@ -308,7 +292,7 @@ eval = case _ of
     pure next
   FileListChanged el next → do
     fileArr ← map Cf.fileListToArray $ (H.liftAff $ Cf.files el)
-    H.liftEff $ clearValue el
+    H.liftEff $ Browser.clearValue el
     -- TODO: notification? this shouldn't be a runtime exception anyway!
     -- let err ∷ Slam Unit
     --     err = throwError $ error "empty filelist"
@@ -316,10 +300,8 @@ eval = case _ of
     for_ (Array.head fileArr) uploadFileSelected
     pure next
   Download next → do
-    path ← H.gets _.path
-    download $ R.Directory path
+    showDialog ∘ Dialog.Download ∘ R.Directory =<< H.gets _.path
     pure next
-
   DismissSignInSubmenu next → do
     dismissSignInSubmenu
     pure next
@@ -349,45 +331,14 @@ eval = case _ of
         presentMountHint items path
         resort
         pure next
-  HandleDialog (DialogMessage.ResourceDelete res) next → do
-    remove res
-    hideDialog
+  HandleDialog (Dialog.Bubble msg) next → do
+    msg # (V.case_
+      # V.on (SProxy ∷ SProxy "mounted") (const repopulate)
+      # V.on (SProxy ∷ SProxy "renamed") (const repopulate)
+      # V.on (SProxy ∷ SProxy "deleted") handleDeleted)
     pure next
-  HandleDialog DialogMessage.Dismiss next →
-    pure next
-  HandleDialog (DialogMessage.MountSave originalMount) next → do
-    mbMbMount ←
-      H.query' CS.cpDialog unit $ H.request Dialog.SaveMount
-    for_ (join mbMbMount) \newPath → do
-      hideDialog
-      path ← H.gets _.path
-      case originalMount of
-        -- Refresh if mount is current directory
-        -- path </> dir "" is equal to path
-        Nothing | R.Database path ≡ newPath || (R.Database $ path </> dir "") ≡ newPath →
-          H.liftEff Browser.reload
-        -- Add new item to list
-        Nothing →
-          void $ H.query' CS.cpListing unit $ H.action $ Listing.Add $ Item (R.Mount newPath)
-        -- Rename current mount at path
-        Just oldPath@(R.Database p) | path ≡ p && oldPath /= newPath → do
-          handleItemMessage (Item.Open $ R.Mount newPath)
-          void $ API.delete (R.Mount oldPath)
-        -- Rename mount in listing
-        Just oldPath | oldPath /= newPath → do
-          _ ← H.query' CS.cpListing unit $ H.action $ Listing.Remove $ Item (R.Mount oldPath)
-          _ ← H.query' CS.cpListing unit $ H.action $ Listing.Add $ Item (R.Mount newPath)
-          void $ API.delete (R.Mount oldPath)
-        Just oldPath → do
-          pure unit
-    resort
-    checkIsMount =<< H.gets _.path
-    checkIsUnconfigured
-    pure next
-  HandleDialog DialogMessage.MountDelete next → do
-    mount ← R.Mount ∘ R.Database <$> H.gets _.path
-    remove mount
-    H.liftEff Browser.reload
+  HandleDialog Dialog.Dismiss next → do
+    H.modify (_ { dialog = Nothing })
     pure next
   HandleHeader (Header.GlobalMenuMessage GlobalMenu.OpenAdminUI) next → do
     _ ← H.query' CS.cpAdminUI unit (H.action AdminUI.Types.Open)
@@ -412,11 +363,12 @@ eval = case _ of
         pure Nothing
       Search.Submit → do
         H.query' CS.cpSearch unit $ H.request Search.GetValue
-    H.liftEff $ setLocation $ browseURL value st.sort salt st.path
+    H.liftEff $ Browser.setLocation $ browseURL value st.sort salt st.path
     pure next
   HandleLicenseProblem problem next → do
-    _ ← H.query' CS.cpNotify unit $ H.action $ NC.UpdateRenderMode NC.Hidden
-    _ ← H.query' CS.cpDialog unit $ H.action $ Dialog.Show $ Dialog.LicenseProblem problem
+    when (isJust problem) $
+      void $ H.query' CS.cpNotify unit $ H.action $ NC.UpdateRenderMode NC.Hidden
+    H.modify (_ { licenseProblem = problem })
     pure next
   SetLoading bool next → do
     _ ← H.query' CS.cpSearch unit $ H.action $ Search.SetLoading bool
@@ -428,7 +380,7 @@ eval = case _ of
     _ ← H.query' CS.cpListing unit $ H.action $ Listing.Adds items
     pure next
   ShowError message next → do
-    _ ← H.query' CS.cpDialog unit $ H.action $ Dialog.Show $ Dialog.Error message
+    showDialog (Dialog.Error message)
     pure next
   HandleSignInMessage message next → do
     when (message ≡ GlobalMenu.SignInSuccess) (H.liftEff Browser.reload)
@@ -443,44 +395,44 @@ handleItemMessage = case _ of
   Item.Selected →
     pure unit
   Item.Edit res → do
-    loc ← H.liftEff locationString
+    loc ← H.liftEff Browser.locationString
     for_ (preview R._Workspace res) \wp →
-      H.liftEff $ setLocation $ append (loc ⊕ "/") $ mkWorkspaceURL wp (Load Editable)
+      H.liftEff $ Browser.setLocation $ append (loc ⊕ "/") $ mkWorkspaceURL wp (Load Editable)
   Item.Open res → do
     { sort, salt, path } ← H.get
-    loc ← H.liftEff locationString
+    loc ← H.liftEff Browser.locationString
     for_ (preview R._filePath res) \fp →
       createWorkspace path \mkUrl →
-        H.liftEff $ setLocation $ mkUrl $ Exploring fp
+        H.liftEff $ Browser.setLocation $ mkUrl $ Exploring fp
     for_ (preview R._dirPath res) \dp →
-      H.liftEff $ setLocation $ browseURL Nothing sort salt dp
+      H.liftEff $ Browser.setLocation $ browseURL Nothing sort salt dp
     for_ (preview R._Workspace res) \wp →
-      H.liftEff $ setLocation $ append (loc ⊕ "/") $ mkWorkspaceURL wp (Load ReadOnly)
+      H.liftEff $ Browser.setLocation $ append (loc ⊕ "/") $ mkWorkspaceURL wp (Load ReadOnly)
   Item.Configure (R.Mount mount) → do
-    configure mount
+    configure false mount
   Item.Configure _ →
     pure unit
-  Item.Move res → do
-    showDialog $ Dialog.Rename res
-    flip getDirectories rootDir \x →
-      void $ H.query' CS.cpDialog unit $ H.action $ Dialog.AddDirsToRename x
+  Item.Move res →
+    showDialog (Dialog.Rename res)
   Item.Remove res →
-    showDialog $ Dialog.Remove res
+    showDialog (Dialog.Delete res)
   Item.Share res → do
     path ← H.gets _.path
-    loc ← map (_ ⊕ "/") $ H.liftEff locationString
-    for_ (preview R._filePath res) \fp → do
-      createWorkspace path \mkUrl →
-        showDialog $ Dialog.Share $ append loc $ mkUrl $ Exploring fp
+    loc ← map (_ ⊕ "/") $ H.liftEff Browser.locationString
+    for_ (preview R._filePath res) \fp →
+      createWorkspace path \mkUrl → do
+        let url = append loc $ mkUrl $ Exploring fp
+        showDialog (Dialog.Share { name: R.resourceName res, url })
     for_ (preview R._Workspace res) \wp → do
-      showDialog (Dialog.Share $ append loc $ mkWorkspaceURL wp (Load ReadOnly))
+      let url = append loc $ mkWorkspaceURL wp (Load ReadOnly)
+      showDialog (Dialog.Share { name: R.resourceName res, url })
   Item.Download res →
-    download res
+    showDialog (Dialog.Download res)
 
 checkIsMount ∷ DirPath → DSL Unit
 checkIsMount path = do
   isMount ← isRight <$> API.mountInfo (Left path)
-  H.modify $ State._isMount .~ isMount
+  H.modify (_ { isMount = isMount })
 
 isMounted ∷ DSL Boolean
 isMounted = do
@@ -499,50 +451,17 @@ checkIsUnconfigured ∷ DSL Unit
 checkIsUnconfigured = do
   isMount ← isRight <$> API.mountInfo (Left rootDir)
   isEmpty ← either (const false) Array.null <$> API.children rootDir
-  H.modify $ State._isUnconfigured .~ (not isMount ∧ isEmpty)
-
-remove ∷ Resource → DSL Unit
-remove res = do
-  -- Replace actual item with phantom
-  _ ← H.query' CS.cpListing unit $ H.action $ Listing.Filter $ not ∘ eq res ∘ itemResource
-  _ ← H.query' CS.cpListing unit $ H.action $ Listing.Add $ PhantomItem res
-  -- Save order of items during deletion (or phantom will be on top of list)
-  resort
-  -- Try to delete
-  mbTrashFolder ← H.lift $ API.delete res
-  -- Remove phantom resource after we have response from server
-  _ ← H.query' CS.cpListing unit $ H.action $ Listing.Filter $ not ∘ eq res ∘ itemResource
-  case mbTrashFolder of
-    Left err → do
-      -- Error occured: put item back and show dialog
-      void $ H.query' CS.cpListing unit $ H.action $ Listing.Add (Item res)
-      case GE.fromQError err of
-        Left m →
-          showDialog $ Dialog.Error m
-        Right ge →
-          GE.raiseGlobalError ge
-    Right mbRes →
-      -- Item has been deleted: probably add trash folder
-      for_ mbRes \res' →
-        void $ H.query' CS.cpListing unit $ H.action $ Listing.Add (Item res')
-
-  listing ← fromMaybe [] <$> (H.query' CS.cpListing unit $ H.request Listing.Get)
-  path ← H.gets _.path
-  presentMountHint listing path
-
-  resort
-  checkIsMount path
-  checkIsUnconfigured
+  H.modify (_ { isUnconfigured = not isMount ∧ isEmpty })
 
 dismissMountHint ∷ DSL Unit
 dismissMountHint = do
   LS.persist J.encodeJson LSK.dismissedMountHintKey true
-  H.modify $ State._presentMountHint .~ false
+  H.modify (_ { presentMountHint = false })
 
 dismissIntroVideo ∷ DSL Unit
 dismissIntroVideo = do
   LS.persist J.encodeJson LSK.dismissedIntroVideoKey true
-  H.modify $ State._presentIntroVideo .~ false
+  H.modify (_ { presentIntroVideo = false })
   void $ H.query' CS.cpNotify unit $ H.action $ NC.UpdateRenderMode NC.Notifications
 
 dismissedIntroVideoBefore ∷ DSL Boolean
@@ -606,7 +525,7 @@ presentMountHint xs path = do
     map (fromMaybe true)  $ H.query' CS.cpSearch unit (H.request Search.IsLoading)
 
   H.modify
-    ∘ (State._presentMountHint .~ _)
+    ∘ (flip (_ { presentMountHint = _ }))
     ∘ ((Array.null xs ∧ path ≡ rootDir ∧ not (isSearching ∧ isLoading)) ∧ _)
     ∘ not
     ∘ either (const false) id
@@ -627,88 +546,50 @@ resort = do
     >>= traverse_ \isSearching →
       void $ H.query' CS.cpListing unit $ H.action $ Listing.SortBy (sortItem isSearching sort)
 
-configure ∷ R.Mount → DSL Unit
-configure m =
+configure ∷ Boolean → R.Mount → DSL Unit
+configure fromRoot m = do
+  let anyPath = R.mountPath m
   API.mountInfo anyPath >>= case m, _ of
     R.View path, Left err → raiseError err
     R.Module path, Left err → raiseError err
     R.Database path, Left err
       | path /= rootDir → raiseError err
-      | otherwise →
-          showDialog $ Dialog.Mount Mount.Root
-    R.View path, Right config →
-      showDialog $ Dialog.Mount
-        $ Mount.Edit
-          { parent: either parentDir parentDir anyPath
-          , name: Just $ getNameStr anyPath
-          , settings: fromConfig config
-          }
-    R.Module path, Right config →
-      showDialog $ Dialog.Mount
-        $ Mount.Edit
-          { parent: either parentDir parentDir anyPath
-          , name: Just $ getNameStr anyPath
-          , settings: fromConfig config
-          }
-    R.Database path, Right config →
-      showDialog $ Dialog.Mount
-        $ Mount.Edit
-          { parent: if path ≡ rootDir then Nothing else either parentDir parentDir anyPath
-          , name: if path ≡ rootDir then Nothing else Just $ getNameStr anyPath
-          , settings: fromConfig config
-          }
+      | otherwise → showMountDialog Mount.Root
+    R.View path, Right mount →
+      showMountDialog $ Mount.Edit { path: Right path, mount, fromRoot }
+    R.Module path, Right mount →
+      showMountDialog $ Mount.Edit { path: Left path, mount, fromRoot }
+    R.Database path, Right mount →
+      showMountDialog $ Mount.Edit { path: Left path, mount, fromRoot }
   where
-    anyPath =
-      R.mountPath m
-
-    fromConfig = case _ of
-      QM.ViewConfig config → Mount.SQL2 (SQL2.stateFromViewInfo config)
-      QM.ModuleConfig config → Mount.Module (Module.fromConfig config)
-      QM.MongoDBConfig config → Mount.MongoDB (MongoDB.fromConfig config)
-      QM.CouchbaseConfig config → Mount.Couchbase (Couchbase.fromConfig config)
-      QM.MarkLogicConfig config → Mount.MarkLogic (MarkLogic.fromConfig config)
-      QM.SparkFTPConfig config → Mount.SparkFTP (SparkFTP.fromConfig config)
-      QM.SparkHDFSConfig config → Mount.SparkHDFS (SparkHDFS.fromConfig config)
-      QM.SparkLocalConfig config → Mount.SparkLocal (SparkLocal.fromConfig config)
-
+    raiseError ∷ QE.QError → DSL Unit
     raiseError err = case GE.fromQError err of
       Left msg →
         showDialog $ Dialog.Error
-          $ "There was a problem reading the mount settings: "
-          ⊕ msg
+          $ "There was a problem reading the mount settings: " <> msg
       Right ge →
         GE.raiseGlobalError ge
+    showMountDialog ∷ Mount.Input → DSL Unit
+    showMountDialog = showDialog ∘ Dialog.Mount
 
-download ∷ R.Resource → DSL Unit
-download res = do
-  hs ← H.lift API.authHeaders
-  showDialog $ Dialog.Download res hs
-  pure unit
+handleDeleted ∷ AnyPath → DSL Unit
+handleDeleted deletedPath = do
+  { path } ← H.get
+  case deletedPath of
+    Left dir
+      | dir == rootDir → H.liftEff $ Browser.reload
+      | dir == path → H.liftEff $ Browser.setLocation $ parentURL deletedPath
+    _ → repopulate
 
-getChildren
-  ∷ (R.Resource → Boolean)
-  → (Array R.Resource → DSL Unit)
-  → DirPath
-  → DSL Unit
-getChildren pred cont start = do
-  ei ← API.children start
-  case ei of
-    Right items → do
-      let items' = Array.filter pred items
-          parents = Array.mapMaybe (either Just (const Nothing) ∘ R.getPath) items
-      cont items'
-      traverse_ (getChildren pred cont) parents
-    _ → pure unit
+repopulate ∷ DSL Unit
+repopulate = do
+  salt ← H.liftEff newSalt
+  { sort, path } ← H.get
+  searchValue ← H.query' CS.cpSearch unit (H.request Search.GetValue)
+  H.liftEff $ Browser.setLocation $ browseURL searchValue sort salt path
 
-getDirectories ∷ (Array R.Resource → DSL Unit) → DirPath → DSL Unit
-getDirectories = getChildren $ R.isDirectory ∨ R.isDatabaseMount
-
-showDialog ∷ Dialog.Dialog → DSL Unit
-showDialog = void ∘ H.query' CS.cpDialog unit ∘ H.action ∘ Dialog.Show
-
-hideDialog ∷ DSL Unit
-hideDialog =
-  void $ H.query' CS.cpDialog unit $ H.action Dialog.RaiseDismiss
+showDialog ∷ Dialog.Definition → DSL Unit
+showDialog d = H.modify (_ { dialog = Just d })
 
 queryHeaderGripper ∷ ∀ a. Gripper.Query a → DSL (Maybe a)
 queryHeaderGripper =

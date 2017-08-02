@@ -38,7 +38,7 @@ import Test.SlamData.Feature.Effects (SlamFeatureEffects)
 import Test.SlamData.Feature.Interactions as Interact
 import Test.SlamData.Feature.Monad (Connector(..), SlamFeature, getConnector)
 import Test.SlamData.Feature.Test.CacheCard as Cache
--- import Test.SlamData.Feature.Test.File as File
+import Test.SlamData.Feature.Test.File as File
 import Test.SlamData.Feature.Test.FlexibleVisualation as FlexibleVisualization
 import Test.SlamData.Feature.Test.FlipDeck as FlipDeck
 import Test.SlamData.Feature.Test.Markdown as Markdown
@@ -83,7 +83,7 @@ tests ∷ SlamFeature Unit
 tests = do
   setupScenario (pure unit) "Launch SlamData" noIssues do
     Interact.launchSlamData
-    Log.successMsg "Ok, launched SlamData"
+    Log.successMsg "** Ok, launched SlamData **"
 
   setupScenario (pure unit) "Mount test database" noIssues do
     connector ← getConnector
@@ -93,7 +93,7 @@ tests = do
       Couchbase → Interact.setupCouchbase
       Marklogic → Interact.setupMarklogic
       _ → pure unit
-    Log.successMsg "Ok, mounted test database"
+    Log.successMsg "** Ok, mounted test database **"
 
   setupScenario
     (Interact.deleteFileInTestFolder "Untitled Workspace.slam")
@@ -108,9 +108,9 @@ tests = do
       Interact.dismissHint
       Interact.flipDeck
       Interact.skipGuide
-      Log.successMsg "Ok, skipped guides and dismiss hints"
+      Log.successMsg "** Ok, skipped guides and dismiss hints **"
 
-  -- File.test
+  File.test
   Search.test
   Markdown.test
   FlexibleVisualization.test

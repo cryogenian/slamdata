@@ -18,54 +18,28 @@ module SlamData.FileSystem.Component.State where
 
 import SlamData.Prelude
 
-import Data.Lens (Lens', lens)
 import Data.Path.Pathy (rootDir)
-
 import SlamData.Common.Sort (Sort(..))
+import SlamData.FileSystem.Dialog as Dialog
 import SlamData.FileSystem.Routing.Salt (Salt(..))
-
+import SlamData.License as License
 import Utils.Path (DirPath)
 
 type State =
-  { path :: DirPath
-  , salt :: Salt
-  , sort :: Sort
-  , presentMountHint :: Boolean
-  , version :: Maybe String
-  , isMount :: Boolean
-  , isUnconfigured :: Boolean
-  , showHiddenFiles :: Boolean
-  , presentIntroVideo :: Boolean
+  { path ∷ DirPath
+  , salt ∷ Salt
+  , sort ∷ Sort
+  , presentMountHint ∷ Boolean
+  , version ∷ Maybe String
+  , isMount ∷ Boolean
+  , isUnconfigured ∷ Boolean
+  , showHiddenFiles ∷ Boolean
+  , presentIntroVideo ∷ Boolean
+  , dialog ∷ Maybe Dialog.Definition
+  , licenseProblem ∷ Maybe License.LicenseProblem
   }
 
-_version :: Lens' State (Maybe String)
-_version = lens _.version _{version = _}
-
-_sort :: Lens' State Sort
-_sort = lens _.sort _{sort = _}
-
-_presentMountHint :: Lens' State Boolean
-_presentMountHint = lens _.presentMountHint _{presentMountHint = _}
-
-_salt :: Lens' State Salt
-_salt = lens _.salt _{salt = _}
-
-_path :: Lens' State DirPath
-_path = lens _.path _{path = _}
-
-_isMount :: Lens' State Boolean
-_isMount = lens _.isMount _{isMount = _}
-
-_isUnconfigured :: Lens' State Boolean
-_isUnconfigured = lens _.isUnconfigured _{isUnconfigured = _}
-
-_showHiddenFiles :: Lens' State Boolean
-_showHiddenFiles = lens _.showHiddenFiles _{showHiddenFiles = _}
-
-_presentIntroVideo :: Lens' State Boolean
-_presentIntroVideo = lens _.presentIntroVideo _{presentIntroVideo = _}
-
-initialState :: State
+initialState ∷ State
 initialState =
   { path: rootDir
   , salt: Salt ""
@@ -76,4 +50,6 @@ initialState =
   , isUnconfigured: false
   , showHiddenFiles: false
   , presentIntroVideo: false
+  , dialog: Nothing
+  , licenseProblem: Nothing
   }

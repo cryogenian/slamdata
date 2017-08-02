@@ -23,12 +23,10 @@ import SlamData.Prelude
 
 import Data.Lens ((^?))
 import Data.URI as URI
-
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
-
 import SlamData.Download.Model as D
 import SlamData.Quasar (reqHeadersToJSON)
 import SlamData.Quasar.Auth as API
@@ -121,7 +119,7 @@ handleDownloadPort opts = do
       show
         $ reqHeadersToJSON
         $ append hs
-        $ D.toHeaders opts
+        $ D.toHeaders opts opts.compress
         $ Just (opts.targetName ⊕ ext)
   hs ← H.lift API.authHeaders
   H.modify (_ { url = url hs, fileName = opts.targetName ⊕ ext })

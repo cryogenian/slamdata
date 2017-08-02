@@ -1,14 +1,13 @@
 { "quasar":
     { "owner": "quasar-analytics"
     , "repo": "quasar"
-    , "tag": "v19.4.0"
-
+    , "tag": "v20.0.1"
     , "prefix": "quasar-web-assembly"
     }
 , "quasar-advanced":
     { "owner": "slamdata"
     , "repo": "quasar-advanced"
-    , "tag": "v0.9.2"
+    , "tag": "v0.10.1"
     , "prefix": "quasar-advanced-web"
     }
 }

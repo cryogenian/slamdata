@@ -29,6 +29,7 @@ import Halogen.HTML.Properties.ARIA as ARIA
 import SlamData.ActionList.Component as ActionList
 import SlamData.ActionList.Filter.Component as ActionFilter
 import SlamData.Render.ClassName as CN
+import SlamData.Render.Common as RC
 import SlamData.Render.Icon as I
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.Component.CSS as CCSS
@@ -182,8 +183,8 @@ derive instance eqZoom ∷ Eq Zoom
 deckFrameControls ∷ Zoom → DCS.State → DeckHTML
 deckFrameControls zoom { name } =
   HH.div
-    attrs
-    [ renderName name
+    [ HP.class_ CSS.deckFrameControls ]
+    [ nameMover
     , HH.div
         [ HP.class_ CSS.deckFrameActions ]
         [ case zoom of
@@ -194,16 +195,25 @@ deckFrameControls zoom { name } =
         ]
     ]
   where
-    attrs =
-      -- zoom-in-able frame controls are grabbable
-      if zoom == In then
-        [ HP.classes [ CSS.deckFrameControls, CSS.grabDeck ]
-        , HE.onMouseDown (HE.input HandleGrab)
-        , ARIA.label "Move deck"
-        , HP.title "Move deck"
-        ]
-      else
-        [ HP.class_ CSS.deckFrameControls ]
+    nameMover =
+      [ HH.text name ]
+        -- zoom-in-able names are grabbable
+        # if zoom == In then
+          HH.button
+            [ HP.classes [ CSS.deckName, CSS.grabDeck ]
+            , HP.type_ HP.ButtonButton
+            , HP.title "Move deck"
+            , ARIA.label "Move deck"
+            , HE.onMouseDown (HE.input HandleGrab)
+            ]
+        else
+          HH.div
+            [ HP.class_ CSS.deckName ]
+
+
+
+
+
 
 deckIndicator ∷ DCS.State → DeckHTML
 deckIndicator st =
@@ -211,30 +221,26 @@ deckIndicator st =
     A.mapWithIndex renderCircle st.displayCards
 
   where
-  activeCard =
-    DCS.activeCardIndex st
+    activeCard =
+      DCS.activeCardIndex st
 
-  classes ix card =
-    map HH.ClassName
-    $ (guard (st.pendingCardIndex ≡ Just ix) $> "running")
-    ⊕ (A.singleton case card of
-          Right _ → "available"
-          Left DCS.PendingCard → "pending"
-          Left (DCS.ErrorCard _) → "errored"
-          Left (DCS.NextActionCard _) → "placeholder")
-    ⊕ (guard (activeCard ≡ ix) $> "focused")
+    isRunning ix =
+      st.pendingCardIndex == Just ix
 
-  renderCircle ix card =
-    HH.i [ HP.classes $ classes ix card ] [ HH.text "" ]
+    classes ix card =
+      map HH.ClassName
+      $ (guard (isRunning ix) $> "running")
+      ⊕ (A.singleton case card of
+            Right _ → "available"
+            Left DCS.PendingCard → "pending"
+            Left (DCS.ErrorCard _) → "errored"
+            Left (DCS.NextActionCard _) → "placeholder")
+      ⊕ (guard (activeCard ≡ ix) $> "focused")
 
-renderName ∷ String → DeckHTML
-renderName name =
-  if name == "" then
-    HH.text ""
-  else
-    HH.div
-      [ HP.class_ CSS.deckName ]
-      [ HH.text name ]
+    renderCircle ix card =
+      HH.i
+        [ HP.classes $ classes ix card ]
+        [ if isRunning ix then RC.spinner else (HH.text "") ]
 
 flipButton ∷ DeckHTML
 flipButton =

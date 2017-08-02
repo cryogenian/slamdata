@@ -14,13 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.FileSystem.Dialog.Component.Message where
+module SlamData.FileSystem.Dialog.Mount.Mimir.Component.State where
 
-import Data.Maybe (Maybe)
-import SlamData.FileSystem.Resource as R
+import SlamData.Prelude
 
-data Message
-  = Dismiss
-  | MountSave (Maybe R.Mount)
-  | MountDelete
-  | ResourceDelete R.Resource
+import Data.Path.Pathy as P
+import Quasar.Mount.Mimir as QMM
+
+type State = String
+
+initialState ∷ State
+initialState = ""
+
+fromConfig ∷ QMM.Config → State
+fromConfig = P.printPath
+
+toConfig ∷ State → Either String QMM.Config
+toConfig path =
+  maybe (Left $ "Invalid path: " <> path) Right (QMM.parseDirPath path)
