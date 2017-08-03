@@ -17,6 +17,7 @@ limitations under the License.
 module SlamData.Workspace.Class
   ( class WorkspaceDSL
   , changeTheme
+  , changeThemeTo
   , navigate
   , navigateToDeck
   , navigateToIndex
@@ -28,13 +29,15 @@ import SlamData.Prelude
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Eff.Ref (REF, readRef)
 import Control.UI.Browser as Browser
-
-import Data.List as L
-
 import DOM (DOM)
-
+import DOM.HTML (window)
+import DOM.HTML.Types as Ht
+import DOM.HTML.Window as Win
+import DOM.Node.Element (setAttribute)
+import DOM.Node.NonElementParentNode (getElementById)
+import DOM.Node.Types as Nt
+import Data.List as L
 import Halogen.Query (HalogenM)
-
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.Theme.Theme (Theme)
 import SlamData.Wiring (Wiring)
@@ -58,6 +61,18 @@ instance workspaceDSLExceptT ∷ (Monad m, WorkspaceDSL m) ⇒ WorkspaceDSL (Exc
 instance workspaceDSLHalogenM ∷ (Monad m, WorkspaceDSL m) ⇒ WorkspaceDSL (HalogenM s f g p o m) where
   changeTheme = lift ∘ changeTheme
   navigate = lift ∘ navigate
+
+changeThemeTo
+  ∷ ∀ m eff
+  . MonadAsk Wiring m
+  ⇒ MonadEff (ref ∷ REF, dom ∷ DOM | eff) m
+  ⇒ WorkspaceDSL m
+  → m Unit
+changeThemeTo = do
+  doc ← liftEff $  Win.document =<< window
+  mbStyle ← liftEff $ getElementById (Nt.ElementId "theme-css") (Ht.htmlDocumentToNonElementParentNode doc)
+  for_ mbStyle \style → do
+    setAttribute "href" "css/dark.css" style
 
 navigateToDeck
   ∷ ∀ m eff
