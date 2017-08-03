@@ -27,12 +27,12 @@ import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Eff.Ref (readRef)
 import Control.Monad.Fork (fork)
 import Control.UI.Browser as Browser
+import DOM.Classy.Event (currentTarget, target) as DOM
+import DOM.Classy.Node (toNode) as DOM
 import Data.Argonaut as J
 import Data.Coyoneda (liftCoyoneda)
 import Data.List as List
 import Data.Time.Duration (Milliseconds(..))
-import DOM.Classy.Event (currentTarget, target) as DOM
-import DOM.Classy.Node (toNode) as DOM
 import Halogen as H
 import Halogen.Component.Utils (busEventSource)
 import Halogen.Component.Utils.Throttled (throttledEventSource_)
@@ -67,7 +67,7 @@ import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.Model as CM
 import SlamData.Workspace.Card.Open.Model as Open
 import SlamData.Workspace.Card.Table.Model as JT
-import SlamData.Workspace.Class (navigate, Routes(..))
+import SlamData.Workspace.Class (Routes(..), changeTheme, navigate)
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, cpAdminUI, cpDeck, cpDialog, cpLicenseDialog, cpGuide, cpHeader, cpNotify)
 import SlamData.Workspace.Component.Query (Query(..))
 import SlamData.Workspace.Component.State (State, initialState)
@@ -370,6 +370,10 @@ handleDialog = case _ of
     Dialog.DeleteDeck opts' | b → do
       Wiring.switchDeckToFlip opts'
       H.lift $ DeckCommon.deleteDeck opts'
+    Dialog.Theme opts' newTheme → do
+      changeTheme newTheme
+      _ ← H.lift P.saveWorkspace
+      Wiring.switchDeckToFront opts'
     _ →
       Wiring.switchDeckToFlip opts
   Dialog.Dismissed →
