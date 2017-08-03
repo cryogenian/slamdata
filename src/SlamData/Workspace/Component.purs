@@ -373,7 +373,7 @@ handleDialog = case _ of
     Dialog.Theme opts' newTheme → do
       changeTheme newTheme
       _ ← H.lift P.saveWorkspace
-      Wiring.switchDeckToFront opts'
+      pure unit
     _ →
       Wiring.switchDeckToFlip opts
   Dialog.Dismissed →
