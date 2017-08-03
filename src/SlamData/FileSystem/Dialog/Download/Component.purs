@@ -74,7 +74,7 @@ render state@{ options, targetName } =
             options
             targetName
             (\name → Modify (_ { targetName = name }))
-        , guard (not DM.alwaysCompress state) $>
+        , guard (not DM.alwaysCompress state.resource) $>
             HH.div
               [ HP.classes [ CN.formGroup, H.ClassName "sd-download-compress-option" ] ]
               [ HH.label_

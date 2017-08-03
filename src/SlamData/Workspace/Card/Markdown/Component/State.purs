@@ -21,14 +21,14 @@ import SlamData.Prelude
 import Data.BrowserFeatures (BrowserFeatures)
 import Data.StrMap as SM
 import SlamData.Workspace.Card.Markdown.Interpret (formFieldConstrainValue)
-import SlamData.Workspace.Card.Port.VarMap as VM
+import SlamData.Workspace.Card.Markdown.Model as Model
 import Text.Markdown.SlamDown.Halogen.Component as SDH
 import Text.Markdown.SlamDown.Halogen.Component.State as SDS
 import Text.Markdown.SlamDown.Syntax.FormField as SDF
 
 type State =
   { browserFeatures ∷ Maybe BrowserFeatures
-  , state ∷ SDS.SlamDownFormState VM.VarMapValue
+  , state ∷ SDS.SlamDownFormState Model.MarkdownExpr
   }
 
 initialState ∷ State
@@ -38,9 +38,9 @@ initialState =
   }
 
 updateFormState
-  ∷ SDH.SlamDownFormState VM.VarMapValue
-  → SDH.SlamDownFormState VM.VarMapValue
-  → SDH.SlamDownFormState VM.VarMapValue
+  ∷ SDH.SlamDownFormState Model.MarkdownExpr
+  → SDH.SlamDownFormState Model.MarkdownExpr
+  → SDH.SlamDownFormState Model.MarkdownExpr
 updateFormState newState oldState =
   SM.fold
     (\m k v → SM.insert k (formFieldConstrainValue $ valueForKey k v) m)
@@ -49,8 +49,8 @@ updateFormState newState oldState =
   where
   valueForKey
     ∷ String
-    → SDH.FormFieldValue VM.VarMapValue
-    → SDH.FormFieldValue VM.VarMapValue
+    → SDH.FormFieldValue Model.MarkdownExpr
+    → SDH.FormFieldValue Model.MarkdownExpr
   valueForKey k newField = case SM.lookup k oldState of
     Nothing → newField
     Just oldField → case oldField, newField of

@@ -26,7 +26,6 @@ import Color as C
 import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array as A
 import Data.Foreign as Frn
-import Data.Lens ((^?))
 import Data.List as L
 import Data.Map as M
 import Data.Int as Int
@@ -220,11 +219,9 @@ buildOptions axes r heatmapData = do
     E.splitArea E.hidden
 
   abscissaAxisType =
-    fromMaybe Ax.Category
-    $ Ax.axisType <$> (r.abscissa ^? D._value ∘ D._projection) <*> pure axes
+    D.axisType r.abscissa axes
   ordinateAxisType =
-    fromMaybe Ax.Category
-    $ Ax.axisType <$> (r.ordinate ^? D._value ∘ D._projection) <*> pure axes
+    D.axisType r.ordinate axes
 
   abscissaAxisCfg = Ax.axisConfiguration abscissaAxisType
   ordinateAxisCfg = Ax.axisConfiguration ordinateAxisType

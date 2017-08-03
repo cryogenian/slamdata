@@ -21,7 +21,7 @@ import SlamData.Prelude
 import SlamData.Download.Model as DM
 import SlamData.FileSystem.Resource as R
 
-type State = DM.DownloadModel (error ∷ Maybe String)
+type State = DM.DownloadModel (resource ∷ R.Resource, error ∷ Maybe String)
 
 initialState ∷ R.Resource → State
 initialState resource =

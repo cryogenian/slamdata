@@ -42,8 +42,7 @@ import SlamData.FileSystem.Resource as R
 import SlamData.Quasar as Q
 
 type DownloadModel r =
-  { resource ∷ R.Resource
-  , targetName ∷ String
+  { targetName ∷ String
   , compress ∷ Boolean
   , options ∷ Either CSVOptions JSONOptions
   | r
@@ -54,7 +53,7 @@ initialOptions res
   | R.isWorkspace res = Right initialJSONOptions
   | otherwise = Left initialCSVOptions
 
-renderURL ∷ ∀ r. Array RequestHeader → DownloadModel r → String
+renderURL ∷ ∀ r. Array RequestHeader → DownloadModel (resource ∷ R.Resource | r) → String
 renderURL authHeaders opts =
   let
     headers =
@@ -63,9 +62,9 @@ renderURL authHeaders opts =
              $ show
              $ Q.reqHeadersToJSON
              $ append authHeaders
-             $ toHeaders opts
+             $ toHeaders opts (shouldCompress opts)
              $ Just (opts.targetName <> ext))
-    ext = extension (shouldCompress opts) opts.options
+    ext = extension opts.compress opts.options
   in
     Q.encodeURI (P.printPath QP.data_ <> R.resourcePath opts.resource) <> headers
 
@@ -159,11 +158,11 @@ codecJSONMode = C.basicCodec dec enc
     JSON.Readable → "Readable"
     JSON.Precise → "Precise"
 
-alwaysCompress ∷ ∀ r. DownloadModel r → Boolean
-alwaysCompress = not R.isFile ∘ _.resource
+alwaysCompress ∷ R.Resource → Boolean
+alwaysCompress = not R.isFile
 
-shouldCompress ∷ ∀ r. DownloadModel r → Boolean
-shouldCompress = alwaysCompress || _.compress
+shouldCompress ∷ ∀ r. DownloadModel (resource ∷ R.Resource | r) → Boolean
+shouldCompress r = alwaysCompress r.resource || r.compress
 
 extension ∷ Boolean → Either CSVOptions JSONOptions → String
 extension compress options
@@ -182,12 +181,13 @@ validFilename s =
 toHeaders
   ∷ ∀ r
   . DownloadModel r
+  → Boolean
   → Maybe String
   → Array RequestHeader
-toHeaders r filename =
+toHeaders r compress filename =
   [ RequestHeader "Accept-Encoding" "gzip"
   , Accept $ MediaType
-      $ mimeCompress (shouldCompress r)
+      $ mimeCompress
       <> un MediaType (mimeType r.options)
       <> ";disposition=\"attachment" <> encFilename <> "\""
   ]
@@ -197,8 +197,8 @@ toHeaders r filename =
     Nothing → ""
     Just fn → "; filename*=UTF-8''" <> Global.encodeURIComponent fn
 
-  mimeCompress ∷ Boolean → String
-  mimeCompress = if _ then "application/zip," else ""
+  mimeCompress ∷ String
+  mimeCompress = if compress then "application/zip," else ""
 
   mimeType ∷ Either CSVOptions JSONOptions → MediaType
   mimeType (Left (CSVOptions opts)) = CSV.toMediaType opts

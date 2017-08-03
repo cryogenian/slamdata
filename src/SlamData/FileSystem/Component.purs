@@ -551,11 +551,14 @@ configure fromRoot m = do
   let anyPath = R.mountPath m
   API.mountInfo anyPath >>= case m, _ of
     R.View path, Left err → raiseError err
+    R.Module path, Left err → raiseError err
     R.Database path, Left err
       | path /= rootDir → raiseError err
       | otherwise → showMountDialog Mount.Root
     R.View path, Right mount →
       showMountDialog $ Mount.Edit { path: Right path, mount, fromRoot }
+    R.Module path, Right mount →
+      showMountDialog $ Mount.Edit { path: Left path, mount, fromRoot }
     R.Database path, Right mount →
       showMountDialog $ Mount.Edit { path: Left path, mount, fromRoot }
   where

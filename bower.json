@@ -62,7 +62,7 @@
     "purescript-routing": "^5.1.0",
     "purescript-safelist": "^1.0.0",
     "purescript-search": "^3.0.0",
-    "purescript-sqlsquare": "^0.7.5",
+    "purescript-sqlsquare": "^0.8.0",
     "purescript-these": "^3.0.0",
     "purescript-tuples": "^4.0.0",
     "purescript-type-equality": "^2.1.0",
