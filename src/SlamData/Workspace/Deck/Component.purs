@@ -341,9 +341,8 @@ handleBackSide opts = case _ of
           then H.lift $ Common.deleteDeck opts
           else Wiring.showDialog (Dialog.DeleteDeck opts)
       Back.Theme → do
-        -- TODO @toastal
-        Wiring.showDialog $ Dialog.Theme opts st.theme
-        pure unit
+        theme ← Wiring.getTheme
+        Wiring.showDialog $ Dialog.Theme opts theme
       Back.Mirror → do
         let mirrorCard = (hush =<< DCS.activeCard st) <|> DCS.findLastRealCard st
         deck ← H.lift $ P.getDeck opts.deckId

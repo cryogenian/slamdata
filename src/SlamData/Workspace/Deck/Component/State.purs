@@ -73,7 +73,6 @@ import Data.Lens (Lens', lens, Prism', prism')
 import Quasar.Advanced.Types (ProviderR)
 
 import SlamData.Effects (SlamDataEffects)
-import SlamData.Theme.Theme as Theme
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.Error as CE
@@ -123,7 +122,6 @@ type DisplayCard = Either MetaCard CardDef
 
 type State =
   { name ∷ String
-  , theme ∷ Maybe Theme.Theme
   , loadError ∷ Maybe String
   , displayMode ∷ DisplayMode
   , displayCards ∷ Array DisplayCard
@@ -149,7 +147,6 @@ type State =
 initialState ∷ State
 initialState =
   { name: ""
-  , theme: Nothing
   , loadError: Nothing
   , displayMode: FrontSide
   , displayCards: mempty

@@ -372,6 +372,7 @@ handleDialog = case _ of
       H.lift $ DeckCommon.deleteDeck opts'
     Dialog.Theme opts' newTheme → do
       changeTheme newTheme
+      _ ← H.lift P.saveWorkspace
       Wiring.switchDeckToFront opts'
     _ →
       Wiring.switchDeckToFlip opts
