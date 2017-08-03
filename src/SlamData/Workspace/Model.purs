@@ -55,9 +55,10 @@ decode = decodeJson >=> \obj → do
   cards ← decodeCards =<< obj .? "cards"
   decks ← decodeDecks =<< obj .? "decks"
   let
-    theme = case StrMap.lookup "theme" obj of
-      Nothing → Nothing
-      Just value → either (const Nothing) id $ CA.decode (CA.maybe Theme.codec) value
+    theme ∷ Maybe Theme.Theme
+    theme =
+      StrMap.lookup "theme" obj
+        >>= CA.decode (CA.maybe Theme.codec) >>> either (const Nothing) id
   pure { rootId, cards, decks, theme }
 
   where
