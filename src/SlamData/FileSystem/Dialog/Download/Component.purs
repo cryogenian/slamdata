@@ -24,11 +24,13 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Quasar.Data.CSV as CSV
+import Quasar.Data.Json as Json
 import SlamData.Dialog.Component as D
 import SlamData.Download.Model as DM
 import SlamData.Download.Render as DR
-import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Dialog.Download.Component.State as S
+import SlamData.FileSystem.Resource as R
 import SlamData.Monad (Slam)
 import SlamData.Quasar.Auth as QAuth
 import SlamData.Render.ClassName as CN
@@ -114,16 +116,16 @@ renderOptions { options } =
 setOutput ∷ ∀ r. DM.OutputType → DM.DownloadModel r → DM.DownloadModel r
 setOutput ty st = case ty, st.options of
   DM.CSV, Left _ → st
-  DM.CSV, _ → st { options = Left DM.initialCSVOptions }
+  DM.CSV, _ → st { options = Left CSV.defaultOptions }
   DM.JSON, Right _ → st
   DM.JSON, _ → st { options = Right DM.initialJSONOptions }
 
-renderOptionsCSV ∷ DM.CSVOptions → H.ComponentHTML Query
+renderOptionsCSV ∷ CSV.Options → H.ComponentHTML Query
 renderOptionsCSV =
   DR.optionsCSV \lens v →
     Modify \st → st { options = st.options # _Left ∘ lens .~ v }
 
-renderOptionsJSON ∷ DM.JSONOptions → H.ComponentHTML Query
+renderOptionsJSON ∷ Json.Options → H.ComponentHTML Query
 renderOptionsJSON =
   DR.optionsJSON \lens v →
     Modify \st → st { options = st.options # _Right ∘ lens .~ v }

@@ -29,14 +29,15 @@ import Data.Codec.Argonaut.Migration as CAM
 import Data.Lens (Lens')
 import Data.Lens.Record as LR
 import Data.MediaType (MediaType(..))
-import Data.Newtype (un)
+import Data.Newtype (over)
 import Data.Path.Pathy as P
 import Data.String as Str
 import Global as Global
 import Network.HTTP.RequestHeader (RequestHeader(..))
-import Quasar.Data (JSONMode(..)) as Exports
-import Quasar.Data.CSVOptions as CSV
-import Quasar.Data.JSONMode as JSON
+import Quasar.Data.CSV as CSV
+import Quasar.Data.Json (PrecisionMode(..)) as Exports
+import Quasar.Data.Json as JSON
+import Quasar.Data.MediaTypes as QMT
 import Quasar.Paths as QP
 import SlamData.FileSystem.Resource as R
 import SlamData.Quasar as Q
@@ -45,14 +46,14 @@ type DownloadModel r =
   { resource ∷ R.Resource
   , targetName ∷ String
   , compress ∷ Boolean
-  , options ∷ Either CSVOptions JSONOptions
+  , options ∷ DownloadOptions
   | r
   }
 
-initialOptions ∷ R.Resource → Either CSVOptions JSONOptions
+initialOptions ∷ R.Resource → Either CSV.Options JSON.Options
 initialOptions res
   | R.isWorkspace res = Right initialJSONOptions
-  | otherwise = Left initialCSVOptions
+  | otherwise = Left CSV.defaultOptions
 
 renderURL ∷ ∀ r. Array RequestHeader → DownloadModel r → String
 renderURL authHeaders opts =
@@ -69,16 +70,11 @@ renderURL authHeaders opts =
   in
     Q.encodeURI (P.printPath QP.data_ <> R.resourcePath opts.resource) <> headers
 
-type DownloadOptions = Either CSVOptions JSONOptions
+type DownloadOptions = Either CSV.Options JSON.Options
 
-newtype CSVOptions = CSVOptions CSV.CSVOptions
-
-derive instance newtypeCSVOptions ∷ Newtype CSVOptions _
-derive instance eqCSVOptions ∷ Eq CSVOptions
-
-codecCSVOptions ∷ CA.JsonCodec CSVOptions
+codecCSVOptions ∷ CA.JsonCodec CSV.Options
 codecCSVOptions =
-  migrationCodec >~> (_Newtype $ CA.object "CSVOptions" $ CA.record
+  migrationCodec >~> (_Newtype $ CA.object "CSV Options" $ CA.record
     # CA.recordProp (SProxy ∷ SProxy "columnDelimiter") CA.string
     # CA.recordProp (SProxy ∷ SProxy "rowDelimiter") CA.string
     # CA.recordProp (SProxy ∷ SProxy "quoteChar") CA.string
@@ -87,69 +83,55 @@ codecCSVOptions =
     -- Added in 4.2.5
     migrationCodec = CAM.renameField "colDelimiter" "columnDelimiter"
 
-initialCSVOptions ∷ CSVOptions
-initialCSVOptions = CSVOptions CSV.defaultCSVOptions
-
-_colDelimiter ∷ Lens' CSVOptions String
+_colDelimiter ∷ Lens' CSV.Options String
 _colDelimiter = _Newtype ∘ LR.prop (SProxy ∷ SProxy "columnDelimiter")
 
-_rowDelimiter ∷ Lens' CSVOptions String
+_rowDelimiter ∷ Lens' CSV.Options String
 _rowDelimiter = _Newtype ∘ LR.prop (SProxy ∷ SProxy "rowDelimiter")
 
-_quoteChar ∷ Lens' CSVOptions String
+_quoteChar ∷ Lens' CSV.Options String
 _quoteChar = _Newtype ∘ LR.prop (SProxy ∷ SProxy "quoteChar")
 
-_escapeChar ∷ Lens' CSVOptions String
+_escapeChar ∷ Lens' CSV.Options String
 _escapeChar = _Newtype ∘ LR.prop (SProxy ∷ SProxy "escapeChar")
 
-type JSONOptionsRec =
-  { multivalues ∷ MultiValueMode
-  , precision ∷ JSON.JSONMode
-  }
-
-newtype JSONOptions = JSONOptions JSONOptionsRec
-
-derive instance newtypeJSONOptions ∷ Newtype JSONOptions _
-derive instance eqJsonOptions ∷ Eq JSONOptions
-
-codecJSONOptions ∷ CA.JsonCodec JSONOptions
+codecJSONOptions ∷ CA.JsonCodec JSON.Options
 codecJSONOptions =
-  _Newtype $ CA.object "JSONOptions" $ CA.record
-    # CA.recordProp (SProxy ∷ SProxy "multivalues") codecMultiValueMode
-    # CA.recordProp (SProxy ∷ SProxy "precision") codecJSONMode
+  migrationCodec >~> (_Newtype $ CA.object "JSON Options" $ CA.record
+    # CA.recordProp (SProxy ∷ SProxy "encoding") codecEncodingStyle
+    # CA.recordProp (SProxy ∷ SProxy "precision") codecPrecisionMode)
+  where
+    -- Added in 4.2.5
+    migrationCodec = CAM.renameField "multivalues" "encoding"
 
-initialJSONOptions ∷ JSONOptions
+initialJSONOptions ∷ JSON.Options
 initialJSONOptions =
-  JSONOptions
-    { multivalues: ArrayWrapped
+  JSON.Options
+    { encoding: JSON.Array
     , precision: JSON.Readable
     }
 
-_multivalues ∷ Lens' JSONOptions MultiValueMode
-_multivalues = _Newtype ∘ LR.prop (SProxy ∷ SProxy "multivalues")
+_encoding ∷ Lens' JSON.Options JSON.EncodingStyle
+_encoding = _Newtype ∘ LR.prop (SProxy ∷ SProxy "encoding")
 
-_precision ∷ Lens' JSONOptions JSON.JSONMode
+_precision ∷ Lens' JSON.Options JSON.PrecisionMode
 _precision = _Newtype ∘ LR.prop (SProxy ∷ SProxy "precision")
 
-data MultiValueMode = ArrayWrapped | LineDelimited
-
-derive instance eqMultiValueMode ∷ Eq MultiValueMode
-
 -- TODO-codec: replace with generic-based codec?
-codecMultiValueMode ∷ CA.JsonCodec MultiValueMode
-codecMultiValueMode = C.basicCodec dec enc
+codecEncodingStyle ∷ CA.JsonCodec JSON.EncodingStyle
+codecEncodingStyle = C.basicCodec dec enc
   where
   dec j = case J.toString j of
-    Just "ArrayWrapped" → Right ArrayWrapped
-    Just "LineDelimited" → Right LineDelimited
+    Just "ArrayWrapped" → Right JSON.Array
+    Just "LineDelimited" → Right JSON.LineDelimited
     _ → Left (CA.UnexpectedValue j)
   enc = J.fromString ∘ case _ of
-    ArrayWrapped → "ArrayWrapped"
-    LineDelimited → "LineDelimited"
+   JSON.Array → "ArrayWrapped"
+   JSON.LineDelimited → "LineDelimited"
 
 -- TODO-codec: replace with generic-based codec?
-codecJSONMode ∷ CA.JsonCodec JSON.JSONMode
-codecJSONMode = C.basicCodec dec enc
+codecPrecisionMode ∷ CA.JsonCodec JSON.PrecisionMode
+codecPrecisionMode = C.basicCodec dec enc
   where
   dec j = case J.toString j of
     Just "Readable" → Right JSON.Readable
@@ -165,11 +147,11 @@ alwaysCompress = not R.isFile ∘ _.resource
 shouldCompress ∷ ∀ r. DownloadModel r → Boolean
 shouldCompress = alwaysCompress || _.compress
 
-extension ∷ Boolean → Either CSVOptions JSONOptions → String
+extension ∷ Boolean → Either CSV.Options JSON.Options → String
 extension compress options
   | compress = ".zip"
   | otherwise = case options of
-      Right (JSONOptions { multivalues: LineDelimited }) →  ".ldjson"
+      Right (JSON.Options { encoding: JSON.LineDelimited }) →  ".ldjson"
       Right _ → ".json"
       Left _ → ".csv"
 
@@ -186,25 +168,19 @@ toHeaders
   → Array RequestHeader
 toHeaders r filename =
   [ RequestHeader "Accept-Encoding" "gzip"
-  , Accept $ MediaType
-      $ mimeCompress (shouldCompress r)
-      <> un MediaType (mimeType r.options)
-      <> ";disposition=\"attachment" <> encFilename <> "\""
+  , Accept $ attachify filename (mimeCompress (shouldCompress r) (mimeType r.options))
   ]
   where
-  encFilename ∷ String
-  encFilename = case filename of
-    Nothing → ""
-    Just fn → "; filename*=UTF-8''" <> Global.encodeURIComponent fn
+    mimeCompress ∷ Boolean → MediaType → MediaType
+    mimeCompress = if _ then QMT.zipped else id
 
-  mimeCompress ∷ Boolean → String
-  mimeCompress = if _ then "application/zip," else ""
+    mimeType ∷ Either CSV.Options JSON.Options → MediaType
+    mimeType = either CSV.toMediaType JSON.toMediaType
 
-  mimeType ∷ Either CSVOptions JSONOptions → MediaType
-  mimeType (Left (CSVOptions opts)) = CSV.toMediaType opts
-  mimeType (Right (JSONOptions opts)) =
-    let subtype = if opts.multivalues == ArrayWrapped then "json" else "ldjson"
-    in JSON.decorateMode (MediaType ("application/" <> subtype)) opts.precision
+    attachify ∷ Maybe String → MediaType → MediaType
+    attachify name =
+      let name' = maybe "" (\n → "; filename*=UTF-8''" <> Global.encodeURIComponent n) name
+      in over MediaType (\mt → mt <> ";disposition=\"attachment" <> name' <> "\"")
 
 data OutputType = CSV | JSON
 
