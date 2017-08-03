@@ -122,7 +122,7 @@ loadWorkspace = runExceptT do
 
 saveWorkspace ∷ ∀ f m. Persist f m (m (Either QE.QError Unit))
 saveWorkspace = runExceptT do
-  { path, eval, auth, theme: themeRef } ← Wiring.expose
+  { path, eval, auth } ← Wiring.expose
   decks ← map _.model <$> Cache.snapshot eval.decks
   cards ← map _.model <$> Cache.snapshot eval.cards
   rootId ← lift $ getRootDeckId
