@@ -33,7 +33,6 @@ import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, liftQuasar)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Error as QE
-import SlamData.Theme.Theme as Theme
 import SlamData.Wiring.Cache as Cache
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardId as CID
@@ -60,7 +59,6 @@ type Deck =
   , mirror ∷ Array (DeckId × CardId)
   , cards ∷ Array Card
   , name ∷ String
-  , theme ∷ Maybe Theme.Theme
   }
 
 type Card =
@@ -86,7 +84,7 @@ decodeDeck = decodeJson >=> \obj → do
   mirror ← decodec (CA.array (CA.tuple DID.codec CID.codec)) =<< obj .? "mirror"
   cards ← traverse decodeCard =<< obj .? "cards"
   name ← obj .? "name" <|> pure ""
-  pure { parent, mirror, cards, name, theme: Nothing }
+  pure { parent, mirror, cards, name }
 
 decodeCard ∷ Json → Either String Card
 decodeCard js = do
@@ -145,7 +143,7 @@ loadGraph path { root } = runExceptT do
             let deckPath = path </> Pathy.dir (DID.toString deckId) </> Pathy.file "index"
             deck ← ExceptT $ (_ >>= decodeDeck >>> lmap QE.msgToQError) <$> Quasar.load deckPath
             cardIds ← loadCards deckId deck
-            let model = { name: deck.name, cards: cardIds, theme: Nothing }
+            let model = { name: deck.name, cards: cardIds }
             Cache.put deckId model decks
             pure model
           Cache.put deckId req reqs
@@ -180,6 +178,7 @@ loadGraph path { root } = runExceptT do
         { rootId
         , decks: Map.singleton rootId Current.emptyDeck
         , cards: Map.empty ∷ Map.Map CardId AnyCardModel
+        , theme: Nothing
         }
     Just rootId → do
       _ ← loadDeck rootId
@@ -189,6 +188,7 @@ loadGraph path { root } = runExceptT do
         { rootId
         , decks: decks'
         , cards: cards'
+        , theme: Nothing
         }
 
 loadCompatWorkspace

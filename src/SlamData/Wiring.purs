@@ -70,6 +70,7 @@ import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
 import SlamData.Workspace.Eval.Graph (EvalGraph)
 import SlamData.Workspace.Guide (GuideType)
+import SlamData.Theme.Theme as Theme
 import Utils.Path (DirPath)
 
 -- TODO: DeckFocused should use DeckOptions too. It's not totally trivial though,
@@ -152,6 +153,7 @@ type WiringR =
   , bus ∷ BusWiring
   , echarts ∷ EChartsWiring
   , browserFeatures ∷ BrowserFeatures
+  , theme ∷ Ref (Maybe Theme.Theme)
   }
 
 newtype Wiring = Wiring WiringR
@@ -182,7 +184,8 @@ make path accessType vm permissionTokenHashes = liftAff do
   browserFeatures ← liftEff detectBrowserFeatures
   varMaps ← liftEff (Ref.newRef vm)
   license ← liftEff (Ref.newRef vm)
-  pure $ Wiring { path, accessType, varMaps, eval, auth, cache, bus, echarts, browserFeatures }
+  theme ← liftEff (Ref.newRef Nothing)
+  pure $ Wiring { path, accessType, varMaps, eval, auth, cache, bus, echarts, browserFeatures, theme }
 
   where
   makeEcharts = do
