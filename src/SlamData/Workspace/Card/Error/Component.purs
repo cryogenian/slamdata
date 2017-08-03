@@ -204,11 +204,12 @@ queryErrorMessage { accessType, expanded } err =
           [ pure $ errorTitle [ HH.text "An error occurred when retrieving the query result." ]
           , renderMore qErr
           ]
-    -- TODO: add details
     CQE.QueryParseError pErr →
       HH.div_
         $ join
-          [ pure $ errorTitle $ [ HH.text "An error occured while parsing the query." ]
+          [ pure $ errorTitle [ HH.text "An error occured while parsing the query." ]
+          , pure $ HH.pre_ [ HH.text pErr ]
+          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
   renderMore = case _ of
     QA.ErrorMessage {title, message, raw} →
@@ -307,10 +308,8 @@ markdownErrorMessage { accessType, expanded } err =
               , pure $ HH.p_
                   [ HH.text "The field "
                   , HH.code_ [ HH.text fieldName ]
-                  , HH.text " has the query:"
+                  , HH.text " failed to parse with the following error:"
                   ]
-              , pure $ HH.pre_ [ HH.text sql ]
-              , pure $ HH.p_ [ HH.text "Which failed to parse with the following error:" ]
               , pure $ HH.pre_ [ HH.text error ]
               , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and edit the query to fix this error." ]
               ]

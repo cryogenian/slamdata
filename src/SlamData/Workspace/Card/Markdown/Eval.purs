@@ -48,12 +48,12 @@ import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port.VarMap as VM
 import SqlSquared as Sql
+import SqlSquared.Parser (prettyParse)
 import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Eval as SDE
 import Text.Markdown.SlamDown.Halogen.Component.State as SDH
 import Text.Markdown.SlamDown.Parser as SDP
 import Text.Markdown.SlamDown.Traverse as SDT
-import Text.Parsing.Parser (parseErrorMessage)
 import Utils.Path (DirPath, tmpDir)
 
 evalMarkdownForm
@@ -228,11 +228,15 @@ evalEmbeddedQueries varMap dir =
     → String
     → m (Array EJSON.EJson)
   runQuery field code =
-    let esql = Process.elaborateQuery (unsandbox (currentDir </> tmpDir)) varMap <$> Sql.parseQuery code
-    in case esql of
-      Left error →
-        throwMarkdownError (MarkdownSqlParseError { field, sql: code, error: parseErrorMessage error })
-      Right sql → do
-        { inputs } ← CE.liftQ $ Quasar.compile dir sql urlVarMap
-        CEM.addSources inputs
-        CE.liftQ $ Quasar.queryEJsonVM dir sql urlVarMap
+    let
+      esql =
+        Process.elaborateQuery (unsandbox (currentDir </> tmpDir)) varMap
+          <$> prettyParse Sql.parseQuery code
+    in
+      case esql of
+        Left error →
+          throwMarkdownError (MarkdownSqlParseError { field, sql: code, error: error })
+        Right sql → do
+          { inputs } ← CE.liftQ $ Quasar.compile dir sql urlVarMap
+          CEM.addSources inputs
+          CE.liftQ $ Quasar.queryEJsonVM dir sql urlVarMap

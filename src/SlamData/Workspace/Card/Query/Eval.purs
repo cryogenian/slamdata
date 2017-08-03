@@ -30,6 +30,7 @@ import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Query.Error (QueryError(..), throwQueryError)
 import SqlSquared as Sql
+import SqlSquared.Parser (prettyParse)
 
 evalQuery
   ∷ ∀ m v
@@ -43,7 +44,7 @@ evalQuery
   → Port.VarMap
   → m Port.Out
 evalQuery sqlInput varMap = do
-  sql ← queryError QueryParseError $ Sql.parseQuery sqlInput
+  sql ← queryError QueryParseError $ prettyParse Sql.parseQuery sqlInput
   resource ← CEC.localEvalResource sql varMap >>= queryError QueryCompileError
   CEM.resourceOut resource
 
