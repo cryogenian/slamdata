@@ -50,26 +50,18 @@ defaultFilterVar = VM.Var "filter"
 defaultDistinctVar ∷ VM.Var
 defaultDistinctVar = VM.Var "distinct"
 
--- TODO: Switch for processes
--- searchSql ∷ VM.Var → VM.Var → VM.Var → Sql
--- searchSql (VM.Var vari) (VM.Var filterVar) (VM.Var distinctVar) =
---   Sql.switch
---     (pure (Sql.when (Sql.vari distinctVar) # Sql.then_ (select true)))
---     (Just (select false))
---   where
---   select distinct =
---     Sql.buildSelect
---       $ (Sql._relations ?~ SU.variRelation vari)
---       ∘ (Sql._filter ?~ Sql.vari filterVar)
---       ∘ (Sql._isDistinct .~ distinct)
---       ∘ SU.all
-searchSql ∷ VM.Var → L.List (Sql.Projection Sql) → Sql → Boolean → Sql
-searchSql (VM.Var vari) prs filter isD =
-  Sql.buildSelect
-    $ (Sql._relations ?~ SU.variRelation vari)
-    ∘ (Sql._filter ?~ filter)
-    ∘ (Sql._isDistinct .~ isD)
-    ∘ (Sql._projections .~ prs)
+searchSql ∷ VM.Var → VM.Var → VM.Var → Sql
+searchSql (VM.Var vari) (VM.Var filterVar) (VM.Var distinctVar) =
+  Sql.switch
+    (pure (Sql.when (Sql.vari distinctVar) # Sql.then_ (select true)))
+    (Just (select false))
+  where
+  select distinct =
+    Sql.buildSelect
+      $ (Sql._relations ?~ SU.variRelation vari)
+      ∘ (Sql._filter ?~ Sql.vari filterVar)
+      ∘ (Sql._isDistinct .~ distinct)
+      ∘ SU.all
 
 isDistinct ∷ SS.SearchQuery → Boolean
 isDistinct = F.any isDistinctTerm

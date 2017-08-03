@@ -54,7 +54,7 @@ instance showMarkdownExpr ∷ Show MarkdownExpr where
   show (MarkdownExpr sql) = "(MarkdownExpr " <> Sql.print sql <> ")"
 
 instance arbitraryMarkdownExpr ∷ SC.Arbitrary MarkdownExpr where
-  arbitrary = MarkdownExpr <$> Sql.arbitrarySqlOfSize 2
+  arbitrary = pure $ MarkdownExpr $ Sql.set []
 
 instance encodeMarkdownExpr ∷ EncodeJson MarkdownExpr where
   encodeJson = Sql.encodeJson ∘ un MarkdownExpr

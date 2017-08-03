@@ -43,7 +43,7 @@ import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.Process as Process
 import SlamData.Workspace.Card.Port.VarMap as VM
 import SqlSquared as Sql
-import Utils.Path (tmpDir, DirPath)
+import Utils.Path (tmpDir, parentDir, DirPath)
 
 validateResources
   ∷ ∀ m t
@@ -72,15 +72,12 @@ localEvalResource
   → m (Either QE.QError VM.Resource)
 localEvalResource sql varMap = runExceptT do
   CEM.CardEnv { cardId, readOnly } ← ask
-  -- TODO: Switch for processes
-  -- let Path.FileName fileName × result = Process.elaborate parentDir cardId varMap sql
-  let Path.FileName fileName × result = Process.elaborate Path.currentDir cardId varMap sql
+  let
+    Path.FileName fileName × result = Process.elaborate Path.currentDir parentDir cardId varMap sql
   case result of
     Left sqlQuery → do
       filePath × relFilePath ← lift $ CEM.temporaryOutputResource
-      -- TODO: Switch for processes
-      -- unless readOnly do
-      unless false do
+      unless readOnly do
         let
           varMap' = VM.toURLVarMap varMap
           compilePath = fromMaybe Path.rootDir (Path.parentDir filePath)

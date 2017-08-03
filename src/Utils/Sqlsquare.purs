@@ -18,12 +18,13 @@ module Utils.SqlSquared where
 
 import SlamData.Prelude
 import Data.Lens ((.~))
+import Data.Path.Pathy (unsandbox)
 import SqlSquared as Sql
 import Utils.Path (AnyFilePath)
 
 tableRelation ∷ AnyFilePath → Maybe (Sql.Relation Sql.Sql)
 tableRelation path =
-  Just $ Sql.TableRelation { alias: Nothing, path }
+  Just $ Sql.TableRelation { alias: Nothing, path: bimap unsandbox unsandbox path }
 
 variRelation ∷ ∀ a. String → Sql.Relation a
 variRelation vari = Sql.VariRelation { alias: Nothing, vari }
