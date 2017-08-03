@@ -17,7 +17,6 @@ limitations under the License.
 module SlamData.Workspace.Class
   ( class WorkspaceDSL
   , changeTheme
-  , changeThemeTo
   , navigate
   , navigateToDeck
   , navigateToIndex
@@ -27,7 +26,7 @@ module SlamData.Workspace.Class
 import SlamData.Prelude
 
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
-import Control.Monad.Eff.Ref (REF, readRef)
+import Control.Monad.Eff.Ref (REF, readRef, writeRef)
 import Control.UI.Browser as Browser
 import DOM (DOM)
 import DOM.HTML (window)
@@ -37,9 +36,10 @@ import DOM.Node.Element (setAttribute)
 import DOM.Node.NonElementParentNode (getElementById)
 import DOM.Node.Types as Nt
 import Data.List as L
+import Data.URI (printURIRef)
 import Halogen.Query (HalogenM)
 import SlamData.FileSystem.Routing (parentURL)
-import SlamData.Theme.Theme (Theme)
+import SlamData.Theme.Theme as Theme
 import SlamData.Wiring (Wiring)
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Action as WA
@@ -47,31 +47,31 @@ import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Routing (Routes(..))
 
 class WorkspaceDSL (m ∷ Type → Type) where
-  changeTheme ∷ Theme → m Unit
   navigate ∷ Routes → m Unit
 
 instance workspaceDSLMaybeT ∷ (Monad m, WorkspaceDSL m) ⇒ WorkspaceDSL (MaybeT m) where
-  changeTheme = lift ∘ changeTheme
   navigate = lift ∘ navigate
 
 instance workspaceDSLExceptT ∷ (Monad m, WorkspaceDSL m) ⇒ WorkspaceDSL (ExceptT e m) where
-  changeTheme = lift ∘ changeTheme
   navigate = lift ∘ navigate
 
 instance workspaceDSLHalogenM ∷ (Monad m, WorkspaceDSL m) ⇒ WorkspaceDSL (HalogenM s f g p o m) where
-  changeTheme = lift ∘ changeTheme
   navigate = lift ∘ navigate
 
-changeThemeTo
+changeTheme
   ∷ ∀ m eff
-  . MonadEff (ref ∷ REF, dom ∷ DOM | eff) m
-  ⇒ Theme
+  . MonadAsk Wiring m
+  ⇒ MonadEff (ref ∷ REF, dom ∷ DOM | eff) m
+  ⇒ Maybe Theme.Theme
   → m Unit
-changeThemeTo theme = liftEff do
-  doc ← Win.document =<< window
-  mbStyle ← getElementById (Nt.ElementId "theme-css") (Ht.htmlDocumentToNonElementParentNode doc)
-  -- TODO: something with `theme` to extract the URL
-  for_ mbStyle (setAttribute "href" "css/dark.css")
+changeTheme theme = do
+  let theme' = fromMaybe Theme.Light theme
+  { theme: themeRef } ← Wiring.expose
+  liftEff do
+    doc ← Win.document =<< window
+    mbStyle ← getElementById (Nt.ElementId "theme-css") (Ht.htmlDocumentToNonElementParentNode doc)
+    for_ mbStyle $ setAttribute "href" $ printURIRef (Theme.getURI theme')
+    writeRef themeRef theme
 
 navigateToDeck
   ∷ ∀ m eff
