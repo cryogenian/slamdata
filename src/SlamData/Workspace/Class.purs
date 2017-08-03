@@ -26,7 +26,7 @@ module SlamData.Workspace.Class
 import SlamData.Prelude
 
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
-import Control.Monad.Eff.Ref (REF, readRef, writeRef)
+import Control.Monad.Eff.Ref (REF, readRef)
 import Control.UI.Browser as Browser
 import DOM (DOM)
 import DOM.HTML (window)
@@ -71,7 +71,7 @@ changeTheme theme = do
     doc ← Win.document =<< window
     mbStyle ← getElementById (Nt.ElementId "theme-css") (Ht.htmlDocumentToNonElementParentNode doc)
     for_ mbStyle $ setAttribute "href" $ printURIRef (Theme.getURI theme')
-    writeRef themeRef theme
+  Wiring.setTheme theme
 
 navigateToDeck
   ∷ ∀ m eff

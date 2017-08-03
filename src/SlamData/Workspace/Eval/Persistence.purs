@@ -126,7 +126,7 @@ saveWorkspace = runExceptT do
   decks ← map _.model <$> Cache.snapshot eval.decks
   cards ← map _.model <$> Cache.snapshot eval.cards
   rootId ← lift $ getRootDeckId
-  theme ← liftEff $ Ref.readRef themeRef
+  theme ← Wiring.getTheme
   let
     json = WM.encode { rootId, decks, cards, theme }
     file = path </> Pathy.file "index"

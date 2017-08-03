@@ -34,6 +34,8 @@ module SlamData.Wiring
   , showDialog
   , switchDeckToFlip
   , switchDeckToFront
+  , getTheme
+  , setTheme
   , unWiring
   ) where
 
@@ -43,8 +45,8 @@ import Control.Monad.Aff.AVar (AVar)
 import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
-import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Ref (Ref)
+import Control.Monad.Eff.Class (class MonadEff, liftEff)
+import Control.Monad.Eff.Ref (REF, Ref, readRef, writeRef)
 import Control.Monad.Eff.Ref as Ref
 import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
 import Data.BrowserFeatures (BrowserFeatures)
@@ -58,6 +60,7 @@ import SlamData.GlobalMenu.Bus (SignInBus)
 import SlamData.License (LicenseProblem)
 import SlamData.Notification as N
 import SlamData.Quasar.Auth.Authentication as Auth
+import SlamData.Theme.Theme as Theme
 import SlamData.Wiring.Cache (Cache)
 import SlamData.Wiring.Cache as Cache
 import SlamData.Workspace.AccessType (AccessType)
@@ -70,7 +73,6 @@ import SlamData.Workspace.Eval.Card as Card
 import SlamData.Workspace.Eval.Deck as Deck
 import SlamData.Workspace.Eval.Graph (EvalGraph)
 import SlamData.Workspace.Guide (GuideType)
-import SlamData.Theme.Theme as Theme
 import Utils.Path (DirPath)
 
 -- TODO: DeckFocused should use DeckOptions too. It's not totally trivial though,
@@ -279,3 +281,22 @@ showDialog
 showDialog dialog = do
   { bus } ← expose
   liftAff $ Bus.write (ShowDialog dialog) bus.workspace
+
+getTheme
+  ∷ ∀ m
+  . MonadAsk Wiring m
+  ⇒ MonadAff SlamDataEffects m
+  ⇒ m (Maybe Theme.Theme)
+getTheme = do
+  { theme: themeRef } ← expose
+  liftEff $ readRef themeRef
+
+setTheme
+  ∷ ∀ m eff
+  . MonadAsk Wiring m
+  ⇒ MonadEff (ref ∷ REF | eff) m
+  ⇒ Maybe Theme.Theme
+  → m Unit
+setTheme theme = do
+  { theme: themeRef } ← expose
+  liftEff $ writeRef themeRef theme
