@@ -64,15 +64,14 @@ instance workspaceDSLHalogenM ∷ (Monad m, WorkspaceDSL m) ⇒ WorkspaceDSL (Ha
 
 changeThemeTo
   ∷ ∀ m eff
-  . MonadAsk Wiring m
-  ⇒ MonadEff (ref ∷ REF, dom ∷ DOM | eff) m
-  ⇒ WorkspaceDSL m
+  . MonadEff (ref ∷ REF, dom ∷ DOM | eff) m
+  ⇒ Theme
   → m Unit
-changeThemeTo = do
-  doc ← liftEff $  Win.document =<< window
-  mbStyle ← liftEff $ getElementById (Nt.ElementId "theme-css") (Ht.htmlDocumentToNonElementParentNode doc)
-  for_ mbStyle \style → do
-    setAttribute "href" "css/dark.css" style
+changeThemeTo theme = liftEff do
+  doc ← Win.document =<< window
+  mbStyle ← getElementById (Nt.ElementId "theme-css") (Ht.htmlDocumentToNonElementParentNode doc)
+  -- TODO: something with `theme` to extract the URL
+  for_ mbStyle (setAttribute "href" "css/dark.css")
 
 navigateToDeck
   ∷ ∀ m eff
