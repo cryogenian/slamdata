@@ -66,7 +66,6 @@ changeTheme
   → m Unit
 changeTheme theme = do
   let theme' = fromMaybe Theme.Light theme
-  { theme: themeRef } ← Wiring.expose
   liftEff do
     doc ← Win.document =<< window
     mbStyle ← getElementById (Nt.ElementId "theme-css") (Ht.htmlDocumentToNonElementParentNode doc)
