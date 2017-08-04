@@ -28,8 +28,10 @@ import DOM.File.FileReader as FR
 import DOM.File.Types (File, fileReaderToEventTarget, fileToBlob)
 import DOM.HTML.Event.EventTypes as Events
 
+-- | Reads the contents of a DOM API `File` from disk, with the assumption that
+-- | the contents is plain text.
 readAsText ∷ ∀ e. File → Aff (dom ∷ DOM | e) String
-readAsText file = makeAff \er k → do
+readAsText file = makeAff \eb cb → do
   reader ← liftEff FR.fileReader
   let
     et = fileReaderToEventTarget reader
@@ -37,7 +39,8 @@ readAsText file = makeAff \er k → do
       removeEventListener Events.load listener false et
       hush ∘ runExcept ∘ readString <$> FR.result reader >>=
         case _ of
-          Nothing → er $ error "files has not been read"
-          Just res → k res
+          -- There doesn't seem to be a useful error we can get from the API here
+          Nothing → eb (error "A problem occurred while reading a file as text")
+          Just res → cb res
   addEventListener Events.load listener false et
   FR.readAsText (fileToBlob file) reader
