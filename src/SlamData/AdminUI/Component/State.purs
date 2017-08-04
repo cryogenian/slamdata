@@ -27,7 +27,6 @@ type State =
   , active ∷ TabIndex
   , formState ∷
       { mySettings ∷ MySettingsState
-      , database ∷ DatabaseState
       , server ∷ ServerState
       , groups ∷ GroupsState
       }
@@ -50,7 +49,7 @@ instance showTabIndex ∷ Show TabIndex where
 allTabs ∷ List TabIndex
 allTabs =
   -- L.fromFoldable [MySettings, Database, Server, Authentication, Users, Groups]
-  L.fromFoldable [Users, Groups]
+  L.fromFoldable [Database, Users, Groups]
 
 tabTitle ∷ TabIndex → String
 tabTitle = case _ of
@@ -78,39 +77,6 @@ defaultMySettingsState =
     , isolateArtifacts: false
     , isolateArtifactsDirectory: ""
     , defaultTheme: "Dark"
-    }
-
-type PostgresCon =
-  { server ∷ String
-  , port ∷ Int
-  , username ∷ String
-  , password ∷ String
-  , database ∷ String
-  , custom ∷ Tuple String String
-  }
-
-defaultPostgresCon ∷ PostgresCon
-defaultPostgresCon =
-  { server: "localhost"
-  , port: 5432
-  , username: ""
-  , password: ""
-  , database: ""
-  , custom: Tuple "" ""
-  }
-
-newtype DatabaseState = DatabaseState
-  { isExternal ∷ Boolean
-  , databaseFile ∷ String
-  , postgresCon ∷ PostgresCon
-  }
-
-defaultDatabaseState ∷ DatabaseState
-defaultDatabaseState =
-  DatabaseState
-    { isExternal: false
-    , databaseFile: ""
-    , postgresCon: defaultPostgresCon
     }
 
 newtype ServerState = ServerState

@@ -31,6 +31,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Quasar.Advanced.Types as QA
+import SlamData.AdminUI.Database.Component as DB
 import SlamData.AdminUI.Dialog as Dialog
 import SlamData.AdminUI.Group as Group
 import SlamData.AdminUI.Types as AT
@@ -49,10 +50,9 @@ component =
   H.lifecycleParentComponent
     { initialState: \_ →
        { open: false
-       , active: AT.Users
+       , active: AT.Database
        , formState:
           { mySettings: AT.defaultMySettingsState
-          , database: AT.defaultDatabaseState
           , server: AT.defaultServerState
           , groups: AT.defaultGroupsState
           }
@@ -112,9 +112,7 @@ tabBody state =
           [ HP.class_ (HH.ClassName "sd-admin-ui-my-settings") ]
           (renderMySettingsForm state.formState.mySettings)
       AT.Database →
-        pure $ HH.div
-          [ HP.class_ (HH.ClassName "sd-admin-ui-database") ]
-          (renderDatabaseForm state.formState.database)
+        [ HH.slot' AT.cpDatabase unit DB.component unit absurd ]
       AT.Server →
         pure $ HH.div
           [ HP.class_ (HH.ClassName "sd-admin-ui-server") ]
@@ -185,108 +183,6 @@ renderMySettingsForm (AT.MySettingsState state) =
         ]
     ]
 
-renderDatabaseForm ∷ AT.DatabaseState → Array AT.HTML
-renderDatabaseForm (AT.DatabaseState state) =
-  [ HH.fieldset
-    [ HP.class_ (HH.ClassName "database-form-wrapper")]
-    [ HH.legend
-        [ HP.class_ (HH.ClassName "checkbox") ]
-        [ HH.label_
-            [ HH.input
-                [ HP.checked (not state.isExternal)
-                , HE.onChecked (HE.input_ (AT.SetDatabase (AT.DatabaseState (state {isExternal = false}))))
-                , HP.type_ HP.InputCheckbox
-                ]
-            , HH.text "Store SlamData metadata inside internal database in the local file system of the server"
-            ]
-        ]
-    , HH.fieldset
-        [ HP.class_ (HH.ClassName "internal-storage")
-        , HP.disabled state.isExternal
-        ]
-        [ HH.input
-            [ HP.classes [ HH.ClassName "form-control" ]
-            , HP.value state.databaseFile
-            ]
-        ]
-      , HH.legend
-          [ HP.class_ (HH.ClassName "checkbox") ]
-          [ HH.label_
-              [ HH.input
-                [ HP.checked state.isExternal
-                , HE.onChecked (HE.input_ (AT.SetDatabase (AT.DatabaseState (state {isExternal = true}))))
-                , HP.type_ HP.InputCheckbox
-                ]
-              , HH.text "Store SlamData metadata inside external PostgreSQL"
-              ]
-          ]
-      , HH.fieldset
-          [ HP.class_ (HH.ClassName "external-storage")
-          , HP.disabled (not state.isExternal)
-          ]
-          [ HH.div
-              [ HP.class_ (HH.ClassName "form-group") ]
-              [ HH.label [ HP.for "Server" ] [ HH.text "Server" ]
-              , HH.input
-                  [ HP.classes [ HH.ClassName "form-control" ]
-                  , HP.id_ "Server"
-                  , HP.value state.postgresCon.server
-                  ]
-              ]
-          , HH.div
-              [ HP.class_ (HH.ClassName "form-group") ]
-              [ HH.label [ HP.for "Port" ] [ HH.text "Port" ]
-              , HH.input
-                  [ HP.classes [ HH.ClassName "form-control" ]
-                  , HP.id_ "Port"
-                  , HP.value (show state.postgresCon.port)
-                  ]
-              ]
-          , HH.div
-              [ HP.class_ (HH.ClassName "form-group") ]
-              [ HH.label
-                  [ HP.for "Username" ]
-                  [ HH.text "Username"
-                  , HH.input
-                      [ HP.classes [ HH.ClassName "form-control" ]
-                      , HP.id_ "Username"
-                      , HP.value state.postgresCon.username
-                      ]
-                  ]
-              , HH.label
-                  [ HP.for "Password" ]
-                  [ HH.text "Password"
-                  , HH.input
-                      [ HP.classes [ HH.ClassName "form-control" ]
-                      , HP.id_ "Password"
-                      , HP.value state.postgresCon.password
-                      ]
-                  ]
-              ]
-          , HH.div
-              [ HP.class_ (HH.ClassName "form-group") ]
-              [ HH.label [ HP.for "Database" ] [HH.text "Database"] , HH.input
-                  [ HP.classes [ HH.ClassName "form-control" ]
-                  , HP.id_ "Database"
-                  , HP.value state.postgresCon.database
-                  ]
-              ]
-          , HH.div
-              [ HP.class_ (HH.ClassName "form-group") ]
-              [ HH.label [ HP.for "Custom" ] [HH.text "Custom"]
-              , HH.input
-                  [ HP.classes [ HH.ClassName "form-control" ]
-                  , HP.value (fst state.postgresCon.custom)
-                  ]
-              , HH.input
-                  [ HP.classes [ HH.ClassName "form-control" ]
-                  , HP.value (snd state.postgresCon.custom)
-                  ]
-              ]
-          ]
-      ]
-  ]
-
 renderServerForm ∷ AT.ServerState → Array AT.HTML
 renderServerForm (AT.ServerState state) =
   [ HH.fieldset_
@@ -347,9 +243,6 @@ eval = case _ of
   AT.DefaultThemeChanged newTheme next → do
     LS.persist J.encodeJson LK.adminUIDefaultTheme newTheme
     setDefaultTheme newTheme
-    pure next
-  AT.SetDatabase new next → do
-    H.modify (_ { formState { database = new } })
     pure next
   AT.SetServer new next → do
     H.modify (_ { formState { server = new } })
