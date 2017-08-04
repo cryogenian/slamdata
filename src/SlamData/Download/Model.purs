@@ -49,6 +49,8 @@ type DownloadModel r =
   | r
   }
 
+type DownloadOptions = Either CSV.Options JSON.Options
+
 initialOptions ∷ R.Resource → Either CSV.Options JSON.Options
 initialOptions res
   | R.isWorkspace res = Right initialJSONOptions
@@ -68,8 +70,6 @@ renderURL authHeaders opts =
     ext = extension opts.compress opts.options
   in
     Q.encodeURI (P.printPath QP.data_ <> R.resourcePath opts.resource) <> headers
-
-type DownloadOptions = Either CSV.Options JSON.Options
 
 codecCSVOptions ∷ CA.JsonCodec CSV.Options
 codecCSVOptions =
