@@ -31,7 +31,7 @@ import Data.Path.Pathy as Path
 import Data.StrMap as SM
 import Quasar.QuasarF as Q
 import Quasar.Advanced.QuasarAF as QF
-import Quasar.Data (JSONMode(..))
+import Quasar.Data.Json as QJ
 import Quasar.Data.Json.Extended (resultsAsEJson)
 import Quasar.Types (FilePath, Pagination)
 import SlamData.Effects (SlamDataEffects)
@@ -97,7 +97,7 @@ localEvalResource sql varMap = runExceptT do
 sampleResource'
   ∷ ∀ m
   . QuasarDSL m
-  ⇒ JSONMode
+  ⇒ QJ.PrecisionMode
   → DirPath
   → VM.Resource
   → Maybe Pagination
@@ -115,7 +115,7 @@ sampleResource
   → VM.Resource
   → Maybe Pagination
   → m (Either QE.QError J.JArray)
-sampleResource = sampleResource' Readable
+sampleResource = sampleResource' QJ.Readable
 
 sampleResourceEJson
   ∷ ∀ m
@@ -126,19 +126,19 @@ sampleResourceEJson
   → Maybe Pagination
   → m (Either QE.QError (Array E.EJson))
 sampleResourceEJson path res pagination =
-  resultsAsEJson <$> sampleResource' Precise path res pagination
+  resultsAsEJson <$> sampleResource' QJ.Precise path res pagination
 
 runElaboratedQuery'
   ∷ ∀ m
   . QuasarDSL m
-  ⇒ JSONMode
+  ⇒ QJ.PrecisionMode
   → DirPath
   → Sql.SqlQuery
   → VM.VarMap
   → m (Either QE.QError J.JArray)
 runElaboratedQuery' mode path query varMap =
   let query' = Process.elaborateQuery (Path.unsandbox (Path.currentDir </> tmpDir)) varMap query
-  in liftQuasar $ QF.readQuery Readable path (Sql.printQuery query') (VM.toURLVarMap varMap) Nothing
+  in liftQuasar $ QF.readQuery QJ.Readable path (Sql.printQuery query') (VM.toURLVarMap varMap) Nothing
 
 runElaboratedQuery
   ∷ ∀ m
@@ -147,7 +147,7 @@ runElaboratedQuery
   → Sql.SqlQuery
   → VM.VarMap
   → m (Either QE.QError J.JArray)
-runElaboratedQuery = runElaboratedQuery' Readable
+runElaboratedQuery = runElaboratedQuery' QJ.Readable
 
 runElaboratedQueryEJson
   ∷ ∀ m
@@ -158,7 +158,7 @@ runElaboratedQueryEJson
   → VM.VarMap
   → m (Either QE.QError (Array E.EJson))
 runElaboratedQueryEJson path query varMap =
-  resultsAsEJson <$> runElaboratedQuery' Precise path query varMap
+  resultsAsEJson <$> runElaboratedQuery' QJ.Precise path query varMap
 
 countResource
   ∷ ∀ m

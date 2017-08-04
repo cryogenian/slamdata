@@ -49,7 +49,7 @@ import Data.Set as Set
 import Data.StrMap as SM
 import Matryoshka (Coalgebra, ana, project, embed)
 import Quasar.Advanced.QuasarAF as QF
-import Quasar.Data (JSONMode(..))
+import Quasar.Data.Json as QJ
 import Quasar.Error (QError)
 import Quasar.Mount as QM
 import Quasar.Types (DirPath, FilePath, CompileResultR)
@@ -86,7 +86,7 @@ query
   → SqlQuery
   → m (Either QError JS.JArray)
 query path sql =
-  liftQuasar $ QF.readQuery Readable path (printQuery sql) SM.empty Nothing
+  liftQuasar $ QF.readQuery QJ.Readable path (printQuery sql) SM.empty Nothing
 
 queryEJson
   ∷ ∀ m
@@ -173,7 +173,7 @@ all
   ⇒ FilePath
   → m (Either QError JS.JArray)
 all file =
-  liftQuasar $ QF.readFile Readable file Nothing
+  liftQuasar $ QF.readFile QJ.Readable file Nothing
 
 sample
   ∷ ∀ m
@@ -183,7 +183,7 @@ sample
   → Int
   → m (Either QError JS.JArray)
 sample file offset limit =
-  liftQuasar $ QF.readFile Readable file (Just { limit, offset })
+  liftQuasar $ QF.readFile QJ.Readable file (Just { limit, offset })
 
 count
   ∷ ∀ m
@@ -203,7 +203,7 @@ count file = runExceptT do
                    #  Sql.as "total"))
       ∘ (Sql._relations .~ tableRelation (Left file))
   result ← ExceptT $ liftQuasar $
-    QF.readQuery Readable backendPath (print sql) SM.empty Nothing
+    QF.readQuery QJ.Readable backendPath (print sql) SM.empty Nothing
   pure $ fromMaybe 0 (readTotal result)
   where
   readTotal ∷ JS.JArray → Maybe Int
