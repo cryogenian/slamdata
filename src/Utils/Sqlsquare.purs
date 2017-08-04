@@ -17,16 +17,17 @@ limitations under the License.
 module Utils.SqlSquared where
 
 import SlamData.Prelude
-
 import Data.Lens ((.~))
-
+import Data.Path.Pathy (unsandbox)
 import SqlSquared as Sql
+import Utils.Path (AnyFilePath)
 
-import Utils.Path (FilePath)
+tableRelation ∷ AnyFilePath → Maybe (Sql.Relation Sql.Sql)
+tableRelation path =
+  Just $ Sql.TableRelation { alias: Nothing, path: bimap unsandbox unsandbox path }
 
-tableRelation ∷ FilePath → Maybe (Sql.Relation Sql.Sql)
-tableRelation file =
-  Just $ Sql.TableRelation { alias: Nothing, path: Left file }
+variRelation ∷ ∀ a. String → Sql.Relation a
+variRelation vari = Sql.VariRelation { alias: Nothing, vari }
 
 all ∷ Sql.SelectR Sql.Sql → Sql.SelectR Sql.Sql
 all =

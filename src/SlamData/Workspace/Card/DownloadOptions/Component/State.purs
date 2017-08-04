@@ -24,7 +24,6 @@ import Data.Codec as C
 import Data.Codec.Argonaut.Compat as CA
 import Data.Codec.Argonaut.Migration as CAM
 import Data.Lens (Lens', lens)
-import Data.Path.Pathy as Pathy
 import Quasar.Data.CSV as CSV
 import SlamData.Download.Model as D
 import Utils.Path as PU
@@ -33,7 +32,7 @@ type State =
   { compress ∷ Boolean
   , options ∷ D.DownloadOptions
   , targetName ∷ Maybe String
-  , source ∷ Maybe PU.FilePath
+  , source ∷ Maybe PU.AnyFilePath
   }
 
 eqState ∷ State → State → Boolean
@@ -69,8 +68,8 @@ codec = migrationCodec >~> CA.object "Download options model"
       nothingJson ∷ J.Json
       nothingJson = CA.encode (CA.maybe CA.json) Nothing
 
-codecFilePath ∷ CA.JsonCodec PU.FilePath
+codecFilePath ∷ CA.JsonCodec PU.AnyFilePath
 codecFilePath = C.basicCodec dec enc <~< CA.string
   where
-  dec s = note (CA.UnexpectedValue (J.fromString s)) (PU.parseFilePath s)
-  enc = Pathy.printPath
+  dec s = note (CA.UnexpectedValue (J.fromString s)) (PU.parseAnyFilePath s)
+  enc = PU.printAnyFilePath

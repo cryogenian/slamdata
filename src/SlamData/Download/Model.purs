@@ -43,8 +43,7 @@ import SlamData.FileSystem.Resource as R
 import SlamData.Quasar as Q
 
 type DownloadModel r =
-  { resource ∷ R.Resource
-  , targetName ∷ String
+  { targetName ∷ String
   , compress ∷ Boolean
   , options ∷ DownloadOptions
   | r
@@ -55,7 +54,7 @@ initialOptions res
   | R.isWorkspace res = Right initialJSONOptions
   | otherwise = Left CSV.defaultOptions
 
-renderURL ∷ ∀ r. Array RequestHeader → DownloadModel r → String
+renderURL ∷ ∀ r. Array RequestHeader → DownloadModel (resource ∷ R.Resource | r) → String
 renderURL authHeaders opts =
   let
     headers =
@@ -64,9 +63,9 @@ renderURL authHeaders opts =
              $ show
              $ Q.reqHeadersToJSON
              $ append authHeaders
-             $ toHeaders opts
+             $ toHeaders opts (shouldCompress opts)
              $ Just (opts.targetName <> ext))
-    ext = extension (shouldCompress opts) opts.options
+    ext = extension opts.compress opts.options
   in
     Q.encodeURI (P.printPath QP.data_ <> R.resourcePath opts.resource) <> headers
 
@@ -141,11 +140,11 @@ codecPrecisionMode = C.basicCodec dec enc
     JSON.Readable → "Readable"
     JSON.Precise → "Precise"
 
-alwaysCompress ∷ ∀ r. DownloadModel r → Boolean
-alwaysCompress = not R.isFile ∘ _.resource
+alwaysCompress ∷ R.Resource → Boolean
+alwaysCompress = not R.isFile
 
-shouldCompress ∷ ∀ r. DownloadModel r → Boolean
-shouldCompress = alwaysCompress || _.compress
+shouldCompress ∷ ∀ r. DownloadModel (resource ∷ R.Resource | r) → Boolean
+shouldCompress r = alwaysCompress r.resource || r.compress
 
 extension ∷ Boolean → Either CSV.Options JSON.Options → String
 extension compress options
@@ -164,18 +163,19 @@ validFilename s =
 toHeaders
   ∷ ∀ r
   . DownloadModel r
+  → Boolean
   → Maybe String
   → Array RequestHeader
-toHeaders r filename =
+toHeaders r compress filename =
   [ RequestHeader "Accept-Encoding" "gzip"
-  , Accept $ attachify filename (mimeCompress (shouldCompress r) (mimeType r.options))
+  , Accept $ attachify filename (compressify (mimeType r.options))
   ]
   where
-    mimeCompress ∷ Boolean → MediaType → MediaType
-    mimeCompress = if _ then QMT.zipped else id
-
     mimeType ∷ Either CSV.Options JSON.Options → MediaType
     mimeType = either CSV.toMediaType JSON.toMediaType
+
+    compressify ∷ MediaType → MediaType
+    compressify = if compress then QMT.zipped else id
 
     attachify ∷ Maybe String → MediaType → MediaType
     attachify name =
