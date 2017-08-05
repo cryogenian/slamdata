@@ -45,6 +45,7 @@ import SlamData.Wiring as Wiring
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Routing (Routes(..))
+import Utils.DOM (hideOverlay, loadStyleSheet, showOverlay)
 
 class WorkspaceDSL (m ∷ Type → Type) where
   navigate ∷ Routes → m Unit
@@ -65,11 +66,14 @@ changeTheme
   ⇒ Maybe Theme.Theme
   → m Unit
 changeTheme theme = do
-  let theme' = fromMaybe Theme.Light theme
+  let uri = Theme.getURI $ fromMaybe Theme.Light theme
   liftEff do
-    doc ← Win.document =<< window
-    mbStyle ← getElementById (Nt.ElementId "theme-css") (Ht.htmlDocumentToNonElementParentNode doc)
-    for_ mbStyle $ setAttribute "href" $ printURIRef (Theme.getURI theme')
+    showOverlay
+    loadStyleSheet uri $ liftEff do
+      doc ← Win.document =<< window
+      mbStyle ← getElementById (Nt.ElementId "theme-css") (Ht.htmlDocumentToNonElementParentNode doc)
+      for_ mbStyle $ setAttribute "href" $ printURIRef uri
+      hideOverlay
   Wiring.setTheme theme
 
 navigateToDeck
