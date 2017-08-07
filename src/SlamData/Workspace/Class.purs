@@ -29,6 +29,7 @@ import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Eff.Ref (REF, readRef)
+import Control.Monad.Eff.Timer (TIMER, setTimeout)
 import Control.UI.Browser as Browser
 import DOM (DOM)
 import DOM.HTML (window)
@@ -64,8 +65,7 @@ instance workspaceDSLHalogenM ∷ (Monad m, WorkspaceDSL m) ⇒ WorkspaceDSL (Ha
 changeTheme
   ∷ ∀ m eff
   . MonadAsk Wiring m
-  ⇒ MonadAff (avar ∷ AVAR, dom ∷ DOM, ref ∷ REF | eff) m
-  -- ⇒ MonadEff (ref ∷ REF, dom ∷ DOM | eff) m
+  ⇒ MonadAff (avar ∷ AVAR, dom ∷ DOM, ref ∷ REF, timer ∷ TIMER | eff) m
   ⇒ Maybe Theme.Theme
   → m Unit
 changeTheme theme = do
@@ -73,11 +73,12 @@ changeTheme theme = do
   liftEff showOverlay
   liftAff $ loadStyleSheet uri
   liftEff do
-    win ← window
-    doc ← Win.document win
+    doc ← Win.document =<< window
     mbStyle ← getElementById (Nt.ElementId "theme-css") (Ht.htmlDocumentToNonElementParentNode doc)
     for_ mbStyle $ setAttribute "href" $ printURIRef uri
-    _ ← Win.requestAnimationFrame hideOverlay win
+    -- Delay to allow the screen to repaint. It's not sync and
+    -- `requestAnimationFrame` did not work.
+    _ ← setTimeout 200 hideOverlay
     pure unit
   Wiring.setTheme theme
 
