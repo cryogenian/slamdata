@@ -413,13 +413,13 @@ openErrorMessage { accessType, expanded } err =
       HH.div_
         $ join
           [ pure $ errorTitle [ HH.text $ "No resource was selected in the " <> cardName Open <> " card." ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select either a file or a variable to fix this error." ]
+          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select a file, directory or a variable to fix this error." ]
           ]
     COE.OpenNoFileSelected →
       HH.div_
         $ join
           [ pure $ errorTitle [ HH.text $ "The resource selected in the " <> cardName Open <> " card is of an invalid type" ]
-          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select a file or variable to fix this error." ]
+          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card and select a file, directory or variable to fix this error." ]
           ]
 
 tableErrorMessage ∷ State → CTE.TableError → HTML

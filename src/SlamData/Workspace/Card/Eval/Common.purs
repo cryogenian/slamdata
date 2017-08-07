@@ -18,7 +18,6 @@ module SlamData.Workspace.Card.Eval.Common where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.Writer.Class (class MonadTell)
 import Data.Argonaut as J
 import Data.Array as A
@@ -34,7 +33,6 @@ import Quasar.Advanced.QuasarAF as QF
 import Quasar.Data.Json as QJ
 import Quasar.Data.Json.Extended (resultsAsEJson)
 import Quasar.Types (FilePath, Pagination)
-import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL, sequenceQuasar, liftQuasar)
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Query as QQ
@@ -47,7 +45,7 @@ import Utils.Path (tmpDir, parentDir, DirPath)
 
 validateResources
   ∷ ∀ m t
-  . MonadAff SlamDataEffects m
+  . Monad m
   ⇒ QuasarDSL m
   ⇒ ParQuasarDSL m
   ⇒ Traversable t
@@ -64,7 +62,6 @@ validateResources fs = runExceptT do
 localEvalResource
   ∷ ∀ m
   . MonadAsk CEM.CardEnv m
-  ⇒ MonadAff SlamDataEffects m
   ⇒ MonadTell CEM.CardLog m
   ⇒ ParQuasarDSL m
   ⇒ Sql.SqlQuery

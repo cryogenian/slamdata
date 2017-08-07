@@ -17,8 +17,10 @@ limitations under the License.
 module Utils.SqlSquared where
 
 import SlamData.Prelude
+
 import Data.Lens ((.~))
 import Data.Path.Pathy (unsandbox)
+import Quasar.Types (FilePath)
 import SqlSquared as Sql
 import Utils.Path (AnyFilePath)
 
@@ -39,3 +41,17 @@ asRel a = case _ of
   Sql.ExprRelation r → Sql.ExprRelation r { aliasName = a }
   Sql.JoinRelation r → Sql.JoinRelation r
   Sql.VariRelation r → Sql.VariRelation r { alias = Just a }
+
+selectStar ∷ FilePath → Sql.Sql
+selectStar path =
+  Sql.select
+    false
+    [ Sql.projection (Sql.splice Nothing)
+    ]
+    ( Just $ Sql.TableRelation
+        { alias: Nothing
+        , path: Left $ unsandbox path
+        })
+    Nothing
+    Nothing
+    Nothing
