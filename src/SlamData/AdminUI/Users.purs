@@ -27,33 +27,55 @@ import SlamData.Notification as Notification
 import SlamData.Quasar.Class (class QuasarDSL)
 import SlamData.Quasar.Security (groupInfo, removeUsersFromGroup)
 
-allUsers ∷ ∀ m. Monad m ⇒ QuasarDSL m ⇒ Notification.NotifyDSL m ⇒ m (Array QA.UserId)
-allUsers = do
-  groupInfo (QA.GroupPath Pathy.rootDir) >>= case _ of
+groupInfoNotify
+  ∷ ∀ m a
+  . Monad m
+  ⇒ QuasarDSL m
+  ⇒ Notification.NotifyDSL m
+  ⇒ String
+  → QA.GroupPath
+  → a
+  → (QA.GroupInfoR → m a)
+  → m a
+groupInfoNotify msg path def f =
+  groupInfo path >>= case _ of
     Left err → do
       Notification.error
-        "Failed to load users from Quasar"
+        msg
         (Just (Notification.Details (Exception.message err)))
         Nothing
         Nothing
-      pure []
-    Right { allMembers } →
-      pure allMembers
+      pure def
+    Right result → f result
 
-fetchAllGroups ∷ ∀ m . Monad m ⇒ QuasarDSL m ⇒ m (Array QA.GroupPath)
+allUsers ∷ ∀ m. Monad m ⇒ QuasarDSL m ⇒ Notification.NotifyDSL m ⇒ m (Array QA.UserId)
+allUsers = fetchTransitiveUsers (QA.GroupPath Pathy.rootDir)
+
+fetchAllGroups
+  ∷ ∀ m. Monad m
+  ⇒ QuasarDSL m
+  ⇒ Notification.NotifyDSL m
+  ⇒ m (Array QA.GroupPath)
 fetchAllGroups = do
-  result ← groupInfo (QA.GroupPath Pathy.rootDir)
-  pure (either (const []) _.subGroups result)
+  groupInfoNotify
+    "Failed to load groups from Quasar"
+    (QA.GroupPath Pathy.rootDir)
+    []
+    (pure ∘ _.subGroups)
 
 fetchTransitiveUsers
   ∷ ∀ m
   . Monad m
   ⇒ QuasarDSL m
+  ⇒ Notification.NotifyDSL m
   ⇒ QA.GroupPath
   → m (Array QA.UserId)
 fetchTransitiveUsers path = do
-  result ← groupInfo path
-  pure (either (const []) _.allMembers result)
+  groupInfoNotify
+    "Failed to load users from Quasar"
+    path
+    []
+    (pure ∘ _.allMembers)
 
 crawlGroups
   ∷ ∀ f m
@@ -67,26 +89,20 @@ crawlGroups userId =
   map
     -- Drop the root directory, because every User is member of it implicitly
     (fromMaybe [] ∘ Array.tail)
-    (go (QA.GroupPath Pathy.rootDir))
+    (crawlGroup (QA.GroupPath Pathy.rootDir))
   where
-    go path =
-      groupInfo path >>= case _ of
-        Left err → do
-          Notification.error
-            ("Failed to load users for " <> QA.printGroupPath path)
-            (Just (Notification.Details (Exception.message err)))
-            Nothing
-            Nothing
-          pure []
-        Right { allMembers, subGroups, members } | userId `Array.elem` allMembers → do
+    crawlGroup path =
+      groupInfoNotify ("Failed to load users for " <> QA.printGroupPath path) path [] (go path)
+
+    go path { allMembers, subGroups, members }
+      | userId `Array.elem` allMembers = do
           -- We only consider the group hierarchy one level at a time, because we
           -- need to filter on group membership
-          paths ← parTraverse go (Array.filter (isDirectSubgroup path) subGroups)
+          paths ← parTraverse crawlGroup (Array.filter (isDirectSubgroup path) subGroups)
           let addPath = if userId `Array.elem` members then Array.cons path else id
           pure (addPath (fold paths))
-        Right _ →
-          -- The user did not exist within this part of the group hierarchy
-          pure []
+      | otherwise = pure []
+
 
 isDirectSubgroup ∷ QA.GroupPath → QA.GroupPath → Boolean
 isDirectSubgroup (QA.GroupPath parent) (QA.GroupPath child) =

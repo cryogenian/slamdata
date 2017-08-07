@@ -126,7 +126,6 @@ component =
           , HH.ul
               [ HP.class_ (HH.ClassName "sd-admin-ui-users-list") ]
               case state.users of
-                -- TODO(Christoph): Show a spinner or something
                 Nothing →
                   []
                 Just users →

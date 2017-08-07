@@ -80,7 +80,7 @@ dialog =
   where
     render ∷ State → HTML
     render { userId, allGroups, groupSelection, refreshing, error } =
-      HH.div_ $ fold
+      HH.div_ $ join
         [ pure $ HH.input
             [ HP.value userId
             , HP.placeholder "User id"
@@ -118,7 +118,7 @@ dialog =
             displayError "Select a valid group."
           Just group → do
             { userId } ← H.get
-            if String.null userId
+            if String.null (String.trim userId)
               then displayError "Enter a user id."
               else do
                 void $ addUsersToGroup group [QA.UserId userId]
@@ -128,10 +128,11 @@ dialog =
       HandleGroupSelection msg next → case msg of
         AC.Changed g → do
           { allGroups } ← H.get
-          let selection = do
-                path ← hush (QA.parseGroupPath g)
-                guard (Array.elem path allGroups)
-                pure path
+          let
+            selection = do
+              path ← hush (QA.parseGroupPath g)
+              guard (Array.elem path allGroups)
+              pure path
           H.modify (_ { groupSelection = selection })
           pure next
         AC.Selected _ → pure next

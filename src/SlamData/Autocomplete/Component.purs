@@ -21,15 +21,14 @@ import Prelude
 import Control.Monad.Eff.Class (class MonadEff)
 import Control.MonadPlus (guard)
 import DOM (DOM)
+import DOM.Classy.HTMLElement as DCH
+import DOM.Classy.Node as DCN
 import DOM.Event.Event (preventDefault)
 import DOM.Event.KeyboardEvent (KeyboardEvent)
 import DOM.Event.KeyboardEvent as KeyEv
 import DOM.Event.MouseEvent (MouseEvent)
 import DOM.Event.MouseEvent as MouseEvent
-import DOM.HTML.HTMLElement (offsetTop)
-import DOM.HTML.Types (HTMLElement, htmlElementToElement, htmlElementToNode)
-import DOM.Node.Element (clientHeight, setScrollTop)
-import DOM.Node.Node (childNodes)
+import DOM.HTML.Types (HTMLElement)
 import DOM.Node.NodeList as NodeList
 import Data.Array (filter, length, mapWithIndex, null, (!!))
 import Data.Bifunctor (bimap)
@@ -37,13 +36,12 @@ import Data.Const (Const(..))
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (un)
 import Data.String as String
-import Data.Traversable (traverse_)
+import Data.Traversable (for_, traverse_)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as Aria
-import Unsafe.Coerce (unsafeCoerce)
 
 data Query item a
   = Init a
@@ -133,14 +131,15 @@ component { containerClass, placeholder, autofirst, itemFilter, itemText, itemDi
       HH.div
         [ HP.class_ containerClass
         ]
-        [ HH.input [ HP.value state.inputText
-                   , HE.onValueInput (HE.input Input)
-                   , HP.placeholder placeholder
-                   , HE.onBlur (HE.input_ Blur)
-                   , HE.onFocus (HE.input_ Focus)
-                   , HE.onKeyDown (HE.input KeyDown)
-                   , HP.class_ (H.ClassName "form-control")
-                   ]
+        [ HH.input
+            [ HP.value state.inputText
+            , HE.onValueInput (HE.input Input)
+            , HP.placeholder placeholder
+            , HE.onBlur (HE.input_ Blur)
+            , HE.onFocus (HE.input_ Focus)
+            , HE.onKeyDown (HE.input KeyDown)
+            , HP.class_ (H.ClassName "form-control")
+            ]
         , HH.ul
             (join
               [ guard (not state.open) $> Aria.hidden ""
@@ -148,11 +147,13 @@ component { containerClass, placeholder, autofirst, itemFilter, itemText, itemDi
               , pure (HP.ref ulRef)
               ])
             (mapWithIndex mkSelection (filter (itemFilter state.inputText) state.items))
-        , HH.span [ className "visually-hidden"
-                  , Aria.role "status"
-                  , Aria.live "assertive"
-                  , Aria.relevant "additions"
-                  ] [HH.text state.statusText]
+        , HH.span
+            [ className "visually-hidden"
+            , Aria.role "status"
+            , Aria.live "assertive"
+            , Aria.relevant "additions"
+            ]
+            [ HH.text state.statusText ]
         ]
       where
         mkSelection ix item =
@@ -268,16 +269,13 @@ close reason = do
 
 scrollListToIndex ∷ ∀ m e. MonadEff (dom ∷ DOM | e) m ⇒ Int → HTMLElement → m Unit
 scrollListToIndex index el = H.liftEff do
-  lis ← childNodes (htmlElementToNode el)
+  lis ← DCN.childNodes el
   NodeList.item index lis >>= traverse_ \item → do
-    let
-      -- TODO: Let's try to do better here
-      itemElement ∷ HTMLElement
-      itemElement = unsafeCoerce item
-    itemTop ← offsetTop itemElement
-    ulHeight ← clientHeight (htmlElementToElement el)
-    itemHeight ← clientHeight (htmlElementToElement itemElement)
-    setScrollTop (itemTop - ulHeight + itemHeight) (htmlElementToElement el)
+    for_ (DCN.fromNode item) \(itemElement ∷ HTMLElement) → do
+      itemTop ← DCH.offsetTop itemElement
+      ulHeight ← DCH.clientHeight el
+      itemHeight ← DCH.clientHeight itemElement
+      DCH.setScrollTop (itemTop - ulHeight + itemHeight) el
 
 
 ulRef ∷ H.RefLabel
