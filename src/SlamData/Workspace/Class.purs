@@ -25,6 +25,8 @@ module SlamData.Workspace.Class
 
 import SlamData.Prelude
 
+import Control.Monad.Aff.Class (class MonadAff, liftAff)
+import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Eff.Ref (REF, readRef)
 import Control.UI.Browser as Browser
@@ -62,18 +64,21 @@ instance workspaceDSLHalogenM ∷ (Monad m, WorkspaceDSL m) ⇒ WorkspaceDSL (Ha
 changeTheme
   ∷ ∀ m eff
   . MonadAsk Wiring m
-  ⇒ MonadEff (ref ∷ REF, dom ∷ DOM | eff) m
+  ⇒ MonadAff (avar ∷ AVAR, dom ∷ DOM, ref ∷ REF | eff) m
+  -- ⇒ MonadEff (ref ∷ REF, dom ∷ DOM | eff) m
   ⇒ Maybe Theme.Theme
   → m Unit
 changeTheme theme = do
   let uri = Theme.getURI $ fromMaybe Theme.Light theme
+  liftEff showOverlay
+  liftAff $ loadStyleSheet uri
   liftEff do
-    showOverlay
-    loadStyleSheet uri $ liftEff do
-      doc ← Win.document =<< window
-      mbStyle ← getElementById (Nt.ElementId "theme-css") (Ht.htmlDocumentToNonElementParentNode doc)
-      for_ mbStyle $ setAttribute "href" $ printURIRef uri
-      hideOverlay
+    win ← window
+    doc ← Win.document win
+    mbStyle ← getElementById (Nt.ElementId "theme-css") (Ht.htmlDocumentToNonElementParentNode doc)
+    for_ mbStyle $ setAttribute "href" $ printURIRef uri
+    _ ← Win.requestAnimationFrame hideOverlay win
+    pure unit
   Wiring.setTheme theme
 
 navigateToDeck

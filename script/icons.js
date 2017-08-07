@@ -8,6 +8,7 @@ const gulp = require("gulp")
 const inject = require("gulp-inject")
 const path = require("path")
 const svgSprite = require("gulp-svg-sprite")
+const { pageOverlaySass } = require("./sass")
 
 function injectIconsIntoHTML(iconAttribution) {
   const pathRemoveAttrs = [
@@ -95,6 +96,13 @@ function injectIconsIntoHTML(iconAttribution) {
 
   // inject symbols into html files
   return gulp.src("html/**/*.html")
+    .pipe(inject(pageOverlaySass(), {
+      starttag: "<!-- page-overlay-css -->",
+      endtag: "<!-- /page-overlay-css -->",
+      removeTags: true,
+      transform: (filePath, file) =>
+        `<style type="text/css">${file.contents.toString("utf8")}</style>`
+    }))
     .pipe(inject(svgSymbols, {
       starttag: "<!-- icon-symbols -->",
       endtag: "<!-- /icon-symbols -->",

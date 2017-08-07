@@ -27,6 +27,7 @@ import SlamData.Prelude
 
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff as Aff
+import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import DOM (DOM)
@@ -139,30 +140,36 @@ waitUntilWindowClosed win = AffUtils.untilA do
   Aff.delay (Milliseconds 250.0)
   liftEff $ closed win
 
-loadStyleSheet ∷ ∀ eff. URIRef → Eff (dom ∷ DOM | eff) Unit → Eff (dom ∷ DOM | eff) Unit
-loadStyleSheet uri cb = do
-  doc ← liftEff $ document =<< window
-  sty ← liftEff $ createElement "link" $ htmlDocumentToDocument doc
-  setAttribute "type" "text/css" sty
-  setAttribute "href" (printURIRef uri) sty
-  let
-    styleTarget ∷ EventTarget
-    styleTarget = elementToEventTarget sty
+-- Load via `<img>`, but capture the error. Hacky, but that's browsers.
+-- https://stackoverflow.com/a/5371426/7110837
+loadStyleSheet ∷ ∀ eff. URIRef → Aff (avar ∷ AVar.AVAR, dom ∷ DOM | eff) Unit
+loadStyleSheet uri = do
+  var ← AVar.makeVar
+  liftEff do
+    doc ← document =<< window
+    img ← createElement "img" (htmlDocumentToDocument doc)
+    let
+      imgTarget ∷ EventTarget
+      imgTarget = elementToEventTarget img
 
-    listener = EventTarget.eventListener \_ → do
-      EventTarget.removeEventListener EventTypes.load listener false styleTarget
-      cb
-  EventTarget.addEventListener EventTypes.load listener false styleTarget
+      listener = EventTarget.eventListener \_ → do
+        EventTarget.removeEventListener EventTypes.error listener false imgTarget
+        Aff.runAff (const (pure unit)) (const (pure unit)) (AVar.putVar var unit)
+
+    EventTarget.addEventListener EventTypes.error listener false imgTarget
+    setAttribute "src" (printURIRef uri) img
+  AVar.takeVar var
 
 showHideOverlay ∷ ∀ eff. Boolean → Eff (dom ∷ DOM | eff) Unit
 showHideOverlay shouldShow = liftEff do
   doc ← document =<< window
   let overlayId = ElementId "page-loading-overlay"
   mbOverlay ← getElementById overlayId (htmlDocumentToNonElementParentNode doc)
-  for_ (mbOverlay) \overlay → do
+  for_ mbOverlay \overlay → do
     let
+      -- Not using `toggleForce` for IE support
       classFn ∷ DOMTokenList → String → Eff (dom ∷ DOM | eff) Unit
-      classFn = if shouldShow then ClassList.add else ClassList.remove
+      classFn = if shouldShow then ClassList.remove else ClassList.add
     classList' ← liftEff $ classList $ elementToHTMLElement overlay
     classFn classList' "hide-overlay"
 
