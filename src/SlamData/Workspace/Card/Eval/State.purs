@@ -53,8 +53,8 @@ import Leaflet.Core as LC
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Workspace.Card.Chart.PivotTableRenderer.Common (PTree)
 import SlamData.Workspace.Card.Model as CM
+import SlamData.Workspace.Card.Markdown.Model (MarkdownExpr)
 import SlamData.Workspace.Card.Port (Resource, PivotTablePort)
-import SlamData.Workspace.Card.Port.VarMap as VM
 import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import Text.Markdown.SlamDown.Halogen.Component as SDH
@@ -104,7 +104,7 @@ data EvalState
   | PivotTable PivotTableR
   | ChartOptions (DSL OptionI)
   | Geo GeoR
-  | SlamDown (SDH.SlamDownFormState VM.VarMapValue)
+  | SlamDown (SDH.SlamDownFormState MarkdownExpr)
 
 initialEvalState ∷ CM.AnyCardModel → Maybe EvalState
 initialEvalState = case _ of
@@ -174,7 +174,7 @@ _Geo = prism' Geo case _ of
   Geo r → Just r
   _ → Nothing
 
-_SlamDown ∷ Prism' EvalState (SDH.SlamDownFormState VM.VarMapValue)
+_SlamDown ∷ Prism' EvalState (SDH.SlamDownFormState MarkdownExpr)
 _SlamDown = prism' SlamDown case _ of
   SlamDown r → Just r
   _ → Nothing
