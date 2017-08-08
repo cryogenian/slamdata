@@ -96,7 +96,7 @@ test =
     Interact.selectInChartBuilder ["gender"]
     Interact.accessNextCardInLastDeck
     Expect.lastEChart chart_CO_gender
-    Interact.setVarMapForDeck "Flexible Visualization" $ SM.singleton "state" "NE"
+    Interact.setVarMapForDeck "Flexible Visualization" $ SM.singleton "state" "\"NE\""
     Expect.lastEChart chart_NE_gender
     Interact.accessWorkspaceWithModifiedURL $ S.replace (S.Pattern "NE") (S.Replacement "CO")
     Expect.lastEChart chart_CO_gender
