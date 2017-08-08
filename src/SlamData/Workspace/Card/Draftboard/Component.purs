@@ -249,7 +249,7 @@ evalBoard opts = case _ of
     st ← H.get
     case ev of
       -- Only moving if distance is more than 20.0 pixels
-      Drag.Move _ d | Math.sqrt (d.offsetX * d.offsetX + d.offsetY * d.offsetY) > 20.0 → do
+      Drag.Move _ d | abs (Math.sqrt (d.offsetX * d.offsetX + d.offsetY * d.offsetY)) > 20.0 → do
         let
           x = d.x - st.rootRect.left
           y = d.y - st.rootRect.top
