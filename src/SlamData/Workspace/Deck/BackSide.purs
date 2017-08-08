@@ -107,7 +107,7 @@ toActionListAction unwrappable activeCard cardDefs action =
     Publish →
       I.IconHTML I.cardAndDeckActionsPublishDeck
     Theme →
-      I.IconHTML I.cog  -- TODO @toastal
+      I.IconHTML I.theme
     Mirror →
       I.IconHTML I.cardAndDeckActionsMirrorDeck
     Wrap →

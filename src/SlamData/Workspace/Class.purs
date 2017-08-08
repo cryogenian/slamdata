@@ -78,7 +78,7 @@ changeTheme theme = do
     for_ mbStyle $ setAttribute "href" $ printURIRef uri
     -- Delay to allow the screen to repaint. It's not sync and
     -- `requestAnimationFrame` did not work.
-    _ ← setTimeout 200 hideOverlay
+    _ ← setTimeout 250 hideOverlay
     pure unit
   Wiring.setTheme theme
 

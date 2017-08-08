@@ -6,6 +6,7 @@
 // compiler will yell if you don't).
 
 @import contrast-luma
+@import variables
 
 
 // Most obvious variables that people will want to change
@@ -106,7 +107,7 @@ $draftboard-insert-cell-color: $brand-primary !default
 $draftboard-moving-bg: transparentize($brand-primary, 0.6) !default
 
 // Global menu
-$global-menu-bg: #262626 !default
+$global-menu-bg: $slamdata-bg !default
 $global-menu-color: if(luma($global-menu-bg) > 127.5, #000, #fff) !default
 
 // Grippers

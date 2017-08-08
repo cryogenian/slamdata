@@ -1,3 +1,24 @@
+@import variables
+
+
+$text-color: #fff
+
+
+
+// Some base styles
+
+html
+  font-size: 62.5%
+  box-sizing: border-box
+
+
+*, *::before, *::after
+  box-sizing: inherit
+
+
+@import spinner-lg
+
+
 #page-loading-overlay
   display: flex
   justify-content: center
@@ -11,7 +32,22 @@
   width: 100%
   z-index: 11939  // circular prime number
   overflow: hidden
-  background: black
+  background: $slamdata-bg
+  color: $text-color
 
   &.hide-overlay
     display: none
+
+  .sd-spinner-lg
+    .indicatorrr
+      border-color: transparentize($text-color, 0.85)
+
+      &::before
+        border-top-color: $text-color
+
+    svg *
+      fill: transparentize($text-color, 0.85)
+
+
+
+
