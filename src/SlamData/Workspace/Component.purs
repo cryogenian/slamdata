@@ -221,6 +221,7 @@ eval = case _ of
     pure $ reply H.Listening
   New next → do
     st ← H.get
+    changeTheme (Just Theme.default)
     when (List.null st.cursor) do
       _ ← fork $ runFreshWorkspace mempty
       initializeGuides
