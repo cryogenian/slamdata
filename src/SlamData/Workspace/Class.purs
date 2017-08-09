@@ -83,7 +83,10 @@ changeTheme theme = do
     for_ mbStyle $ setAttribute "href" (printURIRef uri)
     end <- liftEff now
     -- Delay to allow the screen to repaint. It's not sync and
-    -- `requestAnimationFrame` did not work.
+    -- `requestAnimationFrame` did not work.  So this `d` guarantees that
+    -- the overlay is up for some unjarring amount of time. If the overlay
+    -- is up for a 100ms flash, it feels bad. 350 seemed to me like a
+    -- reasonable number (with 200ms being easily humanly perceptible).
     let d = 350.0 - ((unwrap $ unInstant end) - (unwrap $ unInstant start))
     _ ← setTimeout (ceil $ Math.max 0.0 d) hideLoadingOverlay
     pure unit

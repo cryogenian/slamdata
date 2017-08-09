@@ -27,7 +27,6 @@ import SlamData.Prelude
 
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff as Aff
-import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import DOM (DOM)
@@ -142,9 +141,9 @@ waitUntilWindowClosed win = AffUtils.untilA do
 
 -- Load via `<img>`, but capture the error. Hacky, but that's browsers.
 -- https://stackoverflow.com/a/5371426/7110837
-loadStyleSheet ∷ ∀ eff. URIRef → Aff (avar ∷ AVar.AVAR, dom ∷ DOM | eff) Unit
-loadStyleSheet uri = do
-  var ← AVar.makeVar
+-- `onError` skipped because, welp, this hack use erroring.
+loadStyleSheet ∷ ∀ eff. URIRef → Aff (dom ∷ DOM | eff) Unit
+loadStyleSheet uri = Aff.makeAff \_ onSuccess → do
   liftEff do
     doc ← document =<< window
     img ← createElement "img" (htmlDocumentToDocument doc)
@@ -154,11 +153,10 @@ loadStyleSheet uri = do
 
       listener = EventTarget.eventListener \_ → do
         EventTarget.removeEventListener EventTypes.error listener false imgTarget
-        Aff.runAff (const (pure unit)) (const (pure unit)) (AVar.putVar var unit)
+        onSuccess unit
 
     EventTarget.addEventListener EventTypes.error listener false imgTarget
     setAttribute "src" (printURIRef uri) img
-  AVar.takeVar var
 
 toggleLoadingOverlay ∷ ∀ eff. Boolean → Eff (dom ∷ DOM | eff) Unit
 toggleLoadingOverlay shouldShow = liftEff do
