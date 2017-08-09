@@ -25,12 +25,14 @@ module SlamData.Workspace.Class
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Aff.AVar (AVAR)
+import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
+import Control.Monad.Eff.Now (NOW, now)
 import Control.Monad.Eff.Ref (REF, readRef)
 import Control.Monad.Eff.Timer (TIMER, setTimeout)
 import Control.UI.Browser as Browser
+import Data.Int (ceil)
 import DOM (DOM)
 import DOM.HTML (window)
 import DOM.HTML.Types as Ht
@@ -38,9 +40,11 @@ import DOM.HTML.Window as Win
 import DOM.Node.Element (setAttribute)
 import DOM.Node.NonElementParentNode (getElementById)
 import DOM.Node.Types as Nt
+import Data.DateTime.Instant (unInstant)
 import Data.List as L
 import Data.URI (printURIRef)
 import Halogen.Query (HalogenM)
+import Math as Math
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.Theme.Theme as Theme
 import SlamData.Wiring (Wiring)
@@ -65,20 +69,23 @@ instance workspaceDSLHalogenM ∷ (Monad m, WorkspaceDSL m) ⇒ WorkspaceDSL (Ha
 changeTheme
   ∷ ∀ m eff
   . MonadAsk Wiring m
-  ⇒ MonadAff (avar ∷ AVAR, dom ∷ DOM, ref ∷ REF, timer ∷ TIMER | eff) m
+  ⇒ MonadAff (avar ∷ AVAR, dom ∷ DOM, now ∷ NOW, ref ∷ REF, timer ∷ TIMER | eff) m
   ⇒ Maybe Theme.Theme
   → m Unit
 changeTheme theme = do
   let uri = Theme.getURI $ fromMaybe Theme.Light theme
   liftEff showOverlay
+  start <- liftEff now
   liftAff $ loadStyleSheet uri
   liftEff do
     doc ← Win.document =<< window
     mbStyle ← getElementById (Nt.ElementId "theme-css") (Ht.htmlDocumentToNonElementParentNode doc)
-    for_ mbStyle $ setAttribute "href" $ printURIRef uri
+    for_ mbStyle $ setAttribute "href" (printURIRef uri)
+    end <- liftEff now
     -- Delay to allow the screen to repaint. It's not sync and
     -- `requestAnimationFrame` did not work.
-    _ ← setTimeout 250 hideOverlay
+    let d = 350.0 - ((unwrap $ unInstant end) - (unwrap $ unInstant start))
+    _ ← setTimeout (ceil $ Math.max 0.0 d) hideOverlay
     pure unit
   Wiring.setTheme theme
 

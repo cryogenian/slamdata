@@ -166,12 +166,22 @@ showHideOverlay shouldShow = liftEff do
   let overlayId = ElementId "page-loading-overlay"
   mbOverlay ← getElementById overlayId (htmlDocumentToNonElementParentNode doc)
   for_ mbOverlay \overlay → do
-    let
-      -- Not using `toggleForce` for IE support
-      classFn ∷ DOMTokenList → String → Eff (dom ∷ DOM | eff) Unit
-      classFn = if shouldShow then ClassList.remove else ClassList.add
-    classList' ← liftEff $ classList $ elementToHTMLElement overlay
-    classFn classList' "hide-overlay"
+    overlayClassList ← liftEff $ classList $ elementToHTMLElement overlay
+    -- showing? well then let's remove these classes
+    when shouldShow do
+      ClassList.remove overlayClassList "fade-overlay"
+      ClassList.remove overlayClassList "hide-overlay"
+    -- else when hiding the overlay, fade it and hide after the transition
+    when (not shouldShow) do
+      let
+        overlayTarget ∷ EventTarget
+        overlayTarget = elementToEventTarget overlay
+
+        listener = EventTarget.eventListener \_ → do
+          EventTarget.removeEventListener EventTypes.transitionend listener false overlayTarget
+          ClassList.add overlayClassList "hide-overlay"
+      EventTarget.addEventListener EventTypes.transitionend listener false overlayTarget
+      ClassList.add overlayClassList "fade-overlay"
 
 hideOverlay ∷ ∀ eff. Eff (dom ∷ DOM | eff) Unit
 hideOverlay = showHideOverlay false
