@@ -52,7 +52,7 @@ import SlamData.Wiring as Wiring
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Routing (Routes(..))
-import Utils.DOM (hideOverlay, loadStyleSheet, showOverlay)
+import Utils.DOM (hideLoadingOverlay, loadStyleSheet, showLoadingOverlay)
 
 class WorkspaceDSL (m ∷ Type → Type) where
   navigate ∷ Routes → m Unit
@@ -74,7 +74,7 @@ changeTheme
   → m Unit
 changeTheme theme = do
   let uri = Theme.getURI $ fromMaybe Theme.Light theme
-  liftEff showOverlay
+  liftEff showLoadingOverlay
   start <- liftEff now
   liftAff $ loadStyleSheet uri
   liftEff do
@@ -85,7 +85,7 @@ changeTheme theme = do
     -- Delay to allow the screen to repaint. It's not sync and
     -- `requestAnimationFrame` did not work.
     let d = 350.0 - ((unwrap $ unInstant end) - (unwrap $ unInstant start))
-    _ ← setTimeout (ceil $ Math.max 0.0 d) hideOverlay
+    _ ← setTimeout (ceil $ Math.max 0.0 d) hideLoadingOverlay
     pure unit
   Wiring.setTheme theme
 

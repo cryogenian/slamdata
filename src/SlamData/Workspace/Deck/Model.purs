@@ -39,5 +39,4 @@ codec =
     # CA.recordProp (SProxy ∷ SProxy "cards") (CA.array CID.codec)
 
 eqDeck ∷ Deck → Deck → Boolean
-eqDeck d1 d2 =
-  d1.name ≡ d2.name && d1.cards ≡ d2.cards
+eqDeck d1 d2 = d1.name ≡ d2.name && d1.cards ≡ d2.cards

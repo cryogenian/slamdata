@@ -38,13 +38,8 @@ data Theme
 derive instance eqTheme ∷ Eq Theme
 
 default ∷ Theme
-default = Light
-
-_Light = SProxy ∷ SProxy "light"
-
-_Dark = SProxy ∷ SProxy "dark"
-
-_Custom = SProxy ∷ SProxy "custom"
+default =
+  Light
 
 toLabel ∷ Theme → String
 toLabel = case _ of
@@ -84,6 +79,12 @@ codec ∷ JC.JsonCodec Theme
 codec =
   dimap toVariant fromVariant themeVariantCase
   where
+    _Light = SProxy ∷ SProxy "light"
+
+    _Dark = SProxy ∷ SProxy "dark"
+
+    _Custom = SProxy ∷ SProxy "custom"
+
     toVariant = case _ of
       Light → V.inj _Light unit
       Dark → V.inj _Dark  unit

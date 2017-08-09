@@ -160,8 +160,8 @@ loadStyleSheet uri = do
     setAttribute "src" (printURIRef uri) img
   AVar.takeVar var
 
-showHideOverlay ∷ ∀ eff. Boolean → Eff (dom ∷ DOM | eff) Unit
-showHideOverlay shouldShow = liftEff do
+toggleLoadingOverlay ∷ ∀ eff. Boolean → Eff (dom ∷ DOM | eff) Unit
+toggleLoadingOverlay shouldShow = liftEff do
   doc ← document =<< window
   let overlayId = ElementId "page-loading-overlay"
   mbOverlay ← getElementById overlayId (htmlDocumentToNonElementParentNode doc)
@@ -183,8 +183,8 @@ showHideOverlay shouldShow = liftEff do
       EventTarget.addEventListener EventTypes.transitionend listener false overlayTarget
       ClassList.add overlayClassList "fade-overlay"
 
-hideOverlay ∷ ∀ eff. Eff (dom ∷ DOM | eff) Unit
-hideOverlay = showHideOverlay false
+hideLoadingOverlay ∷ ∀ eff. Eff (dom ∷ DOM | eff) Unit
+hideLoadingOverlay = toggleLoadingOverlay false
 
-showOverlay ∷ ∀ eff. Eff (dom ∷ DOM | eff) Unit
-showOverlay = showHideOverlay true
+showLoadingOverlay ∷ ∀ eff. Eff (dom ∷ DOM | eff) Unit
+showLoadingOverlay = toggleLoadingOverlay true
