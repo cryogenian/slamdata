@@ -95,7 +95,7 @@ renderItem r =
             [ itemGlyph r
             , HH.text (itemName r)
             ]
-        , guard (not isActionable r) $> I.chevronRightSm
+        , guard (not (isLeaf (isRight ∘ R.getPath)) r) $> I.chevronRightSm
         ]
 
 isLeaf ∷ ∀ a. (a → Boolean) → AnyItem a → Boolean
@@ -106,7 +106,13 @@ isLeaf f = case _ of
   Resource r → f r
 
 isActionable ∷ AnyItem' → Boolean
-isActionable = isLeaf (isRight ∘ R.getPath)
+isActionable = isLeaf (isRight ∘ R.getPath) || isResource
+
+isResource ∷ ∀ a. AnyItem a → Boolean
+isResource = case _ of
+  Resource _ → true
+  _ → false
+
 
 itemName ∷ AnyItem' → String
 itemName = case _ of

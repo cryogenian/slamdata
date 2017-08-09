@@ -94,6 +94,12 @@ $action-list-active-color: if(luma($brand-primary) < 210, #fff, #111) !default
 $action-list-disabled-bg: brighten($body-bg, 20%, 5%) !default
 $action-list-disabled-color: mix($action-list-disabled-bg, $text-color, 40%) !default
 
+// Autocomplete
+$autocomplete-border-color: $color-separator !default
+$autocomplete-item-hover-bg: brighten($body-bg, 3.75%, 5%) !default
+$autocomplete-item-selected-bg: $action-list-active-bg
+$autocomplete-item-selected-color: $action-list-active-color
+
 // Frame Controls
 $frame-controls-bg: $action-list-active-bg
 $frame-controls-color: $action-list-active-color

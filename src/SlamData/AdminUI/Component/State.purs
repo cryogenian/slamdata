@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Data.List (List)
 import Data.List as L
-import SlamData.AdminUI.Dialog.Component as Dialog
+import SlamData.AdminUI.Dialog as Dialog
 
 type State =
   { open ∷ Boolean
@@ -29,10 +29,9 @@ type State =
       { mySettings ∷ MySettingsState
       , database ∷ DatabaseState
       , server ∷ ServerState
-      , users ∷ UsersState
       , groups ∷ GroupsState
       }
-  , dialog ∷ Maybe Dialog.Dialog
+  , dialog ∷ Maybe Dialog.Definition
   }
 
 data TabIndex
@@ -51,7 +50,7 @@ instance showTabIndex ∷ Show TabIndex where
 allTabs ∷ List TabIndex
 allTabs =
   -- L.fromFoldable [MySettings, Database, Server, Authentication, Users, Groups]
-  L.fromFoldable [Groups]
+  L.fromFoldable [Users, Groups]
 
 tabTitle ∷ TabIndex → String
 tabTitle = case _ of
@@ -122,15 +121,6 @@ newtype ServerState = ServerState
 
 defaultServerState ∷ ServerState
 defaultServerState = ServerState { port: 27012, logFileLocation: "", enableCustomSSL: false }
-
-newtype UsersState = UsersState
-  { search ∷ String
-  , users ∷ L.List String
-  }
-derive instance newtypeUsersState ∷ Newtype UsersState _
-
-defaultUsersState ∷ UsersState
-defaultUsersState = UsersState { search: "", users: L.Nil }
 
 newtype GroupsState = GroupsState { }
 derive instance newtypeGroupsState ∷ Newtype GroupsState _

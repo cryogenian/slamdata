@@ -248,8 +248,8 @@ eval sel = case _ of
       direction oldPos oldDir =
         if num == oldPos then oldDir else if num > oldPos then Down else Up
     case astate of
-      Dragging oldDir navHeight s old →
-        H.put (Dragging (direction old oldDir) navHeight s (toSet s))
+      Dragging oldDir navHeight' s old →
+        H.put (Dragging (direction old oldDir) navHeight' s (toSet s))
       _ → pure unit
     pure next
 
