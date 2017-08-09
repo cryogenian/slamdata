@@ -228,6 +228,7 @@ eval = case _ of
     pure next
   ExploreFile res next → do
     st ← H.get
+    changeTheme (Just Theme.default)
     when (List.null st.cursor) do
       _ ← fork $ runFreshWorkspace
         [ CM.Open (Just (Open.Resource (R.File res)))
