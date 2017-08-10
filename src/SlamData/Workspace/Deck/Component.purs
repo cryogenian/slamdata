@@ -1,5 +1,5 @@
 {-
-Copyright 2016 SlamData, Inc.
+Copyright 2017 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -340,6 +340,9 @@ handleBackSide opts = case _ of
         if Array.length st.displayCards <= 1
           then H.lift $ Common.deleteDeck opts
           else Wiring.showDialog (Dialog.DeleteDeck opts)
+      Back.Theme → do
+        theme ← Wiring.getTheme
+        Wiring.showDialog $ Dialog.Theme opts theme
       Back.Mirror → do
         let mirrorCard = (hush =<< DCS.activeCard st) <|> DCS.findLastRealCard st
         deck ← H.lift $ P.getDeck opts.deckId

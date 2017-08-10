@@ -1,0 +1,62 @@
+@import variables
+
+
+$text-color: #fff
+
+
+
+// Some base styles
+
+html
+  font-size: 62.5%
+  box-sizing: border-box
+
+
+*, *::before, *::after
+  box-sizing: inherit
+
+
+@import spinner-lg
+
+
+#page-loading-overlay
+  display: flex
+  justify-content: center
+  align-content: center
+  position: fixed
+  top: 0
+  bottom: 0
+  left: 0
+  right: 0
+  opacity: 1
+  height: 100%
+  width: 100%
+  z-index: 11939  // circular prime number
+  overflow: hidden
+  background: $slamdata-bg
+  color: $text-color
+  transition: opacity 275ms ease-out
+  pointer-events: none
+
+  &.fade-overlay, &.hide-overlay
+    pointer-events: all
+
+  &.fade-overlay
+    opacity: 0
+
+  &.hide-overlay
+    display: none
+
+    .sd-spinner-lg .indicatorrr
+      &, &::before
+        animation-play-state: paused
+
+  .sd-spinner-lg
+    .indicatorrr
+      border-color: transparentize($text-color, 0.875)
+
+      &::before
+        border-top-color: $slamdata-orange
+
+    svg *
+      fill: transparentize($text-color, 0.875)
