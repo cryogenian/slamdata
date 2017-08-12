@@ -300,6 +300,8 @@ renderButton state disabled (Button { label, classes, action, pending }) =
 
 renderProgressSpinner ∷ ∀ f g p m. String → Array (H.ParentHTML f g p m)
 renderProgressSpinner label =
-  [ RC.spinner
+  [ HH.div
+    [ HP.class_ (H.ClassName "dialog-loader-btn") ]
+    [ RC.spinnerSmall ]
   , HH.span [ HP.class_ CN.srOnly ] [ HH.text label ]
   ]
