@@ -97,7 +97,8 @@ test = do
 
   searchScenario "Search with field names"
     (noIssues
-      { marklogic = Just "ML: https://github.com/quasar-analytics/quasar/issues/2341"
+      { mongo = Just "MD: https://github.com/slamdata/slamdata/issues/2096"
+      , marklogic = Just "ML: https://github.com/quasar-analytics/quasar/issues/2341"
       , couchbase = Just "CB: https://github.com/quasar-analytics/quasar/issues/2341"
       })
     do
@@ -126,7 +127,8 @@ test = do
 
   searchScenario "Suppress search results"
     (noIssues
-      { marklogic = Just "ML: https://github.com/quasar-analytics/quasar/issues/2341"
+      { mongo = Just "MD: https://github.com/slamdata/slamdata/issues/2096"
+      , marklogic = Just "ML: https://github.com/quasar-analytics/quasar/issues/2341"
       , couchbase = Just "CB: results fluxuate need to look if same issue as marklogic"
       })
     do
