@@ -1,7 +1,4 @@
-@import variables
-
-
-// Some base styles
+// Some base styles for the page that work like base
 html
   font-size: 62.5%
   box-sizing: border-box
@@ -11,14 +8,15 @@ html
   box-sizing: inherit
 
 
+@import themes/light
 @import spinner
 
 
 #page-loading-overlay
   left: 0
   right: 0
-  background: $slamdata-bg
-  color: #fff
+  background: $body-bg
+  color: $text-color
   transition: opacity 275ms ease-out
   pointer-events: all
 
