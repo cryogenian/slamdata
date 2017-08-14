@@ -49,7 +49,7 @@ empty ∷ ∀ k v. ListMap k v
 empty = ListMap L.Nil
 
 lookup ∷ ∀ k v. (k → k → Boolean) → k → ListMap k v → Maybe v
-lookup eq__ k (ListMap a) = map snd $ L.find (spy ∘ eq__ k ∘ fst) a
+lookup eq__ k (ListMap a) = map snd $ L.find (eq__ k ∘ fst) a
 
 member ∷ ∀ k v. (k → k → Boolean) → k → ListMap k v → Boolean
 member eq__ k lm = isJust $ lookup eq__ k lm

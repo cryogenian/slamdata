@@ -193,8 +193,11 @@ options dimMap axes r heatmapData = do
     E.yAxisIndex ix
 
     E.buildItems
-      $ enumeratedFor_ (xValues serie)  \(xIx × abscissa) →
-          enumeratedFor_ (yValues serie) \(yIx × ordinate) →
+      -- That's interesting, for some reason item indices are reversed
+      -- E.g. value `3` is 2nd of 7 values in x-axis, but the index here
+      -- should be not `1` but `5` 0_o /@cryogenian
+      $ enumeratedFor_ (A.reverse $ xValues serie)  \(xIx × abscissa) →
+          enumeratedFor_ (A.reverse $ yValues serie) \(yIx × ordinate) →
             for_ (M.lookup (abscissa × ordinate) serie.items) \value → E.addItem do
               BCE.assoc { abscissa, ordinate, value }
               E.buildValues do

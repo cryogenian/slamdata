@@ -19,10 +19,10 @@ module SlamData.FileSystem.Component.Query where
 import SlamData.Prelude
 
 import DOM.Event.Types (Event, MouseEvent)
-import DOM.HTML.Types (HTMLElement)
+import DOM.HTML.Types (HTMLElement, HTMLInputElement)
 import SlamData.AdminUI.Types as AdminUI
 import SlamData.Common.Sort (Sort)
-import SlamData.FileSystem.Dialog.Component.Message as Dialog
+import SlamData.FileSystem.Dialog as Dialog
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Listing.Item (Item)
 import SlamData.FileSystem.Routing.Salt (Salt)
@@ -58,7 +58,7 @@ data Query a
   | MakeFolder a
   | MakeWorkspace a
   | UploadFile HTMLElement a
-  | FileListChanged HTMLElement a
+  | FileListChanged HTMLInputElement a
   | SetVersion String a
   | DismissSignInSubmenu a
   | DismissMountHint a
@@ -68,11 +68,11 @@ data Query a
   | PreventDefault Event (Query a)
   | HandleError GlobalError a
   | HandleListing Listing.Message a
-  | HandleDialog Dialog.Message a
+  | HandleDialog Dialog.Message' a
   | HandleNotifications Notification.Message a
   | HandleSignInMessage SignInMessage a
   | HandleSearch Search.Message a
-  | HandleLicenseProblem LicenseProblem a
+  | HandleLicenseProblem (Maybe LicenseProblem) a
   | HandleHeader Header.Message a
   | HandleAdminUI AdminUI.Message a
   | SetLoading Boolean a

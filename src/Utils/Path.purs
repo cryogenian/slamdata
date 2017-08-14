@@ -205,3 +205,10 @@ toPathList res
     where
     go ∷ ∀ b. Path Abs b Sandboxed → Maybe AnyPath
     go = map (Left <<< fst) <<< peel
+
+dirPathAsFilePath ∷ DirPath -> Maybe FilePath
+dirPathAsFilePath = P.peel >>> case _ of
+  Nothing → Nothing
+  Just (Tuple parentDir' peeled) → case peeled of
+    Right _ → Nothing
+    Left dirName → Just $ parentDir' </> (P.file $ P.runDirName dirName)

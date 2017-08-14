@@ -18,7 +18,6 @@ module SlamData.Workspace.Card.Eval.Common where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.Writer.Class (class MonadTell)
 import Data.Argonaut as J
 import Data.Array as A
@@ -29,12 +28,11 @@ import Data.List as L
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
-import Quasar.QuasarF as Q
 import Quasar.Advanced.QuasarAF as QF
-import Quasar.Data (JSONMode(..))
+import Quasar.Data.Json as QJ
 import Quasar.Data.Json.Extended (resultsAsEJson)
+import Quasar.QuasarF as Q
 import Quasar.Types (FilePath, Pagination)
-import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL, sequenceQuasar, liftQuasar)
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Query as QQ
@@ -43,11 +41,11 @@ import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.Process as Process
 import SlamData.Workspace.Card.Port.VarMap as VM
 import SqlSquared as Sql
-import Utils.Path (tmpDir, DirPath)
+import Utils.Path (tmpDir, parentDir, DirPath)
 
 validateResources
   ∷ ∀ m t
-  . MonadAff SlamDataEffects m
+  . Monad m
   ⇒ QuasarDSL m
   ⇒ ParQuasarDSL m
   ⇒ Traversable t
@@ -64,7 +62,6 @@ validateResources fs = runExceptT do
 localEvalResource
   ∷ ∀ m
   . MonadAsk CEM.CardEnv m
-  ⇒ MonadAff SlamDataEffects m
   ⇒ MonadTell CEM.CardLog m
   ⇒ ParQuasarDSL m
   ⇒ Sql.SqlQuery
@@ -72,17 +69,14 @@ localEvalResource
   → m (Either QE.QError VM.Resource)
 localEvalResource sql varMap = runExceptT do
   CEM.CardEnv { cardId, readOnly } ← ask
-  -- TODO: Switch for processes
-  -- let Path.FileName fileName × result = Process.elaborate parentDir cardId varMap sql
-  let Path.FileName fileName × result = Process.elaborate Path.currentDir cardId varMap sql
+  let
+    Path.FileName fileName × result = Process.elaborate Path.currentDir parentDir cardId varMap sql
   case result of
     Left sqlQuery → do
       filePath × relFilePath ← lift $ CEM.temporaryOutputResource
-      -- TODO: Switch for processes
-      -- unless readOnly do
-      unless false do
+      unless readOnly do
         let
-          varMap' = VM.toURLVarMap varMap
+          varMap' = VM.unURLVarMapF $ VM.toURLVarMap varMap
           compilePath = fromMaybe Path.rootDir (Path.parentDir filePath)
         { inputs } ← ExceptT $ QQ.compile compilePath sqlQuery varMap'
         ExceptT $ validateResources inputs
@@ -100,7 +94,7 @@ localEvalResource sql varMap = runExceptT do
 sampleResource'
   ∷ ∀ m
   . QuasarDSL m
-  ⇒ JSONMode
+  ⇒ QJ.PrecisionMode
   → DirPath
   → VM.Resource
   → Maybe Pagination
@@ -109,7 +103,7 @@ sampleResource' mode path res pagination =
   liftQuasar $ case res of
     VM.Path filePath → QF.readFile mode filePath pagination
     VM.View filePath _ _ → QF.readFile mode (path </> tmpDir </> filePath) pagination
-    VM.Process filePath _ varMap → left $ Q.invokeFile mode (path </> tmpDir </> filePath) (VM.toURLVarMap varMap) pagination
+    VM.Process filePath _ varMap → left $ Q.invokeFile mode (path </> tmpDir </> filePath) (VM.unURLVarMapF $ VM.toURLVarMap varMap) pagination
 
 sampleResource
   ∷ ∀ m
@@ -118,7 +112,7 @@ sampleResource
   → VM.Resource
   → Maybe Pagination
   → m (Either QE.QError J.JArray)
-sampleResource = sampleResource' Readable
+sampleResource = sampleResource' QJ.Readable
 
 sampleResourceEJson
   ∷ ∀ m
@@ -129,19 +123,19 @@ sampleResourceEJson
   → Maybe Pagination
   → m (Either QE.QError (Array E.EJson))
 sampleResourceEJson path res pagination =
-  resultsAsEJson <$> sampleResource' Precise path res pagination
+  resultsAsEJson <$> sampleResource' QJ.Precise path res pagination
 
 runElaboratedQuery'
   ∷ ∀ m
   . QuasarDSL m
-  ⇒ JSONMode
+  ⇒ QJ.PrecisionMode
   → DirPath
   → Sql.SqlQuery
   → VM.VarMap
   → m (Either QE.QError J.JArray)
 runElaboratedQuery' mode path query varMap =
   let query' = Process.elaborateQuery (Path.unsandbox (Path.currentDir </> tmpDir)) varMap query
-  in liftQuasar $ QF.readQuery Readable path (Sql.printQuery query') (VM.toURLVarMap varMap) Nothing
+  in liftQuasar $ QF.readQuery QJ.Readable path (Sql.printQuery query') (VM.unURLVarMapF $ VM.toURLVarMap varMap) Nothing
 
 runElaboratedQuery
   ∷ ∀ m
@@ -150,7 +144,7 @@ runElaboratedQuery
   → Sql.SqlQuery
   → VM.VarMap
   → m (Either QE.QError J.JArray)
-runElaboratedQuery = runElaboratedQuery' Readable
+runElaboratedQuery = runElaboratedQuery' QJ.Readable
 
 runElaboratedQueryEJson
   ∷ ∀ m
@@ -161,7 +155,7 @@ runElaboratedQueryEJson
   → VM.VarMap
   → m (Either QE.QError (Array E.EJson))
 runElaboratedQueryEJson path query varMap =
-  resultsAsEJson <$> runElaboratedQuery' Precise path query varMap
+  resultsAsEJson <$> runElaboratedQuery' QJ.Precise path query varMap
 
 countResource
   ∷ ∀ m

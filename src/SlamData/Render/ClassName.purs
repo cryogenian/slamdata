@@ -48,29 +48,8 @@ fileListField = ClassName "file-list-field"
 fileListGroup ∷ ClassName
 fileListGroup = ClassName "file-list-group"
 
-dialogDownload ∷ ClassName
-dialogDownload = ClassName "dialog-download"
-
-dialogMount ∷ ClassName
-dialogMount = ClassName "dialog-mount"
-
 renameDialogForm ∷ ClassName
 renameDialogForm = ClassName "rename-dialog-form"
-
-mountMongoDB ∷ ClassName
-mountMongoDB = ClassName "mount-mongodb"
-
-mountCouchbase ∷ ClassName
-mountCouchbase = ClassName "mount-couchbase"
-
-mountMarkLogic ∷ ClassName
-mountMarkLogic = ClassName "mount-marklogic"
-
-mountSpark ∷ ClassName
-mountSpark = ClassName "mount-spark"
-
-mountName ∷ ClassName
-mountName = ClassName "mount-name"
 
 mountHostList ∷ ClassName
 mountHostList = ClassName "mount-host-list"
@@ -84,18 +63,11 @@ mountHost = ClassName "mount-host"
 mountProps ∷ ClassName
 mountProps = ClassName "mount-props"
 
-mountPath ∷ ClassName
-mountPath = ClassName "mount-path"
-
 mountFormat ∷ ClassName
 mountFormat = ClassName "mount-format"
 
 mountPropsScrollbox ∷ ClassName
 mountPropsScrollbox = ClassName "mount-props-scrollbox"
-
-mountProgressSpinner ∷ Boolean → ClassName
-mountProgressSpinner true = ClassName "mount-progress-spinner"
-mountProgressSpinner false = ClassName "mount-progress-spinner-hidden"
 
 cardInput ∷ ClassName
 cardInput = ClassName "card-input"
@@ -126,9 +98,6 @@ downloadTargetBox = ClassName "download-target-box"
 
 downloadCSVDelimiters ∷ ClassName
 downloadCSVDelimiters = ClassName "download-csv-delimiters"
-
-downloadArrayMode ∷ ClassName
-downloadArrayMode = ClassName "download-array-mode"
 
 downloadJSONOptions ∷ ClassName
 downloadJSONOptions = ClassName "download-json-options"
@@ -296,6 +265,9 @@ btnXs = ClassName "btn-xs"
 btnDefault ∷ ClassName
 btnDefault = ClassName "btn-default"
 
+btnDanger ∷ ClassName
+btnDanger = ClassName "btn-danger"
+
 btnPrimary ∷ ClassName
 btnPrimary = ClassName "btn-primary"
 
@@ -372,4 +344,4 @@ in_ :: ClassName
 in_ = ClassName "in"
 
 srOnly ∷ ClassName
-srOnly = ClassName "hidden"
+srOnly = ClassName "sr-only"

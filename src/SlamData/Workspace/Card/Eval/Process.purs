@@ -23,6 +23,7 @@ module SlamData.Workspace.Card.Eval.Process
 
 import SlamData.Prelude
 import Control.Monad.RWS as RWS
+import Control.Monad.State as State
 import Control.Monad.State.Class (class MonadState)
 import Control.Monad.Writer.Class (class MonadWriter)
 import Data.Foldable as F
@@ -37,7 +38,6 @@ import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port.VarMap as VM
 import SqlSquared as Sql
-import Utils.Path as PU
 
 -- | Process elaboration is a transformation from a SQL^2 Query to a
 -- | SQL^2 Module based on a VarMap. The reason we do this is because a Query
@@ -83,7 +83,6 @@ type RewriteState =
   , bindings ∷ L.List (String × Sql.Sql)
   , aliases ∷ Map.Map (CID.CardId × String) String
   , freeVars ∷ Map.Map String (L.List String)
-  , isProcess ∷ Boolean
   }
 
 type RewriteEnv =
@@ -111,39 +110,67 @@ initialState =
   , bindings: mempty
   , aliases: mempty
   , freeVars: mempty
-  , isProcess: false
   }
 
 elaborate
   ∷ ImportBaseDir
+  → ImportBaseDir
   → CID.CardId
   → VM.VarMap
   → Sql.SqlQuery
   → Path.FileName × Either Sql.SqlQuery Sql.SqlModule
-elaborate path currentSource varMap query =
+elaborate viewPath modPath currentSource varMap query =
   case RWS.runRWS go (initialEnv path varMap) initialState of
     RWS.RWSResult st res _ →
       Path.FileName selfName × res
 
   where
+  isProcess ∷ Boolean
+  isProcess = checkIsProcess varMap query
+
+  path ∷ ImportBaseDir
+  path = if isProcess then modPath else viewPath
+
   selfName ∷ String
   selfName = processIdent currentSource
 
   go ∷ RewriteM (Either Sql.SqlQuery Sql.SqlModule)
   go = do
-    -- TODO: Swithc for processes
-    -- Sql.Query decls sql ← elaborateQuery' query
-    -- st ← RWS.get
-    -- vars ← (processVars <<< _.varMap) =<< ask
-    -- pure if st.isProcess
-    --   then Right $ sqlModule
-    --     (st.decls <> decls)
-    --     selfName
-    --     (uncurry VM.uniqueVarName ∘ snd <$> vars)
-    --     st.bindings
-    --     sql
-    --   else Left $ Sql.Query decls sql
-    Left <$> elaborateQuery' query
+    Sql.Query decls sql ← elaborateQuery' query
+    st ← RWS.get
+    vars ← (processVars <<< _.varMap) =<< ask
+    pure if isProcess
+      then Right $ sqlModule
+        (st.decls <> decls)
+        selfName
+        (uncurry VM.uniqueVarName ∘ snd <$> vars)
+        st.bindings
+        sql
+      else Left $ Sql.Query decls sql
+
+checkIsProcess ∷ VM.VarMap → Sql.SqlQuery → Boolean
+checkIsProcess varMap (Sql.Query decls expr) =
+  F.or (L.Cons (goExpr Set.empty expr) $ map goDecl decls)
+  where
+  goDecl = case _ of
+    Sql.Import a → false
+    Sql.FunctionDecl { ident, args, body } →
+      goExpr (Set.fromFoldable args) body
+
+  goExpr scope = flip State.execState false ∘ cataM case _ of
+    Sql.Vari vari → checkVari scope vari
+    Sql.Select { relations: Just (Sql.VariRelation { vari }) } → checkVari scope vari
+    _ → pure unit
+
+  checkVari scope vari
+    | Set.member vari scope = pure unit
+    | otherwise = for_ (VM.lookup (VM.Var vari) varMap) checkValue
+
+  checkValue = case _ of
+    VM.Expr _ → State.put true
+    VM.Resource (VM.Process _ _ _) → State.put true
+    VM.Union u → for_ u \ptr → for_ (VM.lookupValue ptr varMap) checkValue
+    _ → pure unit
 
 elaborateQuery
   ∷ ImportBaseDir
@@ -205,7 +232,7 @@ elaborateExpr = cataM case _ of
     relations ← case unwrap subst of
       Sql.Vari vari' →
         pure $ Just $ Sql.VariRelation { vari: vari', alias }
-      Sql.Ident i | not (F.any (eq i ∘ fst) bindings), Just path ← PU.parseAnyFilePath i →
+      Sql.Ident i | not (F.any (eq i ∘ fst) bindings), Just path ← parseTablePath i →
         pure $ Just $ Sql.TableRelation { path, alias }
       expr → do
         aliasName ← maybe tmpName pure alias
@@ -223,6 +250,9 @@ elaborateExpr = cataM case _ of
       Just freeVars → pure (map Sql.vari freeVars <> args)
       Nothing → pure args
     pure $ embed $ Sql.InvokeFunction { name, args: args' }
+
+  parseTablePath ∷ String → Maybe (Either (Path.AbsFile Path.Unsandboxed) (Path.RelFile Path.Unsandboxed))
+  parseTablePath str = Left <$> Path.parseAbsFile str <|> Right <$> Path.parseRelFile str
 
 elaborateVar ∷ ∀ m. Elaborate m (String → m Sql.Sql)
 elaborateVar vari = do
@@ -247,7 +277,6 @@ substPtr ptr@(VM.Var vari × source) = do
 
   substExpr ∷ Sql.Sql → m Sql.Sql
   substExpr sql = do
-    activateProcess
     { varMap } ← ask
     case VM.lookupMark ptr varMap of
       Just mark → pure $ Sql.vari $ VM.uniqueVarName vari mark
@@ -261,7 +290,6 @@ substPtr ptr@(VM.Var vari × source) = do
       { shouldAlias } ← ask
       if shouldAlias
         then do
-          activateProcess
           filePath' ← basePath filePath
           substProcessVar source filePath' localVarMap vari
         else defaultSub vari
@@ -355,9 +383,6 @@ addAlias source old sql = do
 
 addProcessImport ∷ ∀ m a b c. MonadState RewriteState m ⇒ Path.Path a b c → m Unit
 addProcessImport dir = RWS.modify \st → st { decls = L.Cons (Sql.Import (Path.unsafePrintPath dir)) st.decls }
-
-activateProcess ∷ ∀ m. MonadState RewriteState m ⇒ m Unit
-activateProcess = RWS.modify _ { isProcess = true }
 
 addFreeVars ∷ ∀ m. MonadState RewriteState m ⇒ String → L.List String → m Unit
 addFreeVars key value = RWS.modify \st → st { freeVars = Map.insert key value st.freeVars }

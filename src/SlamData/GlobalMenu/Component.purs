@@ -141,18 +141,25 @@ render state =
 
     userInfo =
       flip foldMap state.email \e →
-        [ HH.div [ HP.class_ $ HH.ClassName "user-info" ] [ HH.text e ] ]
+        [ HH.div
+          [ HP.class_ $ HH.ClassName "user-info" ]
+          [ HH.span_ [ HH.text e ] ]
+        ]
 
     adminMenu =
-      [ HH.div
-          [ HP.classes [ container, HH.ClassName "sign-in-menu-container" ] ] $
-          [ HH.button
-              [ HP.class_ $ HH.ClassName "sign-in-menu-button "
-              , HE.onClick $ stopProp $ AdminUIClicked
-              ]
-              [ I.settingsCog, HH.text "Settings" ]
-          ]
-      ]
+      if state.loggedIn
+      then
+        [ HH.div
+            [ HP.classes [ container, HH.ClassName "sign-in-menu-container" ] ] $
+            [ HH.button
+                [ HP.class_ $ HH.ClassName "sign-in-menu-button "
+                , HE.onClick $ stopProp $ AdminUIClicked
+                ]
+                [ I.settingsCog, HH.text "Settings" ]
+            ]
+        ]
+      else
+        []
 
     signInMenu =
       case state.providers, state.email of
@@ -197,25 +204,39 @@ render state =
           if state.menuOpen == Just HelpMenu then
             [ submenu
               [ hitem
-                  [ HP.href "http://docs.slamdata.com/en/v4.2/users-guide.html" ]
+                  [ HP.href "http://docs.slamdata.com/en/v4.2/users-guide.html"
+                  , HP.target "_blank"
+                  ]
                   [ HH.text "User guide" ]
               , hitem
-                  [ HP.href "http://docs.slamdata.com/en/v4.2/administration-guide.html" ]
+                  [ HP.href "http://docs.slamdata.com/en/v4.2/administration-guide.html"
+                  , HP.target "_blank"
+                  ]
                   [ HH.text "Administrator guide" ]
               , hitem
-                  [ HP.href "http://docs.slamdata.com/en/v4.2/developers-guide.html" ]
+                  [ HP.href "http://docs.slamdata.com/en/v4.2/developers-guide.html"
+                  , HP.target "_blank"
+                  ]
                   [ HH.text "Developer guide" ]
               , hitem
-                  [ HP.href "http://docs.slamdata.com/en/v4.2/helpful-tips.html" ]
+                  [ HP.href "http://docs.slamdata.com/en/v4.2/helpful-tips.html"
+                  , HP.target "_blank"
+                  ]
                   [ HH.text "Helpful tips" ]
               , hitem
-                  [ HP.href "http://docs.slamdata.com/en/v4.2/sql-squared-reference.html" ]
+                  [ HP.href "http://docs.slamdata.com/en/v4.2/sql-squared-reference.html"
+                  , HP.target "_blank"
+                  ]
                   [ HH.text "SQL² reference" ]
               , hitem
-                  [ HP.href "http://docs.slamdata.com/en/v4.2/slamdown-reference.html" ]
+                  [ HP.href "http://docs.slamdata.com/en/v4.2/slamdown-reference.html"
+                  , HP.target "_blank"
+                  ]
                   [ HH.text "SlamDown reference" ]
               , hitem
-                  [ HP.href "http://docs.slamdata.com/en/v4.2/troubleshooting-faq.html" ]
+                  [ HP.href "http://docs.slamdata.com/en/v4.2/troubleshooting-faq.html"
+                  , HP.target "_blank"
+                  ]
                   [ HH.text "Troubleshooting FAQ" ]
               , HH.li [ submenuItem ]
                   [ HH.button

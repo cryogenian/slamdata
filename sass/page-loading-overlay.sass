@@ -1,0 +1,37 @@
+@import variables
+
+
+// Some base styles
+html
+  font-size: 62.5%
+  box-sizing: border-box
+
+
+*, *::before, *::after
+  box-sizing: inherit
+
+
+@import spinner
+
+
+#page-loading-overlay
+  left: 0
+  right: 0
+  background: $slamdata-bg
+  color: #fff
+  transition: opacity 275ms ease-out
+
+  &.fade-overlay, &.hide-overlay
+    pointer-events: all
+
+  &.fade-overlay
+    opacity: 0
+
+  &.hide-overlay
+    display: none
+
+    .sd-spinner-lg *
+      animation-play-state: paused
+
+  .sd-spinner-lg .indication-bar
+    border-top-color: $slamdata-orange

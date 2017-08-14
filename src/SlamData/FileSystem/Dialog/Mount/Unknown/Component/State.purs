@@ -14,21 +14,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.FileSystem.Dialog.Mount.Component.Query where
+module SlamData.FileSystem.Dialog.Mount.Unknown.Component.State where
 
 import SlamData.Prelude
 
-import DOM.Event.Types (Event)
+import Data.String as Str
+import Quasar.Mount.Unknown as QMU
 
-import SlamData.FileSystem.Dialog.Mount.Component.State (State)
-import SlamData.FileSystem.Dialog.Mount.Scheme (Scheme)
-import SlamData.FileSystem.Resource (Mount)
+type State = QMU.Config
 
-data Query a
-  = ModifyState (State -> State) a
-  | SelectScheme (Maybe Scheme) a
-  | RaiseDismiss a
-  | Save (Maybe Mount -> a)
-  | PreventDefaultAndNotifySave Event a
-  | Validate a
-  | RaiseMountDelete a
+initialState ∷ State
+initialState =
+  { mountType: ""
+  , connectionUri: ""
+  }
+
+fromConfig ∷ QMU.Config → State
+fromConfig = id
+
+toConfig ∷ State → Either String QMU.Config
+toConfig st@{ mountType, connectionUri } = do
+  when (Str.trim mountType == "") $ Left "Please enter a mount type"
+  when (Str.trim connectionUri == "") $ Left "Please enter a connection URI"
+  Right st

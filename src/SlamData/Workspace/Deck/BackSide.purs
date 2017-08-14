@@ -32,6 +32,7 @@ data BackAction
   | Embed
   | Publish
   | DeleteDeck
+  | Theme
   | Mirror
   | Wrap
   | WrapChoice CT.CardType
@@ -71,6 +72,7 @@ allBackActions isAdvanced =
   ⊕ [ Embed
     , Publish
     , DeleteDeck
+    , Theme
     , Mirror
     , Wrap
     , Unwrap
@@ -116,6 +118,8 @@ toActionListAction unwrappable activeCard cardDefs action =
       I.IconHTML I.cardAndDeckActionsEmbedDeck
     Publish →
       I.IconHTML I.cardAndDeckActionsPublishDeck
+    Theme →
+      I.IconHTML I.theme
     Mirror →
       I.IconHTML I.cardAndDeckActionsMirrorDeck
     Wrap →
@@ -140,6 +144,7 @@ toActionListAction unwrappable activeCard cardDefs action =
     Unwrap → "Collapse"
     Unshare → "Unshare deck"
     WrapChoice cty → CT.name cty
+    Theme → "Theme workspace"
 
   description = name
 

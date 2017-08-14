@@ -83,7 +83,7 @@ tests ∷ SlamFeature Unit
 tests = do
   setupScenario (pure unit) "Launch SlamData" noIssues do
     Interact.launchSlamData
-    Log.successMsg "Ok, launched SlamData"
+    Log.successMsg "** Ok, launched SlamData **"
 
   setupScenario (pure unit) "Mount test database" noIssues do
     connector ← getConnector
@@ -93,7 +93,7 @@ tests = do
       Couchbase → Interact.setupCouchbase
       Marklogic → Interact.setupMarklogic
       _ → pure unit
-    Log.successMsg "Ok, mounted test database"
+    Log.successMsg "** Ok, mounted test database **"
 
   setupScenario
     (Interact.deleteFileInTestFolder "Untitled Workspace.slam")
@@ -108,11 +108,11 @@ tests = do
       Interact.dismissHint
       Interact.flipDeck
       Interact.skipGuide
-      Log.successMsg "Ok, skipped guides and dismiss hints"
+      Log.successMsg "** Ok, skipped guides and dismiss hints **"
 
---  File.test
+  File.test
   Search.test
---  Markdown.test
+  Markdown.test
   FlexibleVisualization.test
   Cache.test
   FlipDeck.test

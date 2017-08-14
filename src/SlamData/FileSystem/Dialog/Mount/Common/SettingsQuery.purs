@@ -18,16 +18,24 @@ module SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery where
 
 import SlamData.Prelude
 
-import Quasar.Error (QError)
+import Halogen as H
+import Halogen.Component.Utils as HCU
 
-import SlamData.FileSystem.Resource (Mount)
+data SettingsQuery s a = ModifyState (s → s) a
 
-import Utils.Path (DirPath)
+onModify ∷ ∀ s a. (s → s) → SettingsQuery s a → SettingsQuery s a
+onModify f (ModifyState g a) = ModifyState (f ∘ g) a
 
-data SettingsQuery s a
-  = ModifyState (s -> s) a
-  | Validate (Maybe String -> a)
-  | Submit DirPath String (Either QError Mount -> a)
+data SettingsMessage a = Modified (Either String a)
 
-data SettingsMessage
-  = Modified
+derive instance functorSettingsMessage ∷ Functor SettingsMessage
+
+eval
+  ∷ ∀ s a g i m
+  . (s → Either String a)
+  → SettingsQuery s
+  ~> H.HalogenM s (SettingsQuery s) g i (SettingsMessage a) m
+eval f (ModifyState g next) = do
+  st ← HCU.modify g
+  H.raise $ Modified (f st)
+  pure next

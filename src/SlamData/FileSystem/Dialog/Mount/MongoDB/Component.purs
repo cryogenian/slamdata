@@ -15,44 +15,40 @@ limitations under the License.
 -}
 
 module SlamData.FileSystem.Dialog.Mount.MongoDB.Component
-  ( comp
+  ( component
   , Query
-  , module SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery
+  , module Q
   , module S
   ) where
 
 import SlamData.Prelude
 
-import Data.Path.Pathy (dir, (</>))
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Quasar.Mount as QM
+import Quasar.Mount.MongoDB as QMM
 import SlamData.FileSystem.Dialog.Mount.Common.Render as MCR
-import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..), SettingsMessage(..))
+import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery as Q
 import SlamData.FileSystem.Dialog.Mount.Common.State as MCS
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as S
-import SlamData.FileSystem.Resource (Mount(..))
 import SlamData.Monad (Slam)
-import SlamData.Quasar.Error as QE
-import SlamData.Quasar.Mount as API
 import SlamData.Render.ClassName as CN
 
-type Query = SettingsQuery S.State
+type Query = Q.SettingsQuery S.State
+type Message = Q.SettingsMessage QMM.Config
 
-comp ∷ S.State → H.Component HH.HTML Query Unit SettingsMessage Slam
-comp initialState =
+component ∷ H.Component HH.HTML Query (Maybe QMM.Config) Message Slam
+component =
   H.component
-    { initialState: const initialState
+    { initialState: maybe S.initialState S.fromConfig
     , render
-    , eval
+    , eval: Q.eval (MCS.vToE ∘ S.toConfig) ∘ Q.onModify S.processState
     , receiver: const Nothing
     }
 
 render ∷ S.State → H.ComponentHTML Query
 render state =
-  HH.div
-    [ HP.class_ CN.mountMongoDB ]
+  HH.div_
     [ MCR.section "Server(s)" [ MCR.hosts state S._hosts ]
     , MCR.section "Authentication"
         [ HH.div
@@ -60,26 +56,8 @@ render state =
             [ MCR.label "Username" [ MCR.input state S._user [] ]
             , MCR.label "Password" [ MCR.input state S._password [ HP.type_ HP.InputPassword ] ]
             ]
-        , HH.div
-            [ HP.class_ CN.mountPath ]
+        , HH.div_
             [ MCR.label "Database" [ MCR.input state S._path [] ] ]
         ]
     , MCR.section "Settings" [ MCR.propList S._props state ]
     ]
-
-eval ∷ Query ~> H.ComponentDSL S.State Query SettingsMessage Slam
-eval = case _ of
-  ModifyState f next → do
-    H.modify (S.processState <<< f)
-    H.raise Modified
-    pure next
-  Validate k →
-    k ∘ either Just (const Nothing) ∘ MCS.vToE ∘ S.toConfig <$> H.get
-  Submit parent name k →
-    k <$> runExceptT do
-      let
-        path = parent </> dir name
-      st ← lift H.get
-      config ← except $ lmap QE.msgToQError $ MCS.vToE $ S.toConfig st
-      ExceptT $ API.saveMount (Left path) (QM.MongoDBConfig config)
-      pure $ Database path

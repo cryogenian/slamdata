@@ -105,7 +105,7 @@
 
 .sd-deck-frame-controls
   display: flex
-  flex-flow: row-reverse nowrap
+  flex-flow: row nowrap
   justify-content: space-between
   align-items: center
   position: absolute
@@ -114,15 +114,9 @@
   right: 0
   width: 100%
   height: $grid-size
-  padding: 0 $padding-base-vertical
+  padding: 0 $padding-base-vertical 0 0
   background-color: $frame-controls-bg
   color: $frame-controls-color
-
-  &.sd-grab-deck
-    cursor: grab
-
-    &:active
-      cursor: grabbing
 
   > *
     position: relative
@@ -133,11 +127,16 @@
     &:not(:last-of-type)
       padding-right: $padding-base-vertical
 
+  .sd-grab-deck
+    cursor: grab
+
+    &:active
+      cursor: grabbing
 
   .sd-deck-frame-actions
     display: flex
     flex: 0 0 auto
-    order: -1
+    order: 1
     pointer-events: none
 
     > button
@@ -169,19 +168,24 @@
         font-size: 1.3rem
 
   .sd-deck-name
-    flex: 0 1 auto
+    flex: 1 1 auto
+    appearance: none
     overflow: hidden
+    height: 100%
+    padding-left: $padding-base-vertical
+    border: none
+    background: none
     line-height: 1.8
     font-size: 1.1rem
-    text-align: right
+    text-align: left
     text-overflow: ellipsis
     white-space: nowrap
 
-    &:last-child
-      padding-right: 0
+    &::-moz-focus-inner
+      border: none
 
-    &:empty
-      display: none
+    &:-moz-focusring
+      outline: none
 
 
 .sd-deck

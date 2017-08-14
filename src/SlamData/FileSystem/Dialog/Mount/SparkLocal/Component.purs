@@ -15,61 +15,35 @@ limitations under the License.
 -}
 
 module SlamData.FileSystem.Dialog.Mount.SparkLocal.Component
-  ( comp
+  ( component
   , Query
-  , module SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery
-  , module MCS
+  , module Q
+  , module S
   ) where
 
 import SlamData.Prelude
 
-import Data.Path.Pathy (dir, (</>))
-
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Properties as HP
-
-import Quasar.Mount as QM
-
-import SlamData.Monad (Slam)
+import Quasar.Mount.SparkLocal as QMS
 import SlamData.FileSystem.Dialog.Mount.Common.Render as MCR
-import SlamData.FileSystem.Dialog.Mount.Common.State (_path)
-import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..), SettingsMessage(..))
-import SlamData.FileSystem.Dialog.Mount.SparkLocal.Component.State as MCS
-import SlamData.FileSystem.Resource (Mount(..))
-import SlamData.Quasar.Mount as API
-import SlamData.Quasar.Error as QE
-import SlamData.Render.ClassName as CN
+import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery as Q
+import SlamData.FileSystem.Dialog.Mount.SparkLocal.Component.State as S
+import SlamData.Monad (Slam)
 
-type Query = SettingsQuery MCS.State
+type Query = Q.SettingsQuery S.State
+type Message = Q.SettingsMessage QMS.Config
 
-comp ∷ MCS.State → H.Component HH.HTML Query Unit SettingsMessage Slam
-comp initialState =
+component ∷ H.Component HH.HTML Query (Maybe QMS.Config) Message Slam
+component =
   H.component
-    { initialState: const initialState
+    { initialState: maybe S.initialState S.fromConfig
     , render
-    , eval
+    , eval: Q.eval S.toConfig
     , receiver: const Nothing
     }
 
-render ∷ MCS.State → H.ComponentHTML Query
+render ∷ S.State → H.ComponentHTML Query
 render state =
-  HH.div
-    [ HP.class_ CN.mountSpark ]
-    [ MCR.label "Path" [ MCR.input state _path [] ] ]
-
-eval ∷ Query ~> H.ComponentDSL MCS.State Query SettingsMessage Slam
-eval = case _ of
-  ModifyState f next → do
-    H.modify f
-    H.raise Modified
-    pure next
-  Validate k →
-    k <<< either Just (const Nothing) <<< MCS.toConfig <$> H.get
-  Submit parent name k →
-    k <$> runExceptT do
-      st ← lift H.get
-      config ← except $ lmap QE.msgToQError $ MCS.toConfig st
-      let path = parent </> dir name
-      ExceptT $ API.saveMount (Left path) (QM.SparkLocalConfig config)
-      pure $ Database path
+  HH.div_
+    [ MCR.label "Path" [ MCR.input state id [] ] ]

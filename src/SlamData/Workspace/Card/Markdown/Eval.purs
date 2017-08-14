@@ -18,7 +18,8 @@ module SlamData.Workspace.Card.Markdown.Eval
 
 import SlamData.Prelude
 
-import Control.Monad.Eff.Class (class MonadEff, liftEff)
+import Control.Monad.Eff.Class (class MonadEff)
+import Control.Monad.State.Class (class MonadState, put)
 import Control.Monad.Writer.Class (class MonadTell)
 import Data.Array as A
 import Data.HugeInt as HI
@@ -29,8 +30,8 @@ import Data.List.NonEmpty as NEL
 import Data.Newtype (wrap)
 import Data.NonEmpty ((:|))
 import Data.Path.Pathy ((</>), unsandbox, currentDir)
-import Data.String as S
 import Data.StrMap as SM
+import Data.String as S
 import Matryoshka (project, transAna)
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL)
@@ -39,34 +40,40 @@ import SlamData.SqlSquared.Tagged as SqlT
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.Process as Process
+import SlamData.Workspace.Card.Eval.State as CES
 import SlamData.Workspace.Card.Markdown.Component.State as MDS
 import SlamData.Workspace.Card.Markdown.Error (MarkdownError(..), throwMarkdownError)
+import SlamData.Workspace.Card.Markdown.Interpret (formFieldDefaultValue)
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port.VarMap as VM
 import SqlSquared as Sql
+import SqlSquared.Parser (prettyParse)
 import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Eval as SDE
 import Text.Markdown.SlamDown.Halogen.Component.State as SDH
 import Text.Markdown.SlamDown.Parser as SDP
 import Text.Markdown.SlamDown.Traverse as SDT
-import Text.Parsing.Parser (parseErrorMessage)
 import Utils.Path (DirPath, tmpDir)
 
 evalMarkdownForm
   ∷ ∀ m
   . MonadEff SlamDataEffects m
   ⇒ MonadAsk CEM.CardEnv m
+  ⇒ MonadState CEM.CardState m
   ⇒ Monad m
   ⇒ MD.Model
   → SD.SlamDownP MD.MarkdownExpr
   → Port.VarMap
   → m Port.Out
 evalMarkdownForm model doc varMap = do
-  let inputState = SDH.formStateFromDocument doc
   cardId ← CEM.localCardId
-  thisVarMap ← liftEff $ MDS.formStateToVarMap inputState model
-  let varMap' = SM.fold (\vm k v → VM.insert cardId (VM.Var k) v vm) varMap thisVarMap
+  let
+    inputState = SDH.formStateFromDocument doc
+    outputState = MDS.updateFormState inputState model
+    formVarMap = formFieldDefaultValue <$> outputState
+    varMap' = SM.fold (\vm k v → VM.insert cardId (VM.Var k) v vm) varMap formVarMap
+  put $ Just $ CES.SlamDown outputState
   pure (Port.Variables × varMap')
 
 evalMarkdown
@@ -221,11 +228,16 @@ evalEmbeddedQueries varMap dir =
     → String
     → m (Array EJSON.EJson)
   runQuery field code =
-    let esql = Process.elaborateQuery (unsandbox (currentDir </> tmpDir)) varMap <$> Sql.parseQuery code
-    in case esql of
-      Left error →
-        throwMarkdownError (MarkdownSqlParseError { field, sql: code, error: parseErrorMessage error })
-      Right sql → do
-        { inputs } ← CE.liftQ $ Quasar.compile dir sql urlVarMap
-        CEM.addSources inputs
-        CE.liftQ $ Quasar.queryEJsonVM dir sql urlVarMap
+    let
+      esql =
+        Process.elaborateQuery (unsandbox (currentDir </> tmpDir)) varMap
+          <$> prettyParse Sql.parseQuery code
+    in
+      case esql of
+        Left error →
+          throwMarkdownError (MarkdownSqlParseError { field, sql: code, error: error })
+        Right sql → do
+          let varMap' = VM.unURLVarMapF $ urlVarMap
+          { inputs } ← CE.liftQ $ Quasar.compile dir sql varMap'
+          CEM.addSources inputs
+          CE.liftQ $ Quasar.queryEJsonVM dir sql varMap'

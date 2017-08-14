@@ -17,7 +17,6 @@ limitations under the License.
 module SlamData.Workspace.Legacy where
 
 import SlamData.Prelude
-
 import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.Aff.Future (defer, wait)
 import Control.Monad.Eff.Exception as Exn
@@ -157,6 +156,7 @@ loadGraph path { root } = runExceptT do
         { rootId
         , decks: Map.singleton rootId Current.emptyDeck
         , cards: Map.empty ∷ Map.Map CardId AnyCardModel
+        , theme: Nothing
         }
     Just rootId → do
       _ ← loadDeck rootId
@@ -166,6 +166,7 @@ loadGraph path { root } = runExceptT do
         { rootId
         , decks: decks'
         , cards: cards'
+        , theme: Nothing
         }
 
 loadCompatWorkspace
@@ -191,7 +192,7 @@ pruneLegacyData
   ⇒ DirPath
   → m (Either QE.QError Unit)
 pruneLegacyData path = runExceptT do
-  children ← ExceptT $ liftQuasar (QF.dirMetadata path)
+  children ← ExceptT $ liftQuasar (QF.dirMetadata path Nothing)
   let
     tmpDir = path </> Pathy.dir ".tmp"
     deckDirs = flip foldMap children case _ of

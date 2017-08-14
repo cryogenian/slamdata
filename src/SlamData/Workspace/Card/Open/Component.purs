@@ -31,6 +31,7 @@ import Halogen as H
 import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
+import Quasar.Types (Pagination)
 import SlamData.FileSystem.Resource as R
 import SlamData.GlobalError as GE
 import SlamData.GlobalMenu.Bus as GMB
@@ -94,7 +95,7 @@ renderItem r =
             [ itemGlyph r
             , HH.text (itemName r)
             ]
-        , guard (not isActionable r) $> I.chevronRightSm
+        , guard (not (isLeaf (isRight ∘ R.getPath)) r) $> I.chevronRightSm
         ]
 
 isLeaf ∷ ∀ a. (a → Boolean) → AnyItem a → Boolean
@@ -105,7 +106,13 @@ isLeaf f = case _ of
   Resource r → f r
 
 isActionable ∷ AnyItem' → Boolean
-isActionable = isLeaf (isRight ∘ R.getPath)
+isActionable = isLeaf (isRight ∘ R.getPath) || isResource
+
+isResource ∷ ∀ a. AnyItem a → Boolean
+isResource = case _ of
+  Resource _ → true
+  _ → false
+
 
 itemName ∷ AnyItem' → String
 itemName = case _ of
@@ -209,8 +216,11 @@ columnsComponent =
     , id: map R.getPath
     }
 
+makePagination ∷ Int → Pagination
+makePagination = { offset: _, limit: 250 }
+
 load ∷ AnyPath' × MCR.LoadRequest → DSL (MCR.LoadResponse AnyItem')
-load (path × { filter, requestId }) =
+load (path × { filter, requestId, offset }) =
   case path of
     Root →
       pure
@@ -232,14 +242,15 @@ load (path × { filter, requestId }) =
         , nextOffset: Nothing
         }
     Resource (Left r) → do
-      Quasar.children r >>= case _ of
+      let pagination = makePagination (fromMaybe 0 offset)
+      Quasar.childrenPaginated r (Just pagination) >>= case _ of
         Left err → handleError err $> noResult
         Right rs → do
           let filenameFilter = MCF.mkFilter filter
           pure
             { requestId
             , items: L.fromFoldable (Resource <$> A.filter (filenameFilter ∘ view R._name) rs)
-            , nextOffset: Nothing
+            , nextOffset: if A.length rs < pagination.limit then Nothing else Just $ pagination.offset + pagination.limit
             }
     Resource _ → pure noResult
     Variable v → pure noResult

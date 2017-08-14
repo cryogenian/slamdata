@@ -20,9 +20,7 @@ module SlamData.Workspace.Card.Query.Eval
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.Writer.Class (class MonadTell)
-import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Common as CEC
@@ -30,11 +28,11 @@ import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Query.Error (QueryError(..), throwQueryError)
 import SqlSquared as Sql
+import SqlSquared.Parser (prettyParse)
 
 evalQuery
   ∷ ∀ m v
-  . MonadAff SlamDataEffects m
-  ⇒ MonadAsk CEM.CardEnv m
+  . MonadAsk CEM.CardEnv m
   ⇒ MonadThrow (Variant (query ∷ QueryError, qerror ∷ CE.QError | v)) m
   ⇒ MonadTell CEM.CardLog m
   ⇒ QuasarDSL m
@@ -43,7 +41,7 @@ evalQuery
   → Port.VarMap
   → m Port.Out
 evalQuery sqlInput varMap = do
-  sql ← queryError QueryParseError $ Sql.parseQuery sqlInput
+  sql ← queryError QueryParseError $ prettyParse Sql.parseQuery sqlInput
   resource ← CEC.localEvalResource sql varMap >>= queryError QueryCompileError
   CEM.resourceOut resource
 

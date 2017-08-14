@@ -37,6 +37,7 @@ import Halogen.HTML.Properties as HP
 import Quasar.Advanced.QuasarAF as QA
 import SlamData.GlobalError as GE
 import SlamData.Monad (Slam)
+import SlamData.Quasar.EJsonMeta as EJM
 import SlamData.Render.Icon as I
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.AccessType (AccessType(..))
@@ -62,6 +63,7 @@ import SlamData.Workspace.Card.Setups.Viz.Error.Static as CFISE
 import SlamData.Workspace.Card.Table.Error as CTE
 import SlamData.Workspace.Card.Variables.Error as CVE
 import SlamData.Workspace.Card.Viz.Error as VE
+import SlamData.Workspace.Card.Variables.Error.TypeMismatchError (TypeMismatchError(TypeMismatchError))
 import Text.Parsing.Parser (parseErrorMessage)
 import Utils (prettyJson)
 import Utils.Path as PU
@@ -211,11 +213,12 @@ queryErrorMessage { accessType, expanded } err =
           [ pure $ errorTitle [ HH.text "An error occurred when retrieving the query result." ]
           , renderMore qErr
           ]
-    -- TODO: add details
     CQE.QueryParseError pErr →
       HH.div_
         $ join
-          [ pure $ errorTitle $ [ HH.text "An error occured while parsing the query." ]
+          [ pure $ errorTitle [ HH.text "An error occured while parsing the query." ]
+          , pure $ HH.pre_ [ HH.text pErr ]
+          , guard (accessType == Editable) $> HH.p_ [ HH.text "Go back to the previous card to fix this error." ]
           ]
   renderMore = case _ of
     QA.ErrorMessage {title, message, raw} →
@@ -335,10 +338,8 @@ markdownErrorMessage { accessType, expanded } err =
               , pure $ HH.p_
                   [ HH.text "The field "
                   , HH.code_ [ HH.text fieldName ]
-                  , HH.text " has the query:"
+                  , HH.text " failed to parse with the following error:"
                   ]
-              , pure $ HH.pre_ [ HH.text sql ]
-              , pure $ HH.p_ [ HH.text "Which failed to parse with the following error:" ]
               , pure $ HH.pre_ [ HH.text error ]
               , guard (accessType == Editable)
                 $> HH.p_ [ HH.text "Go back to the previous card and edit the query to fix this error." ]
@@ -815,23 +816,68 @@ variablesErrorMessage { accessType, expanded } err =
           , HH.ul_ $ map (\msg → HH.li_ [ renderError msg ]) (A.fromFoldable nel)
           ]
   renderError = case _ of
-    CVE.DefaultValueError fieldName err' →
+    CVE.DefaultValueError fieldName (Left parseError) →
       HH.div_
         [ HH.p_
             [ HH.text "The default value for the variable "
             , HH.code_ [ HH.text (show (unwrap fieldName)) ]
             , HH.text " failed to parse:"
             ]
-        , HH.pre_ [ HH.text (unwrap err') ]
+        , HH.pre_ [ HH.text (unwrap parseError) ]
         ]
-    CVE.URLValueError fieldName err' →
+    CVE.DefaultValueError fieldName (Right (TypeMismatchError typeMismatchError)) →
+      HH.div_
+        [ HH.p_
+            [ HH.text "The default value for the variable "
+            , HH.code_ [ HH.text (show (unwrap fieldName)) ]
+            , HH.text " has the wrong type:"
+            ]
+        , HH.p_
+            $ [ HH.text "Expected " ]
+            <> (renderList
+                 [ HH.text ", " ]
+                 [ HH.text " or "]
+                 (pure ∘ renderEJsonMeta <$> typeMismatchError.expected))
+            <> [ HH.text ", but "
+               , HH.code_ [ HH.text typeMismatchError.sql ]
+               , HH.text " is "
+               , HH.code_ [ HH.text $ EJM.printEJsonMeta typeMismatchError.actual ]
+               ]
+        ]
+    CVE.URLValueError fieldName (Left parseError) →
       HH.div_
         [ HH.p_
             [ HH.text "The URL-specified value for the variable "
             , HH.code_ [ HH.text (show (unwrap fieldName)) ]
             , HH.text " failed to parse:"
             ]
-        , HH.pre_ [ HH.text (unwrap err') ]
+        , HH.pre_ [ HH.text (unwrap parseError) ]
+        , HH.p_
+            [ HH.text "This may be due to the value not being encoded as "
+            , HH.a
+                [ HP.href "https://github.com/quasar-analytics/quasar#examples"]
+                [ HH.text "SQL²" ]
+            , HH.text "."
+            ]
+        ]
+    CVE.URLValueError fieldName (Right (TypeMismatchError typeMismatchError)) →
+      HH.div_
+        [ HH.p_
+            [ HH.text "The URL-specified value for the variable "
+            , HH.code_ [ HH.text (show (unwrap fieldName)) ]
+            , HH.text " has the wrong type:"
+            ]
+        , HH.p_
+            $ [ HH.text "Expected " ]
+            <> (renderList
+                 [ HH.text ", " ]
+                 [ HH.text " or "]
+                 (pure ∘ renderEJsonMeta <$> typeMismatchError.expected))
+            <> [ HH.text ", but "
+               , HH.code_ [ HH.text typeMismatchError.sql ]
+               , HH.text " is "
+               , HH.code_ [ HH.text $ EJM.printEJsonMeta typeMismatchError.actual ]
+               ]
         ]
     CVE.DuplicateVariableError fieldName →
       HH.p_
@@ -888,3 +934,6 @@ renderList sep connective xs = case NEL.init xs of
   L.Nil → NEL.head xs
   x : L.Nil → x <> connective <> NEL.last xs
   init → intercalate sep init <> sep <> connective <> NEL.last xs
+
+renderEJsonMeta ∷ EJM.EJsonMeta → HTML
+renderEJsonMeta = HH.code_ ∘ pure ∘ HH.text ∘ EJM.printEJsonMeta

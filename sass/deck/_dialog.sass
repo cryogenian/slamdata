@@ -112,22 +112,15 @@
     padding: 0
 
 
-.sd-dialog-loading
-  text-align: center
-
-  > .sd-icon
-    font-size: 2.8rem
 
 
 .dialog-container .dialog.license-dialog
-  $sd-orange: #ff8600
-  $bg: #161616
   $col: #fff
   max-width: 38.6rem
   width: auto
   min-width: auto
   padding: $padding-base-horizontal * 2
-  background-color: $bg
+  background-color: $slamdata-bg
   color: $col
 
   p
@@ -167,17 +160,17 @@
   .btn
     padding-top: 0.6em
     padding-bottom: 0.8em
-    background: $sd-orange
-    border: 0.1rem solid $sd-orange
+    background: $slamdata-orange
+    border: 0.1rem solid $slamdata-orange
     color: $col
-    text-shadow: 0 -0.1rem 0 darken($sd-orange, 7.5%)
+    text-shadow: 0 -0.1rem 0 darken($slamdata-orange, 7.5%)
     transition-property: background-color, border-color, color
     transition-duration: 200ms
     transition-timing-function: ease-out
 
     &:hover, &:active
-      background-color: $sd-orange
-      background-image: linear-gradient(to bottom, darken($sd-orange, 5%), darken($sd-orange, 2.5%))
+      background-color: $slamdata-orange
+      background-image: linear-gradient(to bottom, darken($slamdata-orange, 5%), darken($slamdata-orange, 2.5%))
       color: $col
 
     &:active

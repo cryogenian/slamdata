@@ -25,13 +25,14 @@ import Control.Monad.State (class MonadState, get, put)
 import Control.Monad.Writer.Class (class MonadTell)
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class ParQuasarDSL)
-import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Common as CEC
 import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Port.VarMap as VM
 import SlamData.Workspace.Card.Search.Error (SearchError(..), throwSearchError)
 import SlamData.Workspace.Card.Search.Interpret as Search
+import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Common.Eval (analyze)
 import SqlSquared as Sql
 import Text.SlamSearch as SS
@@ -60,21 +61,14 @@ evalSearch queryText port = do
   records × axes ← analyze resource =<< get
   let
     state' = CEM.Analysis { resource, records, axes }
-    fields = QQ.allFields records
-    -- TODO: Switch for processes
-    -- sql = Search.searchSql resourceVar Search.defaultFilterVar Search.defaultDistinctVar
-    -- filter = VM.Expr $ Search.filterSql fields searchQuery
-    -- isDistinct = VM.Expr $ Sql.bool $ Search.isDistinct searchQuery
-    -- varMap' =
-    --   varMap
-    --     # VM.insert cardId Search.defaultFilterVar filter
-    --     # VM.insert cardId Search.defaultDistinctVar isDistinct
-    sql =
-      Search.searchSql resourceVar
-        (Search.projections fields)
-        (Search.filterSql fields searchQuery)
-        (Search.isDistinct searchQuery)
-    varMap' = varMap
+    fields = Ax.axesToFields axes
+    sql = Search.searchSql resourceVar Search.defaultFilterVar Search.defaultDistinctVar
+    filter = VM.Expr $ Search.filterSql fields searchQuery
+    isDistinct = VM.Expr $ Sql.bool $ Search.isDistinct searchQuery
+    varMap' =
+      varMap
+        # VM.insert cardId Search.defaultFilterVar filter
+        # VM.insert cardId Search.defaultDistinctVar isDistinct
   put $ Just state'
   resource' ← CEC.localEvalResource (Sql.Query mempty sql) varMap' >>= searchError SearchQueryCompilationError
   pure $ Port.resourceOut cardId resource' varMap'

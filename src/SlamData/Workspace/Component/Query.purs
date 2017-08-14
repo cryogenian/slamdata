@@ -16,6 +16,8 @@ limitations under the License.
 
 module SlamData.Workspace.Component.Query where
 
+import SlamData.Prelude
+
 import DOM.Event.Types (MouseEvent)
 import Data.List (List)
 import Halogen as H
@@ -48,5 +50,6 @@ data Query a
   | HandleNotification N.Action a
   | HandleSignInMessage SignInMessage a
   | HandleWorkspace Wiring.WorkspaceMessage a
-  | HandleLicenseProblem LicenseProblem a
+  | HandleLicenseProblem (Maybe LicenseProblem) a
   | HandleDeck Wiring.DeckMessage a
+  | ResetTheme a

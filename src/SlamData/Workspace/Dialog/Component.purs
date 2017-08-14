@@ -41,9 +41,10 @@ import SlamData.Workspace.Dialog.Export.Component as Export
 import SlamData.Workspace.Dialog.Reason.Component as Reason
 import SlamData.Workspace.Dialog.Rename.Component as Rename
 import SlamData.Workspace.Dialog.Share.Component as Share
+import SlamData.Workspace.Dialog.Theme.Component as Theme
 import SlamData.Workspace.Dialog.Unshare.Component as Unshare
 import SlamData.Workspace.Dialog.VizUnavailable.Component as VizUnavailable
-import SlamData.Dialog.License (advancedLicenseExpired, advancedTrialLicenseExpired, licenseInvalid)
+-- import SlamData.Dialog.License (advancedLicenseExpired, advancedTrialLicenseExpired, licenseInvalid)
 import SlamData.Monad (Slam)
 import SlamData.Render.ClassName as CN
 import SlamData.Workspace.Deck.Options (DeckOptions)
@@ -62,8 +63,9 @@ data Message
   = Dismissed
   | Confirm DeckOptions Dialog Boolean
 
-type ChildQuery =
-  Rename.Query
+type ChildQuery
+  = Rename.Query
+  ⨁ Theme.Query
   ⨁ Error.Query
   ⨁ Confirm.Query
   ⨁ Export.Query
@@ -74,9 +76,9 @@ type ChildQuery =
   ⨁ VizUnavailable.Query
   ⨁ Const Void
 
-
-type ChildSlot =
-  Unit
+type ChildSlot
+  = Unit
+  ⊹ Unit
   ⊹ Unit
   ⊹ Unit
   ⊹ Unit
@@ -121,15 +123,25 @@ render = case _ of
     Rename opts name →
       HH.slot' CP.cp1 unit Rename.component name
         case _ of
-          Rename.Dismiss → Just $ H.action $ Raise Dismissed
-          Rename.Rename name' → Just $ H.action $ Raise (Confirm opts (Rename opts name') true)
+          Rename.Dismiss →
+            Just $ H.action $ Raise Dismissed
+          Rename.Rename name' →
+            Just $ H.action $ Raise (Confirm opts (Rename opts name') true)
+
+    Theme opts theme →
+      HH.slot' CP.cp2 unit Theme.component theme
+        case _ of
+          Theme.Dismiss →
+            Just $ H.action $ Raise Dismissed
+          Theme.Theme maybeTheme →
+            Just $ H.action $ Raise (Confirm opts (Theme opts maybeTheme) true)
 
     Error _ str →
-      HH.slot' CP.cp2 unit Error.nonModalComponent str
+      HH.slot' CP.cp3 unit Error.nonModalComponent str
         \Error.Dismiss → Just $ H.action $ Raise Dismissed
 
     DeleteDeck opts →
-      HH.slot' CP.cp3 unit Confirm.component
+      HH.slot' CP.cp4 unit Confirm.component
         { title: "Delete deck"
         , body: "Are you sure you want to delete this deck?"
         , cancel: "Cancel"
@@ -138,7 +150,7 @@ render = case _ of
         \(Confirm.Confirm bool) → Just $ H.action $ Raise (Confirm opts dlg bool)
 
     Embed _ sharingInput varMaps →
-      HH.slot' CP.cp4 unit Export.component
+      HH.slot' CP.cp5 unit Export.component
         { sharingInput
         , presentingAs: Export.Embed
         , varMaps
@@ -146,7 +158,7 @@ render = case _ of
         \Export.Dismiss → Just $ H.action $ Raise Dismissed
 
     Publish _ sharingInput varMaps →
-      HH.slot' CP.cp5 unit Export.component
+      HH.slot' CP.cp6 unit Export.component
         { sharingInput
         , presentingAs: Export.Publish
         , varMaps
@@ -154,15 +166,15 @@ render = case _ of
         \Export.Dismiss → Just $ H.action $ Raise Dismissed
 
     Share _ sharingInput →
-      HH.slot' CP.cp6 unit Share.component sharingInput
+      HH.slot' CP.cp7 unit Share.component sharingInput
         \Share.Dismiss → Just $ H.action $ Raise Dismissed
 
     Unshare _ sharingInput →
-      HH.slot' CP.cp7 unit Unshare.component sharingInput
+      HH.slot' CP.cp8 unit Unshare.component sharingInput
         \Unshare.Dismiss → Just $ H.action $ Raise Dismissed
 
     Reason _ attemptedCardType reason cardPaths →
-      HH.slot' CP.cp8 unit Reason.component
+      HH.slot' CP.cp9 unit Reason.component
         { attemptedCardType
         , reason
         , cardPaths
@@ -170,16 +182,16 @@ render = case _ of
         \Reason.Dismiss → Just $ H.action $ Raise Dismissed
 
     VizUnavailable inp →
-      HH.slot' CP.cp9 unit VizUnavailable.component inp
+      HH.slot' CP.cp10 unit VizUnavailable.component inp
         \_ → Just $ H.action $ Raise Dismissed
 
     LicenseProblem (License.Expired licenseType) →
       case licenseType of
-        QAT.Advanced → advancedLicenseExpired
-        QAT.AdvancedTrial → advancedTrialLicenseExpired
+        QAT.Advanced → HH.text ""
+        QAT.AdvancedTrial → HH.text ""
 
     LicenseProblem License.Invalid →
-      licenseInvalid
+      HH.text ""
 
 eval ∷ Query ~> DSL
 eval = case _ of

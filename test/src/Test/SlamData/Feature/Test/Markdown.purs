@@ -208,8 +208,7 @@ test = do
 
   mdScenario "Filter query results by changing field values"
     (noIssues
-      { mongo = Just "https://github.com/slamdata/slamdata/issues/1512"
-      , couchbase = Just "CB: expecting 8 results but couchbase is getting 7" })
+      { couchbase = Just "CB: expecting 8 results but couchbase is getting 7" })
     do
     Interact.insertMdCardInFirstDeck
     Interact.provideMdInLastMdCard olympicsMarkdown

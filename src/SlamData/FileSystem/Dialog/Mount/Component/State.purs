@@ -18,141 +18,88 @@ module SlamData.FileSystem.Dialog.Mount.Component.State where
 
 import SlamData.Prelude
 
-import Data.Lens (Lens', lens)
+import Data.Lens (Prism', is, preview, prism')
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.String as String
-
-import SlamData.FileSystem.Dialog.Mount.Scheme as MS
-import SlamData.FileSystem.Dialog.Mount.Couchbase.Component.State as Couchbase
-import SlamData.FileSystem.Dialog.Mount.MarkLogic.Component.State as MarkLogic
-import SlamData.FileSystem.Dialog.Mount.Module.Component.State as Module
-import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MongoDB
-import SlamData.FileSystem.Dialog.Mount.SparkFTP.Component.State as SparkFTP
-import SlamData.FileSystem.Dialog.Mount.SparkHDFS.Component.State as SparkHDFS
-import SlamData.FileSystem.Dialog.Mount.SparkLocal.Component.State as SparkLocal
-import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
-
+import Quasar.Mount as QM
+import Quasar.Mount.Type as QMT
+import Quasar.Types (AnyPath)
 import Utils.Path (DirPath)
-
-type State =
-  { new ∷ Boolean
-  , parent ∷ Maybe DirPath
-  , name ∷ Maybe String
-  , message ∷ Maybe String
-  , originalName :: Maybe String
-  , saving ∷ Boolean
-  , unMounting ∷ Boolean
-  , settings ∷ Maybe MountSettings
-  }
 
 data Input
   = New { parent ∷ DirPath }
-  | Edit { parent ∷ Maybe DirPath, name ∷ Maybe String, settings ∷  MountSettings }
+  | Edit { path ∷ AnyPath, mount ∷ QM.MountConfig, fromRoot ∷ Boolean }
   | Root
 
-data MountSettings
-  = MongoDB MongoDB.State
-  | SQL2 SQL2.State
-  | Module Module.State
-  | Couchbase Couchbase.State
-  | MarkLogic MarkLogic.State
-  | SparkHDFS SparkHDFS.State
-  | SparkFTP SparkFTP.State
-  | SparkLocal SparkLocal.State
+_New ∷ Prism' Input { parent ∷ DirPath }
+_New = prism' New case _ of
+  New a → Just a
+  _ → Nothing
 
-initialSettings ∷ MS.Scheme → MountSettings
-initialSettings = case _ of
-  MS.MongoDB → MongoDB MongoDB.initialState
-  MS.SQL2 → SQL2 SQL2.initialState
-  MS.Module → Module Module.initialState
-  MS.Couchbase → Couchbase Couchbase.initialState
-  MS.MarkLogic → MarkLogic MarkLogic.initialState
-  MS.SparkFTP → SparkFTP SparkFTP.initialState
-  MS.SparkHDFS → SparkHDFS SparkHDFS.initialState
-  MS.SparkLocal → SparkLocal SparkLocal.initialState
+_Edit ∷ Prism' Input { path ∷ AnyPath, mount ∷ QM.MountConfig, fromRoot ∷ Boolean }
+_Edit = prism' Edit case _ of
+  Edit a → Just a
+  _ → Nothing
 
-_new ∷ Lens' State (Maybe DirPath)
-_new = lens _.parent (_ { parent = _ })
+_Root ∷ Prism' Input Unit
+_Root = prism' (const Root) case _ of
+  Root → Just unit
+  _ → Nothing
 
-_parent ∷ Lens' State (Maybe DirPath)
-_parent = lens _.parent (_ { parent = _ })
+isNew ∷ Input → Boolean
+isNew = case _ of
+  New _ → true
+  _ → false
 
-_name ∷ forall a. Lens' { name ∷ Maybe String | a } (Maybe String)
-_name = lens _.name (_ { name = _ })
+matchSchemeConfig ∷ Input → QMT.MountType → Maybe QM.MountConfig
+matchSchemeConfig = case _, _ of
+  Edit { mount }, scheme | scheme == QM.getType mount → Just mount
+  _, _ → Nothing
 
-_originalName ∷ forall a. Lens' { originalName ∷ Maybe String | a } (Maybe String)
-_originalName = lens _.originalName (_ { originalName = _ })
+data Status = Idle | Saving | Unmounting
 
-_message ∷ Lens' State (Maybe String)
-_message = lens _.message (_ { message = _ })
+derive instance eqStatus ∷ Eq Status
 
-_saving ∷ Lens' State Boolean
-_saving = lens _.saving (_ { saving = _ })
-
-_unMounting ∷ Lens' State Boolean
-_unMounting = lens _.unMounting (_ { unMounting = _ })
-
-_settings ∷ Lens' State (Maybe MountSettings)
-_settings = lens _.settings _{settings = _}
+type State =
+  { input ∷ Input
+  , name ∷ Maybe String
+  , scheme ∷ Maybe QMT.MountType
+  , pathValue ∷ Either (Maybe String) AnyPath
+  , configValue ∷ Either (Maybe String) QM.MountConfig
+  , error ∷ Maybe String
+  , status ∷ Status
+  }
 
 initialState ∷ Input → State
-initialState = case _ of
-  New { parent } →
-    { new: true
-    , parent: Just parent
-    , settings: Nothing
-    , name: Just ""
-    , message: Nothing
-    , originalName: Nothing
-    , saving: false
-    , unMounting: false
-    }
-  Edit { parent, name, settings } →
-    { new: false
-    , parent: parent
-    , settings: Just settings
-    , name: name
-    , message: Nothing
-    , originalName: name
-    , saving: false
-    , unMounting: false
-    }
-  Root →
-    { new: true
-    , parent: Nothing
-    , settings: Nothing
-    , name: Nothing
-    , message: Nothing
-    , originalName: Nothing
-    , saving: false
-    , unMounting: false
+initialState input =
+  let
+    maybeEditInput = preview _Edit input
+  in
+    { input
+    , name: if is _New input then Just "" else Nothing
+    , scheme: QM.getType ∘ _.mount <$> maybeEditInput
+    , pathValue: note Nothing (_.path <$> maybeEditInput)
+    , configValue: note Nothing (_.mount <$> maybeEditInput)
+    , error: Nothing
+    , status: Idle
     }
 
-scheme ∷ MountSettings → MS.Scheme
-scheme = case _ of
-  MongoDB _ → MS.MongoDB
-  SQL2 _ → MS.SQL2
-  Module _ → MS.Module
-  Couchbase _ → MS.Couchbase
-  MarkLogic _ → MS.MarkLogic
-  SparkFTP _ → MS.SparkFTP
-  SparkHDFS _ → MS.SparkHDFS
-  SparkLocal _ → MS.SparkLocal
+validate ∷ State → State
+validate st = st { pathValue = validatePath st }
 
--- | Checks whether the state is saveable: no validation errors, and has a name
--- | entered/type selected.
-canSave ∷ State → Boolean
-canSave st
-  = isNothing st.message
-  && isJust st.settings
-  && (maybe true (_ /= "") st.name)
-
-validate ∷ State → Maybe String
-validate { name } = either Just (const Nothing) $ runExcept do
-  for_ name \name' → do
-    when (name' ≡ "") $ throwError "Please enter a mount name"
-    when (String.contains (String.Pattern "/") name') $ throwError "Mount names cannot contain slashes"
-
-originalPath ∷ State → Maybe DirPath
-originalPath st = (</>) <$> st.parent <*> (P.dir <$> st.originalName)
+validatePath ∷ State → Either (Maybe String) AnyPath
+validatePath st@{ input, name, scheme: Just scheme } =
+  case input of
+    Root → Right (Left P.rootDir)
+    Edit { path } → Right path
+    New { parent } → do
+      let name' = fromMaybe "" st.name
+      when (String.trim name' == "") $
+        Left (Just "Please enter a mount name")
+      when (String.contains (String.Pattern "/") name') $
+        Left (Just "Mount names cannot contain slashes")
+      case scheme of
+        QMT.View → Right $ Right (parent </> P.file name')
+        _ → Right $ Left (parent </> P.dir name')
+validatePath _ = Left Nothing

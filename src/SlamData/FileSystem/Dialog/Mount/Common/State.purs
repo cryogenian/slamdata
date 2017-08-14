@@ -105,7 +105,7 @@ parsePath' =
 
 parseHost ∷ Tuple String String → Either String Host
 parseHost (Tuple host port) = do
-  host' ← lmap show $ runParser URI.parseHost host
+  host' ← lmap (const "Please enter a valid host") $ runParser URI.parseHost host
   port' ← case nonEmptyString port of
     Nothing → pure Nothing
     Just p →

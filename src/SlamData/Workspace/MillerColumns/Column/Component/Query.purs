@@ -24,10 +24,7 @@ module SlamData.Workspace.MillerColumns.Column.Component.Query
 
 import SlamData.Prelude
 
-import DOM.Node.Types (Element)
-
 import Halogen.Component.Proxy (ProxyQ)
-
 import SlamData.Workspace.MillerColumns.Column.Component.Item as Item
 import SlamData.Workspace.MillerColumns.Column.Component.Request (LoadRequest, LoadResponse)
 import SlamData.Workspace.MillerColumns.Column.Component.ColumnWidth (ColumnWidth)
@@ -39,7 +36,7 @@ data Query a i o b
   | Deselect b
   | HandleFilterChange String b
   | UpdateFilter String b
-  | HandleScroll Element b
+  | HandleScroll b
   | HandleMessage i (Item.Message' a o) b
   | HandleInput (ColumnWidth × Maybe a) b
   | FulfilLoadRequest (LoadResponse a) b

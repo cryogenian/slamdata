@@ -1,5 +1,5 @@
 {-
-Copyright 2017 SlamData, Inc.
+Copyright 2016 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,16 +18,20 @@ module SlamData.FileSystem.Dialog.Mount.Module.Component.State where
 
 import SlamData.Prelude
 
-type State =
-  { initialValue ∷ Maybe String
-  }
+import Data.String as Str
+import Quasar.Mount.Module as QMM
+
+type State = QMM.Config
 
 initialState ∷ State
-initialState =
-  { initialValue: Nothing
-  }
+initialState = { "module": "" }
 
-fromConfig ∷ { "module" ∷ String } → State
-fromConfig config
-  | config."module" ≡ "" = { initialValue: Nothing }
-  | otherwise = { initialValue: Just config."module" }
+fromConfig ∷ QMM.Config → State
+fromConfig = id
+
+toConfig ∷ State → Either String QMM.Config
+toConfig st
+  | Str.trim st."module" == "" =
+      Left "A module cannot be left empty"
+  | otherwise =
+      Right st

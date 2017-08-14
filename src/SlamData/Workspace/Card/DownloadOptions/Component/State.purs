@@ -24,12 +24,13 @@ import Data.Codec as C
 import Data.Codec.Argonaut.Compat as CA
 import Data.Codec.Argonaut.Migration as CAM
 import Data.Lens (Lens', lens)
+import Quasar.Data.CSV as CSV
 import SlamData.Download.Model as D
 import Utils.Path as PU
 
 type State =
   { compress ∷ Boolean
-  , options ∷ Either D.CSVOptions D.JSONOptions
+  , options ∷ D.DownloadOptions
   , targetName ∷ Maybe String
   , source ∷ Maybe PU.AnyFilePath
   }
@@ -44,7 +45,7 @@ eqState s1 s2 =
 initialState ∷ State
 initialState =
   { compress: false
-  , options: Left D.initialCSVOptions
+  , options: Left CSV.defaultOptions
   , targetName: Nothing
   , source: Nothing
   }

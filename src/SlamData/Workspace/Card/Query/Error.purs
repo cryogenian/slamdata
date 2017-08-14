@@ -20,14 +20,13 @@ import SlamData.Prelude
 
 import Quasar.Advanced.QuasarAF (QError)
 import SlamData.GlobalError as GE
-import Text.Parsing.Parser as P
 import Utils (throwVariantError)
 
 data QueryError
   = QueryCompileError QError
   -- ???: It's not entirely clear how this arises, the QueryCompileError case seems to catch the test cases we tried -gb
   | QueryRetrieveResultError QError
-  | QueryParseError P.ParseError
+  | QueryParseError String
 
 instance showQueryError ∷ Show QueryError where
   show = case _ of
