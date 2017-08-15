@@ -98,9 +98,9 @@ gen = do
   where
   genVT = Gen.allInArray VT.all
 
-legacyDecode ∷ J.Json → String ⊹ Model
-legacyDecode json = do
-  vizType ← decodeVizType json
+legacyDecode ∷ String → J.Json → String ⊹ Model
+legacyDecode cardTypeString json = do
+  vizType ← decodeVizType cardTypeString
   dimMap ← decodeDimMap vizType json
   aux ← decodeAux vizType json
   pure initial
@@ -113,8 +113,7 @@ legacyDecode json = do
         $ aux <#> \a → lm.insert vizType a initial.auxes
     }
   where
-  decodeVizType js = do
-    s ← J.decodeJson js
+  decodeVizType s = do
     decodeChart s
       <|> decodeSelect s
       <|> decodeInput s
@@ -458,8 +457,9 @@ actualCodec = CA.object "Setups.Viz.Model" $ CA.record
   # CA.recordProp (SProxy ∷ SProxy "dimMaps")
       (LM.listMapCodec VT.codec Pr.dimMapCodec)
 
-codec ∷ CA.JsonCodec Model
-codec = C.basicCodec dec (C.encode actualCodec)
+codec ∷ String → CA.JsonCodec Model
+codec str = C.basicCodec dec $ C.encode actualCodec
   where
   dec j =
-    C.decode actualCodec j <|> (lmap CA.TypeMismatch $ legacyDecode j)
+    (C.decode actualCodec j)
+    <|> (lmap CA.TypeMismatch $ legacyDecode str j)

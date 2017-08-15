@@ -18,7 +18,10 @@ module SlamData.Workspace.Card.Viz.Model where
 
 import SlamData.Prelude
 
+import Data.Argonaut ((.?))
+import Data.Argonaut as J
 import Data.Variant as V
+import Data.Codec as C
 import Data.Codec.Argonaut as CA
 import Data.Codec.Argonaut.Variant as CAV
 
@@ -94,8 +97,8 @@ gen = Gen.oneOf (pure $ V.inj _static unit)
 empty ∷ Model
 empty = V.inj _chart unit
 
-codec ∷ CA.JsonCodec Model
-codec = CAV.variant
+actualCodec ∷ CA.JsonCodec Model
+actualCodec = CAV.variant
   # CAV.variantCase _pivot (Right PM.codec)
   # CAV.variantCase _select (Right SM.codec)
   # CAV.variantCase _input (Right IM.codec)
@@ -103,3 +106,32 @@ codec = CAV.variant
   # CAV.variantCase _metric (Left unit)
   # CAV.variantCase _chart (Left unit)
   # CAV.variantCase _geo (Right GM.codec)
+
+legacyDecode ∷ String → J.Json → String ⊹ Model
+legacyDecode str j = case str of
+  "geo-chart" → map (V.inj _geo) $ GM.decode j
+  "form-input" → J.decodeJson j >>= \obj → do
+    modelType ← obj .? "modelType"
+    case modelType of
+      "textLike" → map (V.inj _input) $ lmap show $ C.decode IM.codec j
+      "labeled" → map (V.inj _select) $ lmap show $ C.decode SM.codec j
+      _ → pure $ V.inj _static unit
+  "chart" → decodePivot j <|> decodeChart j
+  _ → Left "unexpected viz model"
+  where
+  decodePivot json = do
+    obj ← J.decodeJson json
+    renderer ← obj .? "renderer"
+    state ← obj .? "state"
+    case renderer of
+      "pivot" → map (V.inj _pivot) $ lmap show $ C.decode PM.codec state
+      _ → Left "Not a valid chart renderer"
+
+  decodeChart _ = Right $ V.inj _chart unit
+
+codec ∷ String → CA.JsonCodec Model
+codec str = C.basicCodec dec $ C.encode actualCodec
+  where
+  dec j =
+    ( C.decode actualCodec j )
+    <|> ( lmap CA.TypeMismatch $ legacyDecode str j )

@@ -151,9 +151,11 @@ encode card =
 decode ∷ J.Json → Either String AnyCardModel
 decode js = do
   obj ← J.decodeJson js
+  -- For handling legacy card types
+  cardTypeString ← obj .? "cardType"
   cardType ← CT.decode =<< obj .? "cardType"
   model ← obj .? "model"
-  decodeCardModel model cardType
+  decodeCardModel cardTypeString model cardType
 
 encodeCardModel ∷ AnyCardModel → J.Json
 encodeCardModel = case _ of
@@ -170,14 +172,15 @@ encodeCardModel = case _ of
   Draftboard model → DB.encode model
   Tabs model → CA.encode Tabs.codec model
   StructureEditor model → StructureEditor.encode model
-  SetupViz model → CA.encode SetupViz.codec model
-  Viz model → CA.encode Viz.codec model
+  SetupViz model → CA.encode (SetupViz.codec "") model
+  Viz model → CA.encode (Viz.codec "") model
 
 decodeCardModel
-  ∷ J.Json
+  ∷ String
+  → J.Json
   → CT.CardType
   → String ⊹ AnyCardModel
-decodeCardModel js = case_
+decodeCardModel ctstr js = case_
   # on CT._aceSql (const $ map (Ace CT.aceSql) $ Ace.decode js)
   # on CT._aceMarkdown (const $ map (Ace CT.aceMarkdown) $ Ace.decode js)
   # on CT._search (const $ map Search $ J.decodeJson js)
@@ -192,8 +195,8 @@ decodeCardModel js = case_
   # on CT._draftboard (const $ map Draftboard $ DB.decode js)
   # on CT._tabs (const $ map Tabs $ decodec Tabs.codec js)
   # on CT._structureEditor (const $ map StructureEditor $ StructureEditor.decode js)
-  # on CT._setupViz (const $ map SetupViz $ decodec SetupViz.codec js)
-  # on CT._viz (const $ map Viz $ decodec Viz.codec js)
+  # on CT._setupViz (const $ map SetupViz $ decodec (SetupViz.codec ctstr) js)
+  # on CT._viz (const $ map Viz $ decodec (Viz.codec ctstr) js)
   where
   -- For backwards compat
   decodeOpen j =
