@@ -1,0 +1,91 @@
+files:
+  include: "sass/**/*.s(a|c)ss"
+  ignore:
+    - "sass/_bootstrap.s(a|c)css"
+
+
+rules:
+  attribute-quotes:
+    - 1
+    - include: true
+  border-zero:
+    - 1
+    - convention: none
+  brace-style:
+    - 1
+    - style: 1tbs
+    - allow-single-line: false
+  class-name-format:
+    - 0
+    - allow-leading-underscore: false
+  clean-import-paths:
+    - 1
+    - leading-underscore: false
+    - filename-extension: false
+  declarations-before-nesting: 1
+  empty-line-between-blocks:
+    - 1
+    - include: true
+    - allow-single-line-rulesets: false
+  extends-before-declarations: 1
+  extends-before-mixins: 1
+  hex-notation:
+    - 1
+    - style: lowercase
+  final-newline:
+    - include: true
+  force-attribute-nesting: 0
+  force-element-nesting: 0
+  force-pseudo-nesting: 0
+  function-name-format:
+    - convention: hyphenatedlowercase
+  indentation: 2
+  leading-zero:
+    - 1
+    - include: true
+  max-file-line-count: 3000
+  max-line-length:
+    - 1
+    - length: 400
+  mixin-name-format:
+    - 1
+    - convention: hyphenatedlowercase
+  mixins-before-declarations: 1
+  nesting-depth:
+    - 1
+    - max-depth: 6
+  no-color-keywords: 1
+  no-color-literals:
+    - 0  # Should probably adjust this
+  no-duplicate-properties:
+    - 1
+    - exclude:
+      - text-align
+  no-ids: 0
+  no-invalid-hex: 1
+  no-misspelled-properties:
+    - 1
+    - extra-properties:
+      -
+  no-qualifying-elements: 0
+  no-trailing-whitespace: 1
+  no-vendor-prefixes:
+    - 1
+    - ignore-non-standard: true
+  one-declaration-per-line: 1
+  placeholder-in-extend: 0
+  placeholder-name-format:
+    - 1
+    - convention: hyphenatedlowercase
+  property-sort-order:
+    - 0
+    - order: smacss
+  pseudo-element: 1
+  quotes:
+    - 1
+    - style: double
+  single-line-per-selector: 0
+  url-quotes: 1
+  variable-name-format:
+    - 1
+    - convention: hyphenatedlowercase
