@@ -61,14 +61,14 @@ eq_ r1 r2 =
 
 encode ∷ State → J.Json
 encode r =
-  "tag" := "funnel"
+  "configType" := "funnel"
   ~> "order" := r.order
   ~> "align" := r.align
   ~> J.jsonEmptyObject
 
 decode ∷ J.Json → String ⊹ State
 decode r = J.decodeJson r >>= \obj → do
-  tag ← obj .? "tag"
+  tag ← obj .? "configType"
   unless (tag ≡ "funnel") $ Left "This is not a funnel"
   order ← obj .? "order"
   align ← obj .? "align"

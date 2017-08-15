@@ -52,13 +52,13 @@ eq_ r1 r2 =
 
 encode ∷ State → J.Json
 encode r =
-  "tag" := "metric"
+  "configType" := "metric"
   ~> "formatter" := r.formatter
   ~> J.jsonEmptyObject
 
 decode ∷ J.Json → String ⊹ State
 decode r = J.decodeJson r >>= \obj → do
-  tag ← obj .? "tag"
+  tag ← obj .? "configType"
   unless (tag ≡ "metric") $ Left "This is not a metric"
   formatter ← obj .? "formatter"
   pure { formatter }

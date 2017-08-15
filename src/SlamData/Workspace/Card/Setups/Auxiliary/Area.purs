@@ -80,7 +80,7 @@ eq_ r1 r2 =
 
 encode ∷ State → J.Json
 encode r =
-  "tag" := "area"
+  "configType" := "area"
   ~> "isStacked" := r.isStacked
   ~> "isSmooth" := r.isSmooth
   ~> "size" := r.size
@@ -90,7 +90,7 @@ encode r =
 
 decode ∷ J.Json → String ⊹ State
 decode r = J.decodeJson r >>= \obj → do
-  tag ← obj .? "tag"
+  tag ← obj .? "configType"
   unless (tag ≡ "area") $ Left "This is not area"
   isStacked ← obj .? "isStacked"
   isSmooth ← obj .? "isSmooth"

@@ -48,7 +48,7 @@ gen = map { osm: _ } P.genOsm
 
 encode ∷ State → J.Json
 encode r =
-  "tag" := "geo-heatmap"
+  "configType" := "geo-heatmap"
   ~> P.encodeOsmURI r.osm
 
 eq_ ∷ State → State → Boolean
@@ -58,7 +58,7 @@ eq_ r1 r2 =
 
 decode ∷ J.Json → String ⊹ State
 decode r = J.decodeJson r >>= \obj → do
-  tag ← obj .? "tag"
+  tag ← obj .? "configType"
   unless (tag ≡ "geo-heatmap") $ Left "This is not geo heatmap"
   osm ← P.decodeOsmURI r
   pure { osm }

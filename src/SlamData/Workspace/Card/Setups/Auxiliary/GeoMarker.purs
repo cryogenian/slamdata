@@ -50,7 +50,7 @@ gen = do
 
 encode ∷ State → J.Json
 encode r =
-  "tag" := "geo-marker"
+  "configType" := "geo-marker"
   ~> "minSize" := r.size.min
   ~> "maxSize" := r.size.max
   ~> P.encodeOsmURI r.osm
@@ -64,7 +64,7 @@ eq_ r1 r2 =
 
 decode ∷ J.Json → String ⊹ State
 decode r = J.decodeJson r >>= \obj → do
-  tag ← obj .? "tag"
+  tag ← obj .? "configType"
   unless (tag ≡ "geo-marker") $ Left "This is not geo heatmap"
   minSize ← obj .? "minSize"
   maxSize ← obj .? "maxSize"

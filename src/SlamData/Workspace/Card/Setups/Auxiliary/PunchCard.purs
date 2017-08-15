@@ -58,7 +58,7 @@ eq_ r1 r2 =
 
 encode ∷ State → J.Json
 encode r =
-  "tag" := "punch-card"
+  "configType" := "punch-card"
   ~> "minSize" := r.size.min
   ~> "maxSize" := r.size.max
   ~> "circular" := r.circular
@@ -66,7 +66,7 @@ encode r =
 
 decode ∷ J.Json → String ⊹ State
 decode r = J.decodeJson r >>= \obj → do
-  tag ← obj .? "tag"
+  tag ← obj .? "configType"
   unless (tag ≡ "punch-card") $ Left "This is not a punch card"
   minSize ← obj .? "minSize"
   maxSize ← obj .? "maxSize"

@@ -52,14 +52,14 @@ eq_ r1 r2 =
 
 encode ∷ State → J.Json
 encode r =
-  "tag" := "scatter"
+  "configType" := "scatter"
   ~> "minSize" := r.size.min
   ~> "maxSize" := r.size.max
   ~> J.jsonEmptyObject
 
 decode ∷ J.Json → String ⊹ State
 decode r = J.decodeJson r >>= \obj → do
-  tag ← obj .? "tag"
+  tag ← obj .? "configType"
   unless (tag ≡ "scatter") $ Left "This is not scatter chart"
   minSize ← obj .? "minSize"
   maxSize ← obj .? "maxSize"

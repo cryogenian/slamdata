@@ -52,13 +52,13 @@ eq_ r1 r2 =
 
 encode ∷ State → J.Json
 encode r =
-  "tag" := "bar"
+  "configType" := "bar"
   ~> "axisLabelAngle" := r.axisLabelAngle
   ~> J.jsonEmptyObject
 
 decode ∷ J.Json → String ⊹ State
 decode r = J.decodeJson r >>= \obj → do
-  tag ← obj .? "tag"
+  tag ← obj .? "configType"
   unless (tag ≡ "bar") $ Left "This is not bar"
   axisLabelAngle ← obj .? "axisLabelAngle"
   pure { axisLabelAngle }

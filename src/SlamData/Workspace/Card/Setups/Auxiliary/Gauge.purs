@@ -51,14 +51,14 @@ eq_ r1 r2 =
 
 encode ∷ State → J.Json
 encode r =
-  "tag" := "graph"
+  "configType" := "graph"
   ~> "minValue" := r.val.min
   ~> "maxValue" := r.val.max
   ~> J.jsonEmptyObject
 
 decode ∷ J.Json → String ⊹ State
 decode r = J.decodeJson r >>= \obj → do
-  tag ← obj .? "tag"
+  tag ← obj .? "configType"
   unless (tag ≡ "graph") $ Left "This is not a graph"
   minValue ← obj .? "minValue"
   maxValue ← obj .? "maxValue"

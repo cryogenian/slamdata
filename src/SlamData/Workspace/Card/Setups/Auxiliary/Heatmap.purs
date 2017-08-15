@@ -73,7 +73,7 @@ eq_ r1 r2 =
 
 encode ∷ State → J.Json
 encode r =
-  "tag" := "heatmap"
+  "configType" := "heatmap"
   ~> "colorScheme" := r.colorScheme
   ~> "isColorSchemeReversed" := r.isColorSchemeReversed
   ~> "minVal" := r.val.min
@@ -82,7 +82,7 @@ encode r =
 
 decode ∷ J.Json → String ⊹ State
 decode r = J.decodeJson r >>= \obj → do
-  tag ← obj .? "tag"
+  tag ← obj .? "configType"
   unless (tag ≡ "heatmap") $ Left "This is not a heatmap"
   colorScheme ← obj .? "colorScheme"
   isColorSchemeReversed ← obj .? "isColorSchemeReversed"

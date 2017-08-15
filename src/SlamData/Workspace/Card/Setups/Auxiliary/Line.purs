@@ -75,7 +75,7 @@ eq_ r1 r2 =
 
 encode ∷ State → J.Json
 encode r =
-  "tag" := "line"
+  "configType" := "line"
   ~> "optionalMarkers" := r.optionalMarkers
   ~> "minSize" := r.size.min
   ~> "maxSize" := r.size.max
@@ -84,7 +84,7 @@ encode r =
 
 decode ∷ J.Json → String ⊹ State
 decode r = J.decodeJson r >>= \obj → do
-  tag ← obj .? "tag"
+  tag ← obj .? "configType"
   unless (tag ≡ "line") $ Left "This is not a line"
   optionalMarkers ← obj .? "optionalMarkers"
   minSize ← obj .? "minSize"
