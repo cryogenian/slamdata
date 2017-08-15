@@ -100,8 +100,8 @@
     "purescript-psa": "^0.5.1",
     "purs-loader": "^2.4.2",
     "rimraf": "^2.4.3",
+    "sass-lint": "^1.10.2",
     "selenium-webdriver": "3.5.0",
-    "stylelint": "^7.10.1",
     "vinyl-paths": "^2.1.0",
     "webpack": "^2.3.2",
     "webpack-stream": "^2.1.0"
