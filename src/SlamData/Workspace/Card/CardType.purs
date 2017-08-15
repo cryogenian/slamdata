@@ -130,7 +130,7 @@ parse s =
       (const setupViz)
       $ Geo.parse
       $ fromMaybe ""
-      $ Str.stripSuffix (Str.Pattern "-geo-setup") n
+      $ Str.stripSuffix (Str.Pattern "-setup") n
 
 decode ∷ J.Json → String ⊹ CardType
 decode = J.decodeJson >=> parse

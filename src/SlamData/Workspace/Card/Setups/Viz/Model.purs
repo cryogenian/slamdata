@@ -22,7 +22,7 @@ import Control.Alternative (class Alternative)
 import Data.Argonaut ((.?))
 import Data.Argonaut as J
 import Data.Array as A
-import Data.Lens ((.~), _Just)
+import Data.Lens ((.~), (%~), _Just)
 import Data.Codec as C
 import Data.Codec.Argonaut as CA
 import Data.ListMap as LM
@@ -133,7 +133,7 @@ legacyDecode cardTypeString json = do
     Sta.parse ∘ fromMaybe "" ∘ Str.stripSuffix (Str.Pattern "-setup")
 
   decodeGeo =
-    Geo.parse ∘ fromMaybe "" ∘ Str.stripSuffix (Str.Pattern "-geo-setup")
+    Geo.parse ∘ fromMaybe "" ∘ Str.stripSuffix (Str.Pattern "-setup")
 
   decodeDimMap vt j = vt # V.match
     { area: const $ decodeArea j
@@ -319,7 +319,7 @@ legacyDecode cardTypeString json = do
     value ← getMeasure { dim: "value", agg: "valueAggregation" } obj
     label ← obj .? "label"
     pure $ mkDimMap
-      [ Pr.value × ( value # _Just ∘ D._staticCategory .~ label ) ]
+      [ Pr.value × ( value # _Just ∘ D._staticCategory %~ maybe id const label ) ]
 
   decodeParallel = J.decodeJson >=> \obj → map Just do
     series ← getDimension "series" obj

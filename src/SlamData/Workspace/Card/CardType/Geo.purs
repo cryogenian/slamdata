@@ -60,8 +60,8 @@ print cb = cb
 
 encode ∷ ∀ r. (Variant r → String) → Geo r → String
 encode cb = cb
-  # on _geoMarker (const "marker-geo-setup")
-  # on _geoHeatmap (const "heatmap-geo-setup")
+  # on _geoMarker (const "geo-marker-setup")
+  # on _geoHeatmap (const "geo-heatmap-setup")
 
 icon ∷ ∀ r. (Variant r → I.IconHTML) → Geo r → I.IconHTML
 icon cb = cb
@@ -77,6 +77,8 @@ parse ∷ ∀ r. String → String ⊹ Geo r
 parse = case _ of
   "geo-marker" → Right geoMarker
   "geo-heatmap" → Right geoHeatmap
+  "marker-geo" → Right geoMarker
+  "heatmap-geo" → Right geoHeatmap
   ty → Left $ ty ⊕ " is unknown geo chart card type"
 
 consumerInteractable ∷ ∀ r. (Variant r → Boolean) → Geo r → Boolean

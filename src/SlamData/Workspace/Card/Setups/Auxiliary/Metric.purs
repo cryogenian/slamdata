@@ -60,7 +60,7 @@ decode ∷ J.Json → String ⊹ State
 decode r = J.decodeJson r >>= \obj → do
   tag ← obj .? "configType"
   unless (tag ≡ "metric") $ Left "This is not a metric"
-  formatter ← obj .? "formatter"
+  formatter ← (obj .? "formatter" <|> pure "")
   pure { formatter }
 
 component ∷ ∀ m. AuxComponent QueryR State m

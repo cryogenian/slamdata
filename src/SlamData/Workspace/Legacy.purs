@@ -91,8 +91,9 @@ decodeCard js = do
   obj ← decodeJson js
   cardId ← decodec CID.codec =<< obj .? "cardId"
   cardType ← CT.decode =<< (obj .? "cardType")
+  cardTypeStr ← obj .? "cardType"
   modelJS ← obj .? "model"
-  model ← Card.decodeCardModel modelJS cardType
+  model ← Card.decodeCardModel cardTypeStr modelJS cardType
   pure { cardId, model }
 
 loadGraph
