@@ -22,35 +22,35 @@ import Control.Alternative (class Alternative)
 import Data.Argonaut ((.?))
 import Data.Argonaut as J
 import Data.Array as A
-import Data.Lens ((.~), (%~), _Just)
 import Data.Codec as C
 import Data.Codec.Argonaut as CA
+import Data.Lens ((.~), (%~), _Just)
 import Data.ListMap as LM
-import Data.Variant as V
 import Data.String as Str
+import Data.Variant as V
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.CardType.Chart as Cht
+import SlamData.Workspace.Card.CardType.Geo as Geo
+import SlamData.Workspace.Card.CardType.Input as Inp
+import SlamData.Workspace.Card.CardType.Select as Sel
+import SlamData.Workspace.Card.CardType.Static as Sta
 import SlamData.Workspace.Card.CardType.VizType as VT
-import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Setups.DimensionMap.Projection as Pr
 import SlamData.Workspace.Card.Setups.Auxiliary as Aux
 import SlamData.Workspace.Card.Setups.Auxiliary.Area as Area
 import SlamData.Workspace.Card.Setups.Auxiliary.Bar as Bar
 import SlamData.Workspace.Card.Setups.Auxiliary.Funnel as Funnel
 import SlamData.Workspace.Card.Setups.Auxiliary.Gauge as Gauge
+import SlamData.Workspace.Card.Setups.Auxiliary.GeoHeatmap as GeoHeatmap
+import SlamData.Workspace.Card.Setups.Auxiliary.GeoMarker as GeoMarker
 import SlamData.Workspace.Card.Setups.Auxiliary.Graph as Graph
 import SlamData.Workspace.Card.Setups.Auxiliary.Heatmap as Heatmap
 import SlamData.Workspace.Card.Setups.Auxiliary.Line as Line
 import SlamData.Workspace.Card.Setups.Auxiliary.Metric as Metric
 import SlamData.Workspace.Card.Setups.Auxiliary.PunchCard as PunchCard
 import SlamData.Workspace.Card.Setups.Auxiliary.Scatter as Scatter
-import SlamData.Workspace.Card.Setups.Auxiliary.GeoHeatmap as GeoHeatmap
-import SlamData.Workspace.Card.Setups.Auxiliary.GeoMarker as GeoMarker
+import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as Pr
 import SlamData.Workspace.Card.Setups.PivotTable.Model as PivotTable
-import SlamData.Workspace.Card.CardType.Static as Sta
-import SlamData.Workspace.Card.CardType.Input as Inp
-import SlamData.Workspace.Card.CardType.Geo as Geo
-import SlamData.Workspace.Card.CardType.Chart as Cht
-import SlamData.Workspace.Card.CardType.Select as Sel
 import Test.StrongCheck.Gen as Gen
 
 lm ∷ ∀ a. LM.Module VT.VizType a
@@ -393,14 +393,18 @@ legacyDecode cardTypeString json = do
     value ← getDimension "value" obj
     pure $ mkDimMap [ Pr.value × value ]
 
+  -- Previously (~4v) keys in models were `LabeledJCursor`s or `Maybe LabeledJCursor`s.
+  -- Here the fact that `Just a` is encoded as `a` is exploited.
   getDimension ∷ String → J.JObject → String ⊹ Maybe D.LabeledJCursor
   getDimension key obj = obj .? key <|>
     ( map (Just ∘ D.defaultJCursorDimension) $ obj .? key )
 
+  -- In <4v measure dimensions were encoded as a pair of `foo` and `fooAggregation`
   getMeasure ∷ { dim ∷ String, agg ∷ String } → J.JObject → String ⊹ Maybe D.LabeledJCursor
   getMeasure r obj = obj .? r.dim <|> do
     ( map Just $ D.pairToDimension <$> ( obj .? r.dim ) <*> ( obj .? r.agg ) )
 
+  -- I don't think providing `fromFoldable` for `DimMap` is good idea /@cryogenian
   mkDimMap ∷ ∀ f. Foldable f ⇒ f (Pr.Projection × Maybe D.LabeledJCursor) → Pr.DimMap
   mkDimMap fs =
     foldl (\pm (pr × mv) → maybe pm (\v → Pr.insert pr v pm) mv) Pr.empty fs

@@ -172,6 +172,7 @@ encodeCardModel = case _ of
   Draftboard model → DB.encode model
   Tabs model → CA.encode Tabs.codec model
   StructureEditor model → StructureEditor.encode model
+  -- Using codecs when legacy decoder needs additional param :(
   SetupViz model → CA.encode (SetupViz.codec "") model
   Viz model → CA.encode (Viz.codec "") model
 

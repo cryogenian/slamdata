@@ -86,6 +86,9 @@ decodeDeck = decodeJson >=> \obj → do
   name ← obj .? "name" <|> pure ""
   pure { parent, mirror, cards, name }
 
+
+-- Note: card model legacy decoders live in card model modules.
+-- e.g. Setups.Viz.Model, Viz.Model
 decodeCard ∷ Json → Either String Card
 decodeCard js = do
   obj ← decodeJson js

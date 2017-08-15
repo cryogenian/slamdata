@@ -73,6 +73,8 @@ name cb = cb
   # on _geoMarker (const "Marker")
   # on _geoHeatmap (const "Heatmap")
 
+
+-- `print` used to return `marker-geo-setup` and `heatmap-geo-setup`
 parse ∷ ∀ r. String → String ⊹ Geo r
 parse = case _ of
   "geo-marker" → Right geoMarker

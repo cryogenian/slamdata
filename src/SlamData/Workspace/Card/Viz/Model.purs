@@ -127,6 +127,8 @@ legacyDecode str j = case str of
       "pivot" → map (V.inj _pivot) $ lmap show $ C.decode PM.codec state
       _ → Left "Not a valid chart renderer"
 
+  -- Since evaluation takes place after loading all empty models
+  -- work fine here.
   decodeChart _ = Right $ V.inj _chart unit
 
 codec ∷ String → CA.JsonCodec Model

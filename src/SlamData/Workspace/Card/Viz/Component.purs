@@ -25,7 +25,7 @@ import Data.Foreign.Index (readProp)
 import Data.Int (toNumber, floor)
 import Data.Lens ((^?), _Just)
 import Data.String as S
-import Data.Variant (on)
+import Data.Variant (match)
 
 import Global (readFloat, isNaN)
 
@@ -169,31 +169,30 @@ evalCard = case _ of
 
   CC.Load model next → do
     case model of
-      Card.Viz vm → case_
-        # on M._pivot (\m → do
-                          H.modify _{ vizType = Just CT.pivot }
-                          _ ← H.query' CS.cpPivotTable unit $ H.action $ PR.Load m
-                          pure next
-                      )
-        # on M._select (\m → do
-                           H.modify _{ vizType = Just $ expand m.formInputType }
-                           _ ← H.query' CS.cpSelect unit $ H.action $ SR.Load m
-                           pure next
-                       )
-        # on M._input (\m → do
-                          H.modify _{ vizType = Just $ expand m.formInputType }
-                          _ ← H.query' CS.cpInput unit $ H.action $ IR.Load m
-                          pure next
-                      )
-        # on M._geo (\m → do
-                        H.modify _{ vizType = Just CT.geoMarker }
-                        _ ← H.query' CS.cpGeo unit $ H.action $ GR.Load m
-                        pure next
-                    )
-        # on M._static (const $ H.modify _{ vizType = Just CT.static } $> next )
-        # on M._metric (const $ H.modify _{ vizType = Just CT.metric } $> next )
-        # on M._chart (const $ H.modify _{ vizType = Just CT.pie } $> next )
-        $ vm
+      Card.Viz vm → vm # match
+        { pivot: \m → do
+             H.modify _{ vizType = Just CT.pivot }
+             _ ← H.query' CS.cpPivotTable unit $ H.action $ PR.Load m
+             pure next
+        , select: \m → do
+             H.modify _{ vizType = Just $ expand m.formInputType }
+             _ ← H.query' CS.cpSelect unit $ H.action $ SR.Load m
+             pure next
+        , input: \m → do
+             H.modify _{ vizType = Just $ expand m.formInputType }
+             _ ← H.query' CS.cpInput unit $ H.action $ IR.Load m
+             pure next
+        , geo: \m → do
+             H.modify _{ vizType = Just CT.geoMarker }
+             _ ← H.query' CS.cpGeo unit $ H.action $ GR.Load m
+             pure next
+        , static:
+            const $ H.modify _{ vizType = Just CT.static } $> next
+        , metric:
+            const $ H.modify _{ vizType = Just CT.metric } $> next
+        , chart:
+            const $ H.modify _{ vizType = Just CT.pie } $> next
+        }
       _ →
         pure next
   CC.ReceiveInput input varMap next → do

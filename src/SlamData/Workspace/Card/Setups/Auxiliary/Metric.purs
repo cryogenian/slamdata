@@ -60,6 +60,9 @@ decode ∷ J.Json → String ⊹ State
 decode r = J.decodeJson r >>= \obj → do
   tag ← obj .? "configType"
   unless (tag ≡ "metric") $ Left "This is not a metric"
+  -- Previously `formatter` was `Maybe String`
+  -- there is no any point in that, because `Nothing` was rendered as ""
+  -- and "" is handled as `Nothing`
   formatter ← (obj .? "formatter" <|> pure "")
   pure { formatter }
 
