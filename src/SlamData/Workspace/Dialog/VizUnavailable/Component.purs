@@ -81,7 +81,7 @@ render state =
   , HH.div
       [ HP.classes [ HH.ClassName "deck-dialog-body" ] ]
       [ HH.p_
-        [ HH.text $ "To be visualizable data set must have at least" ]
+        [ HH.text $ "The data set must have" ]
       , HH.ul_ $ A.fold
           [ mustHaveBut _.value "measure" ""
           , mustHaveBut _.category "categorical" ""
@@ -115,17 +115,14 @@ render state =
 
   mustHaveBut getter prefix suffix = do
     guard (getter reqs > getter sizes)
-    let have = case getter sizes of
-          0 → ", but have no any"
-          n → ", but have only " ⊕ show n
-    pure $ HH.li_
-      [ HH.text
-        $ ( show $ getter reqs )
-        ⊕ " " ⊕ prefix ⊕ " "
-        ⊕ "axes "
-        ⊕ suffix
-        ⊕ have
-      ]
+    let
+      have = ", but has only " ⊕ (show $ getter sizes)
+
+      text = case getter reqs of
+        1 → "a " ⊕ prefix ⊕ " axis"
+        n → show n ⊕ " " ⊕ prefix ⊕ " axes " ⊕ suffix ⊕ have
+
+    pure $ HH.li_ [ HH.text text ]
 
 
 eval ∷ ∀ m. Query ~> H.ComponentDSL State Query Message m

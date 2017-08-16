@@ -33,8 +33,6 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.HTML.CSS as HC
---import SlamData.Workspace.Card.Eval.State (_Axes)
---import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Setups.ActionSelect.Component as AS
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.PivotTable.Component.ChildSlot as CS
@@ -49,7 +47,6 @@ import SlamData.Workspace.Card.Setups.Inputs as I
 import SlamData.Workspace.Card.Setups.Transform as T
 import SlamData.Workspace.Card.Setups.Transform.Numeric as N
 import SlamData.Workspace.Card.Setups.Transform.Place.Component as TPC
---import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import Utils (showPrettyJCursor, showJCursorTip)
 import SlamData.Monad (Slam)
 import Utils.Lens as UL
@@ -271,36 +268,6 @@ render st =
         ]
       else
         []
-{-
-evalCard ∷ CC.CardEvalQuery ~> DSL
-evalCard = case _ of
-  CC.Activate next →
-    pure next
-  CC.Deactivate next →
-    pure next
-  CC.Save k →
-    map (k ∘ Card.BuildPivotTable ∘ ST.modelFromState) H.get
-  CC.Load card next → do
-    case card of
-      Card.BuildPivotTable model →
-        H.modify (ST.stateFromModel model)
-      _ → pure unit
-    pure next
-  CC.ReceiveInput _ _ next →
-    pure next
-  CC.ReceiveOutput _ _ next →
-    pure next
-  CC.ReceiveState evalState next → do
-    for_ (evalState ^? _Axes) \axes → do
-      H.modify _ { axes = axes }
-    pure next
-  CC.ReceiveDimensions dims reply → do
-    _ ← H.query' CS.cpTransform unit (H.action AS.UpdateDimensions)
-    pure $ reply
-      if dims.width < 540.0 || dims.height < 360.0
-        then Low
-        else High
--}
 
 raiseUpdate ∷ DSL Unit
 raiseUpdate = do
