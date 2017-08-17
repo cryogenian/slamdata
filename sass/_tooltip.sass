@@ -40,14 +40,10 @@
     transform: translateX(50%)
     pointer-events: none
 
-  &:focus::before,
-  &:focus::after,
-  &:hover::before,
-  &:hover::after
-    opacity: 1
-    // sass-lint:disable no-transition-all
-    transition: all 0.2s ease
-    // sass-lint:enable no-transition-all
+  &:focus, &:hover
+    &::before, &::after
+      opacity: 1
+      transition: opacity 0.2s ease
 
   &:hover::before
     background-color: $tooltip-hover-color
