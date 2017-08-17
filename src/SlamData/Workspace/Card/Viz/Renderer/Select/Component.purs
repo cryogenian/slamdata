@@ -172,7 +172,7 @@ eval = case _ of
       selectedFromConf
         -- If this is checkbox and selected values field is empty then
         -- there is no sense in setting default value (and it's actually empty :) )
-        | Set.isEmpty conf.selectedValues ∧ (not $ Sel.eq_ case2_ conf.formInputType Sel.checkbox) =
+        | Set.isEmpty conf.selectedValues ∧ (conf.formInputType ≠ Sel.checkbox) =
             foldMap Set.singleton $ List.head $ Map.keys conf.valueLabelMap
         | otherwise =
             conf.selectedValues

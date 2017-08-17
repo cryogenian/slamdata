@@ -19,12 +19,8 @@ module SlamData.Workspace.Card.CardType.Chart where
 import SlamData.Prelude
 
 import Data.Variant (inj, on)
-
 import Halogen.HTML as H
-
 import SlamData.Render.Icon as I
-
-import Unsafe.Coerce (unsafeCoerce)
 
 _pie = SProxy ∷ SProxy "pie"
 _line = SProxy ∷ SProxy "line"
@@ -137,29 +133,6 @@ candlestick = inj _candlestick unit
 
 parallel ∷ ∀ r. Variant (parallel ∷ Unit|r)
 parallel = inj _parallel unit
-
-eq_ ∷ ∀ r rr b. HeytingAlgebra b ⇒ (Variant r → Variant rr → b) → Chart r → Chart rr → b
-eq_ cb r = cb (contractChart r)
-  # on _pie (on _pie tt ff r)
-  # on _line (on _line tt ff r)
-  # on _bar (on _bar tt ff r)
-  # on _area (on _area tt ff r)
-  # on _scatter (on _scatter tt ff r)
-  # on _radar (on _radar tt ff r)
-  # on _funnel (on _funnel tt ff r)
-  # on _graph (on _graph tt ff r)
-  # on _heatmap (on _heatmap tt ff r)
-  # on _sankey (on _sankey tt ff r)
-  # on _gauge (on _gauge tt ff r)
-  # on _boxplot (on _boxplot tt ff r)
-  # on _metric (on _metric tt ff r)
-  # on _punchCard (on _punchCard tt ff r)
-  # on _candlestick (on _candlestick tt ff r)
-  # on _parallel (on _parallel tt ff r)
-  # on _pivot (on _pivot tt ff r)
-  where
-  contractChart ∷ ∀ ω. Chart ω → Variant ω
-  contractChart = unsafeCoerce
 
 print ∷ ∀ r. (Variant r → String) → Chart r → String
 print cb = cb

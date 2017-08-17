@@ -19,12 +19,8 @@ module SlamData.Workspace.Card.CardType.Input where
 import SlamData.Prelude
 
 import Data.Variant (inj, on)
-
 import Halogen.HTML as H
-
 import SlamData.Render.Icon as I
-
-import Unsafe.Coerce (unsafeCoerce)
 
 _text = SProxy ∷ SProxy "text"
 _numeric = SProxy ∷ SProxy "numeric"
@@ -65,17 +61,6 @@ time = inj _time unit
 
 datetime ∷ ∀ r. Variant (datetime ∷ Unit|r)
 datetime = inj _datetime unit
-
-eq_ ∷ ∀ r rr b. HeytingAlgebra b ⇒ (Variant r → Variant rr → b) → Input r → Input rr → b
-eq_ cb r = cb (contractInput r)
-  # on _text (on _text tt ff r)
-  # on _numeric (on _numeric tt ff r)
-  # on _date (on _date tt ff r)
-  # on _time (on _time tt ff r)
-  # on _datetime (on _datetime tt ff r)
-  where
-  contractInput ∷ ∀ ω. Input ω → Variant ω
-  contractInput = unsafeCoerce
 
 print ∷ ∀ r. (Variant r → String) → Input r → String
 print cb = cb

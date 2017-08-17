@@ -108,7 +108,7 @@ evalLabeled m p = do
       | lastUsedResource ≡ Just r =
           m.selected
       -- new resource and checkbox: empty selection
-      | Sel.eq_ case2_ p.formInputType Sel.checkbox =
+      | p.formInputType ≡ Sel.checkbox =
           Set.empty
       -- default selection is empty, new resource this is not checkbox: take first value
       | Set.isEmpty p.selectedValues =

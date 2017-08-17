@@ -57,7 +57,7 @@ type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
 type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
 
 lm ∷ ∀ a. LM.Module VCT.VizType a
-lm = LM.openModule VCT.eq_
+lm = LM.openModule eq
 
 component ∷ CC.CardOptions → CC.CardComponent
 component =
@@ -88,7 +88,7 @@ render state =
         $ CN.hidden
         <$ guard
             ( state.vizTypePickerExpanded
-              ∨ ( not VCT.eq_ CT.pivot state.vizType ) )
+              ∨ ( CT.pivot ≠ state.vizType ) )
     ]
     [ HH.slot' CS.cpPivot unit PT.component unit
       $ HE.input \e → right ∘ Q.HandlePivotTable e

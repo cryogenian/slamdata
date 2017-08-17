@@ -64,7 +64,7 @@ import SlamData.Workspace.Card.Setups.Viz.Eval.Select as Select
 import SlamData.Workspace.Card.Setups.Viz.Model (Model)
 
 lm ∷ ∀ a. LM.Module VT.VizType a
-lm = LM.openModule VT.eq_
+lm = LM.openModule eq
 
 
 eval ∷ ∀ m. VizEval m (Model → Port.Port → m Port.Out)

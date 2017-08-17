@@ -36,4 +36,4 @@ check ∷ forall eff. SC eff Unit
 check = quickCheck $ runArbCardType ⋙ \ct →
   case CT.decode (CT.encode ct) of
     Left err → Failed $ "Decode failed: " <> err
-    Right ct' → CT.eq_ ct ct' <?> "CardType failed to decode as encoded value"
+    Right ct' → ct ≡ ct' <?> "CardType failed to decode as encoded value"

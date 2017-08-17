@@ -19,13 +19,9 @@ module SlamData.Workspace.Card.CardType.Ace where
 import SlamData.Prelude
 
 import Data.Variant (inj, on)
-
 import Halogen.HTML as H
 import Halogen.HTML as HH
-
 import SlamData.Render.Icon as I
-
-import Unsafe.Coerce (unsafeCoerce)
 
 _aceMarkdown = SProxy ∷ SProxy "aceMarkdown"
 _aceSql = SProxy ∷ SProxy "aceSql"
@@ -60,14 +56,6 @@ mode ∷ ∀ r. (Variant r → String) → Ace r → String
 mode cb = cb
   # on _aceMarkdown (const "ace/mode/markdown")
   # on _aceSql (const "ace/mode/sql")
-
-eq_ ∷ ∀ r rr b. HeytingAlgebra b ⇒ (Variant r → Variant rr → b) → Ace r → Ace rr → b
-eq_ cb r = cb (contractAce r)
-  # on _aceMarkdown (on _aceMarkdown tt ff r)
-  # on _aceSql (on _aceSql tt ff r)
-  where
-  contractAce ∷ ∀ ω. Ace ω → Variant ω
-  contractAce = unsafeCoerce
 
 print ∷ ∀ r. (Variant r → String) → Ace r → String
 print cb = cb

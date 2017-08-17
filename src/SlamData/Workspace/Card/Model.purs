@@ -25,8 +25,7 @@ import Data.List as L
 import Data.Path.Pathy as Path
 import Data.Rational ((%))
 import Data.StrMap as StrMap
-import Data.Variant (on)
-
+import Data.Variant (match)
 import SlamData.Workspace.Card.Ace.Model as Ace
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.Ace as CTA
@@ -46,10 +45,8 @@ import SlamData.Workspace.Card.Tabs.Model as Tabs
 import SlamData.Workspace.Card.Variables.Model as Variables
 import SlamData.Workspace.Card.Viz.Model as Viz
 import SlamData.Workspace.Deck.DeckId (DeckId)
-
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
-
 import Utils (decodec)
 import Utils.Path as PU
 
@@ -101,7 +98,7 @@ updateCardModel = case _, _ of
 
 instance eqAnyCardModel ∷ Eq AnyCardModel where
   eq = case _, _ of
-    Ace x1 y1, Ace x2 y2 → CT.eq_ (expand x1) (expand x2) && Ace.eqModel y1 y2
+    Ace x1 y1, Ace x2 y2 → x1 ≡ x2 && Ace.eqModel y1 y2
     Search s1, Search s2 → s1 ≡ s2
     Markdown x, Markdown y → x ≡ y
     Table x, Table y → JT.eqModel x y
@@ -181,48 +178,49 @@ decodeCardModel
   → J.Json
   → CT.CardType
   → String ⊹ AnyCardModel
-decodeCardModel ctstr js = case_
-  # on CT._aceSql (const $ map (Ace CT.aceSql) $ Ace.decode js)
-  # on CT._aceMarkdown (const $ map (Ace CT.aceMarkdown) $ Ace.decode js)
-  # on CT._search (const $ map Search $ J.decodeJson js)
-  # on CT._markdown (const $ map Markdown $ MD.decode js)
-  # on CT._table (const $ map Table $ decodec JT.codec js)
-  # on CT._download (const $ pure Download)
-  # on CT._variables (const $ map Variables $ Variables.decode js)
-  # on CT._troubleshoot (const $ pure Troubleshoot)
-  # on CT._cache (const $ map Cache $ J.decodeJson js)
-  # on CT._open (const $ map Open $ decodeOpen js)
-  # on CT._downloadOptions (const $ map DownloadOptions $ decodec DLO.codec js)
-  # on CT._draftboard (const $ map Draftboard $ DB.decode js)
-  # on CT._tabs (const $ map Tabs $ decodec Tabs.codec js)
-  # on CT._structureEditor (const $ map StructureEditor $ StructureEditor.decode js)
-  # on CT._setupViz (const $ map SetupViz $ decodec (SetupViz.codec ctstr) js)
-  # on CT._viz (const $ map Viz $ decodec (Viz.codec ctstr) js)
+decodeCardModel ctstr js = match
+  { aceSql: const $ map (Ace CT.aceSql) $ Ace.decode js
+  , aceMarkdown: const $ map (Ace CT.aceMarkdown) $ Ace.decode js
+  , search: const $ map Search $ J.decodeJson js
+  , markdown: const $ map Markdown $ MD.decode js
+  , table: const $ map Table $ decodec JT.codec js
+  , download: const $ pure Download
+  , variables: const $ map Variables $ Variables.decode js
+  , cache: const $ map Cache $ J.decodeJson js
+  , troubleshoot: const $ pure Troubleshoot
+  , open: const $ map Open $ decodeOpen js
+  , downloadOptions: const $ map DownloadOptions $ decodec DLO.codec js
+  , draftboard: const $ map Draftboard $ DB.decode js
+  , tabs: const $ map Tabs $ decodec Tabs.codec js
+  , structureEditor: const $ map StructureEditor $ StructureEditor.decode js
+  , setupViz: const $ map SetupViz $ decodec (SetupViz.codec ctstr) js
+  , viz: const $ map Viz $ decodec (Viz.codec ctstr) js
+  }
   where
   -- For backwards compat
   decodeOpen j =
     Open.decode j <|> (map Open.Resource <$> J.decodeJson j)
 
 cardModelOfType ∷ Port.Out → CT.CardType → AnyCardModel
-cardModelOfType (port × varMap) = case_
-  # on CT._aceSql (const $ Ace CT.aceSql $ Query.initialModel port)
-  # on CT._aceMarkdown (const $ Ace CT.aceMarkdown Ace.emptyModel)
-  # on CT._search (const $ Search "")
-  # on CT._markdown (const $ Markdown MD.emptyModel)
-  # on CT._table (const $ Table JT.emptyModel)
-  # on CT._download (const Download)
-  # on CT._variables (const $ Variables Variables.emptyModel)
-  # on CT._troubleshoot (const Troubleshoot)
-  # on CT._cache (const $ Cache Nothing)
-  # on CT._open (const $ Open Nothing)
-  # on CT._downloadOptions
-      ( const $ DownloadOptions $ DLO.initialState
-        { targetName = Path.runFileName ∘ PU.anyFileName <$> Port.extractAnyFilePath varMap })
-  # on CT._draftboard (const $ Draftboard DB.emptyModel)
-  # on CT._tabs (const $ Tabs Tabs.initialModel)
-  # on CT._structureEditor (const $ StructureEditor StructureEditor.initialModel)
-  # on CT._setupViz (const $ SetupViz SetupViz.initial)
-  # on CT._viz (const $ Viz Viz.initial)
+cardModelOfType (port × varMap) = match
+  { aceSql: const $ Ace CT.aceSql $ Query.initialModel port
+  , aceMarkdown: const $ Ace CT.aceMarkdown Ace.emptyModel
+  , search: const $ Search ""
+  , markdown: const $ Markdown MD.emptyModel
+  , table: const $ Table JT.emptyModel
+  , download: const Download
+  , variables: const $ Variables Variables.emptyModel
+  , troubleshoot: const Troubleshoot
+  , cache: const $ Cache Nothing
+  , open: const $ Open Nothing
+  , downloadOptions: const $ DownloadOptions $ DLO.initialState
+        { targetName = Path.runFileName ∘ PU.anyFileName <$> Port.extractAnyFilePath varMap }
+  , draftboard: const $ Draftboard DB.emptyModel
+  , tabs: const $ Tabs Tabs.initialModel
+  , structureEditor:const $ StructureEditor StructureEditor.initialModel
+  , setupViz: const $ SetupViz SetupViz.initial
+  , viz: const $ Viz Viz.initial
+  }
 
 singletonDraftboard ∷ DeckId → AnyCardModel
 singletonDraftboard deckId =

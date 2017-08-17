@@ -19,12 +19,8 @@ module SlamData.Workspace.Card.CardType.Select where
 import SlamData.Prelude
 
 import Data.Variant (inj, on)
-
 import Halogen.HTML as H
-
 import SlamData.Render.Icon as I
-
-import Unsafe.Coerce (unsafeCoerce)
 
 _dropdown = SProxy ∷ SProxy "dropdown"
 _checkbox = SProxy ∷ SProxy "checkbox"
@@ -49,15 +45,6 @@ checkbox = inj _checkbox unit
 
 radio ∷ ∀ r. Variant (radio ∷ Unit|r)
 radio = inj _radio unit
-
-eq_ ∷ ∀ r rr b. HeytingAlgebra b ⇒ (Variant r → Variant rr → b) → Select r → Select rr → b
-eq_ cb r = cb (contractSelect r)
-  # on _dropdown (on _dropdown tt ff r)
-  # on _checkbox (on _checkbox tt ff r)
-  # on _radio (on _radio tt ff r)
-  where
-  contractSelect ∷ ∀ ω. Select ω → Variant ω
-  contractSelect = unsafeCoerce
 
 print ∷ ∀ r. (Variant r → String) → Select r → String
 print cb = cb

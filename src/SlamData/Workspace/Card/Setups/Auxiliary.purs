@@ -83,20 +83,21 @@ codec ∷ CA.JsonCodec State
 codec = C.basicCodec (\j → lmap CA.TypeMismatch $ decode j) encode
 
 encode ∷ State → J.Json
-encode = V.case_
-  # V.on CT._area Area.encode
-  # V.on CT._bar Bar.encode
-  # V.on CT._funnel Funnel.encode
-  # V.on CT._gauge Gauge.encode
-  # V.on CT._graph Graph.encode
-  # V.on CT._heatmap Heatmap.encode
-  # V.on CT._line Line.encode
-  # V.on CT._metric Metric.encode
-  # V.on CT._punchCard PunchCard.encode
-  # V.on CT._scatter Scatter.encode
-  # V.on CT._geoHeatmap GeoHeatmap.encode
-  # V.on CT._geoMarker GeoMarker.encode
-  # V.on CT._pivot PivotTable.encode
+encode = V.match
+  { area: Area.encode
+  , bar: Bar.encode
+  , funnel: Funnel.encode
+  , gauge: Gauge.encode
+  , graph: Graph.encode
+  , heatmap: Heatmap.encode
+  , line: Line.encode
+  , metric: Metric.encode
+  , punchCard: PunchCard.encode
+  , scatter: Scatter.encode
+  , geoHeatmap: GeoHeatmap.encode
+  , geoMarker: GeoMarker.encode
+  , pivot: PivotTable.encode
+  }
 
 decode ∷ J.Json → String ⊹ State
 decode j =

@@ -34,14 +34,6 @@ type VizType =
 all ∷ Array VizType
 all = Cht.all ⊕ Geo.all ⊕ Inp.all ⊕ Sel.all ⊕ Sta.all
 
-eq_ ∷ ∀ b. HeytingAlgebra b ⇒ VizType → VizType → b
-eq_ = case2_
-  # Cht.eq_
-  # Geo.eq_
-  # Inp.eq_
-  # Sel.eq_
-  # Sta.eq_
-
 print ∷ VizType → String
 print = case_
   # Cht.print

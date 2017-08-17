@@ -19,12 +19,8 @@ module SlamData.Workspace.Card.CardType.Geo where
 import SlamData.Prelude
 
 import Data.Variant (inj, on)
-
 import Halogen.HTML as H
-
 import SlamData.Render.Icon as I
-
-import Unsafe.Coerce (unsafeCoerce)
 
 _geoMarker = SProxy ∷ SProxy "geoMarker"
 _geoHeatmap = SProxy ∷ SProxy "geoHeatmap"
@@ -44,14 +40,6 @@ geoMarker = inj _geoMarker unit
 
 geoHeatmap ∷ ∀ r. Variant (geoHeatmap ∷ Unit|r)
 geoHeatmap = inj _geoHeatmap unit
-
-eq_ ∷ ∀ r rr b. HeytingAlgebra b ⇒ (Variant r → Variant rr → b) → Geo r → Geo rr → b
-eq_ cb r = cb (contractGeo r)
-  # on _geoMarker (on _geoMarker tt ff r)
-  # on _geoHeatmap (on _geoHeatmap tt ff r)
-  where
-  contractGeo ∷ ∀ ω. Geo ω → Variant ω
-  contractGeo = unsafeCoerce
 
 print ∷ ∀ r. (Variant r → String) → Geo r → String
 print cb = cb

@@ -54,7 +54,7 @@ import SlamData.Workspace.Card.Setups.PivotTable.Model as PivotTable
 import Test.StrongCheck.Gen as Gen
 
 lm ∷ ∀ a. LM.Module VT.VizType a
-lm = LM.openModule VT.eq_
+lm = LM.openModule eq
 
 type Model =
   { dimMaps ∷ LM.ListMap VT.VizType Pr.DimMap
@@ -87,7 +87,7 @@ eq_ ∷ Model → Model → Boolean
 eq_ r1 r2 =
   lm.eq_ eq r1.dimMaps r2.dimMaps
   ∧ lm.eq_ Aux.eq_ r1.auxes r2.auxes
-  ∧ VT.eq_ r1.vizType r2.vizType
+  ∧ r1.vizType ≡ r2.vizType
 
 gen ∷ Gen.Gen Model
 gen = do

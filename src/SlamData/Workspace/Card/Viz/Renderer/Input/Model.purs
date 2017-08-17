@@ -41,7 +41,7 @@ initialModel =
 
 eq_ ∷ Model → Model → Boolean
 eq_ r1 r2 =
-  Inp.eq_ case2_  r1.formInputType r2.formInputType
+  r1.formInputType ≡ r2.formInputType
   ∧ r1.value ≡ r2.value
   ∧ r1.cursor ≡ r2.cursor
 

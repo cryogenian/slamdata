@@ -38,7 +38,7 @@ type Model =
 
 eq_ ∷ Model → Model → Boolean
 eq_ r1 r2 =
-  Sel.eq_ case2_ r1.formInputType r2.formInputType
+  r1.formInputType ≡ r2.formInputType
   ∧ r1.selected ≡ r2.selected
   ∧ r1.cursor ≡ r2.cursor
 

@@ -19,12 +19,8 @@ module SlamData.Workspace.Card.CardType.Simple where
 import SlamData.Prelude
 
 import Data.Variant (inj, on)
-
 import Halogen.HTML as H
-
 import SlamData.Render.Icon as I
-
-import Unsafe.Coerce (unsafeCoerce)
 
 _search = SProxy ∷ SProxy "search"
 _markdown = SProxy ∷ SProxy "markdown"
@@ -119,27 +115,6 @@ all =
   , setupViz
   , viz
   ]
-
-eq_ ∷ ∀ r rr b. HeytingAlgebra b ⇒ (Variant r → Variant rr → b) → Simple r → Simple rr → b
-eq_ cb r = cb (contractSimple r)
-  # on _viz (on _viz tt ff r)
-  # on _search (on _search tt ff r)
-  # on _markdown (on _markdown tt ff r)
-  # on _table (on _table tt ff r)
-  # on _download (on _download tt ff r)
-  # on _variables (on _variables tt ff r)
-  # on _troubleshoot (on _troubleshoot tt ff r)
-  # on _cache (on _cache tt ff r)
-  # on _open (on _open tt ff r)
-  # on _downloadOptions (on _downloadOptions tt ff r)
-  # on _draftboard (on _draftboard tt ff r)
-  # on _tabs (on _tabs tt ff r)
-  # on _structureEditor (on _structureEditor tt ff r)
-  # on _setupViz (on _setupViz tt ff r)
-  where
-  contractSimple ∷ ∀ ω. Simple ω → Variant ω
-  contractSimple = unsafeCoerce
-
 
 print ∷ ∀ r. (Variant r → String) → Simple r → String
 print cb = cb

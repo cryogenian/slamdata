@@ -21,7 +21,7 @@ module SlamData.Workspace.Card.Factory
 
 import SlamData.Prelude
 
-import Data.Variant (on)
+import Data.Variant (match)
 
 import SlamData.Workspace.Card.Ace.Component (aceComponent)
 import SlamData.Workspace.Card.Cache.Component (cacheCardComponent)
@@ -43,20 +43,21 @@ import SlamData.Workspace.Card.Viz.Component as Viz
 import SlamData.Workspace.Card.Setups.Viz.Component as SetupViz
 
 cardComponent ∷ CT.CardType → CardOptions → CardComponent
-cardComponent = case_
-  # on CT._aceSql (const $ aceComponent CT.aceSql)
-  # on CT._aceMarkdown (const $ aceComponent CT.aceMarkdown)
-  # on CT._search (const searchComponent)
-  # on CT._markdown (const markdownComponent)
-  # on CT._table (const tableComponent)
-  # on CT._download (const downloadComponent)
-  # on CT._variables (const variablesComponent)
-  # on CT._troubleshoot (const troubleshootComponent)
-  # on CT._cache (const cacheCardComponent)
-  # on CT._open (const openComponent)
-  # on CT._downloadOptions (const DOpts.component)
-  # on CT._draftboard (const draftboardComponent)
-  # on CT._tabs (const tabsComponent)
-  # on CT._structureEditor (const StructureEditor.component)
-  # on CT._viz  (const Viz.component)
-  # on CT._setupViz (const SetupViz.component)
+cardComponent = match
+  { aceSql: const $ aceComponent CT.aceSql
+  , aceMarkdown: const $ aceComponent CT.aceMarkdown
+  , search: const searchComponent
+  , markdown: const markdownComponent
+  , table: const tableComponent
+  , download: const downloadComponent
+  , variables: const variablesComponent
+  , troubleshoot: const troubleshootComponent
+  , cache: const cacheCardComponent
+  , open: const openComponent
+  , downloadOptions: const DOpts.component
+  , draftboard: const draftboardComponent
+  , tabs: const tabsComponent
+  , structureEditor: const StructureEditor.component
+  , viz: const Viz.component
+  , setupViz: const SetupViz.component
+  }

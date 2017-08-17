@@ -19,12 +19,8 @@ module SlamData.Workspace.Card.CardType.Static where
 import SlamData.Prelude
 
 import Data.Variant (inj, on)
-
 import Halogen.HTML as H
-
 import SlamData.Render.Icon as I
-
-import Unsafe.Coerce (unsafeCoerce)
 
 _static = SProxy ∷ SProxy "static"
 
@@ -36,12 +32,6 @@ all = [ static ]
 
 static ∷ ∀ r. Variant (static ∷ Unit|r)
 static = inj _static unit
-
-eq_ ∷ ∀ r rr b. HeytingAlgebra b ⇒ (Variant r → Variant rr → b) → Static r → Static rr → b
-eq_ cb r = cb (contractStatic r) # on _static (on _static tt ff r)
-  where
-  contractStatic ∷ ∀ ω. Static ω → Variant ω
-  contractStatic = unsafeCoerce
 
 print ∷ ∀ r. (Variant r → String) → Static r → String
 print cb = cb # on _static (const "static")

@@ -43,6 +43,8 @@ data Action
   = Set VT.VizType
   | Explain VT.VizType
 
+derive instance eqVizPickerAction ∷ Eq Action
+
 fitsRequirement ∷ Ax.Axes → VT.VizType → Boolean
 fitsRequirement axes vt =
   sizes.value >= conf.value
@@ -122,14 +124,9 @@ render state =
   ]
   [ HH.slot' cpFilter unit ALF.component "Filter visualizations"
       $ HE.input HandleFilter
-  , HH.slot' cpList unit (AL.actionListComp' (Equivalence eq_)  AL.defaultConf [ ]) unit
+  , HH.slot' cpList unit (AL.actionListComp' (Equivalence eq)  AL.defaultConf [ ]) unit
       $ HE.input HandleAction
   ]
-  where
-  eq_ ∷ Action → Action → Boolean
-  eq_ (Set a) (Set b) = VT.eq_ (expand a) (expand b)
-  eq_ (Explain a) (Explain b) = VT.eq_ (expand a) (expand b)
-  eq_ _ _ = false
 
 description ∷ Action → String
 description = case _ of

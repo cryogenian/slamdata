@@ -22,7 +22,6 @@ module SlamData.Workspace.Card.CardType
   , encode
   , decode
   , consumerInteractable
-  , eq_
   , all
   , contractToPivot
   , contractToMetric
@@ -62,11 +61,6 @@ type CardType =
 
 all ∷ Array CardType
 all = Sim.all ⊕ Ace.all
-
-eq_ ∷ ∀ b. HeytingAlgebra b ⇒ CardType → CardType → b
-eq_ = case2_
-  # Ace.eq_
-  # Sim.eq_
 
 print ∷ CardType → String
 print = case_
