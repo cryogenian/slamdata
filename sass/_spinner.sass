@@ -1,3 +1,14 @@
+=spinner($size, $indication-width)
+  @extend %spinner
+
+  .indication
+    height: $size
+    width: $size
+
+  .indication-bg, .indication-bar
+    border-width: $indication-width
+
+
 @keyframes cw
   0%
     transform: rotate(0turn)
@@ -52,29 +63,19 @@
     animation: 700ms cubic-bezier(0.645, 0.045, 0.355, 1) 0s infinite none cw
 
 
-=spinner($size, $indication-width)
-  @extend %spinner
+.sd-spinner
+  &-lg
+    +spinner(7.2rem, 0.2rem)
 
-  .indication
-    height: $size
-    width: $size
+    svg
+      position: absolute
+      left: 50%
+      top: 50%
+      margin: -1.8rem 0 0 -1.9rem
+      opacity: 0.15
 
-  .indication-bg, .indication-bar
-    border-width: $indication-width
+      *
+        fill: currentColor
 
-.sd-spinner-lg
-  +spinner(7.2rem, 0.2rem)
-
-  svg
-    position: absolute
-    left: 50%
-    top: 50%
-    margin: -1.8rem 0 0 -1.9rem
-    opacity: 0.15
-
-    *
-      fill: currentColor
-
-
-.sd-spinner-sm
-  +spinner(1em, 0.1rem)
+  &-sm
+    +spinner(1em, 0.1rem)

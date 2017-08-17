@@ -79,7 +79,7 @@
   .deck-dialog-footer
     flex: 0 0 auto
     padding-top: $padding-base-horizontal
-    padding-right: 0rem
+    padding-right: 0
 
     &.share
       margin-top: 0
@@ -135,10 +135,10 @@
 
   .deck-dialog-footer
     $m: $padding-base-horizontal
-    padding-bottom: $padding-base-horizontal
     display: flex
     flex-flow: row nowrap
-    margin: 0 ($m * -1)
+    margin: 1.6rem ($m * -1) 0
+    padding-bottom: 0
 
     .btn
       flex: 1 1 50%
@@ -151,11 +151,6 @@
 
       &:not(:last-child)
         margin-right: $m !important
-
-  .deck-dialog-footer
-    margin-top: 1.6rem
-    margin-bottom: 0
-    padding-bottom: 0
 
   .btn
     padding-top: 0.6em
