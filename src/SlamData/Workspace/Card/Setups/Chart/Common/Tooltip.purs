@@ -48,7 +48,6 @@ tooltip a = E.tooltip do
   E.textStyle do
     E.fontFamily "Ubuntu, sans-serif, sans"
     E.fontSize 12
-    traverse_ E.color $ Color.fromHexString "#000"
   a
 
 
