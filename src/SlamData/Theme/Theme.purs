@@ -29,6 +29,7 @@ import Data.Codec.Argonaut as JC
 import Data.Codec.Argonaut.Variant as JCV
 import Data.URI as URI
 import Data.Variant as V
+import SlamData.Config.Version (slamDataVersion)
 
 data Theme
   = Light
@@ -58,7 +59,8 @@ getCustomValue = case _ of
 
 builtInThemeUri ∷ String → URI.URIRef
 builtInThemeUri t =
-  unsafePartial fromRight $ URI.runParseURIRef $ "./css/" <> t <> ".css"
+  unsafePartial fromRight ∘ URI.runParseURIRef
+    $ "./css/" <> t <> "-" <> slamDataVersion <> ".css"
 
 getURI ∷ Theme → URI.URIRef
 getURI = case _ of

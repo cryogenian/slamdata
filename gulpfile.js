@@ -231,7 +231,6 @@ gulp.task("version-js", () => {
 gulp.task("version-files", ["version-css", "version-js"])
 
 gulp.task("version-inject", () => {
-  const styles = file("style-embed", "<link id=\"theme-css\" rel=\"stylesheet\" href=\"css/light-" + packageInfo.version + ".css\">", { src: true })
   const workspaceJS = file("workspace-embed", "<script type=\"text/javascript\" src=\"js/workspace-" + packageInfo.version + ".js\"></script>", { src: true })
   const filesystemJS = file("filesystem-embed", "<script type=\"text/javascript\" src=\"js/filesystem-" + packageInfo.version + ".js\"></script>", { src: true })
 
