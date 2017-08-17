@@ -40,12 +40,10 @@
     transform: translateX(50%)
     pointer-events: none
 
-  &:focus::before,
-  &:focus::after,
-  &:hover::before,
-  &:hover::after
-    opacity: 1
-    transition: all 0.2s ease
+  &:focus, &:hover
+    &::before, &::after
+      opacity: 1
+      transition: opacity 0.2s ease
 
   &:hover::before
     background-color: $tooltip-hover-color
@@ -53,4 +51,3 @@
 
   &:hover::after
     border-top-color: $tooltip-hover-color
-
