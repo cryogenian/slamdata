@@ -1,3 +1,14 @@
+=spinner($size, $indication-width)
+  @extend %spinner
+
+  .indication
+    height: $size
+    width: $size
+
+  .indication-bg, .indication-bar
+    border-width: $indication-width
+
+
 @keyframes cw
   0%
     transform: rotate(0turn)
@@ -68,15 +79,3 @@
 
   &-sm
     +spinner(1em, 0.1rem)
-
-
-=spinner($size, $indication-width)
-  @extend %spinner
-
-  .indication
-    height: $size
-    width: $size
-
-  .indication-bg, .indication-bar
-    border-width: $indication-width
-
