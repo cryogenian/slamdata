@@ -47,7 +47,6 @@ import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port (Port(..))
 import SlamData.Workspace.LevelOfDetails as LOD
-import Unsafe.Coerce (unsafeCoerce)
 
 import Utils (hush')
 
@@ -178,16 +177,13 @@ evalComponent = case _ of
     { echarts } ← Wiring.expose
     wsTheme ← Wiring.getTheme
     let
-      toObj ∷ ∀ a. a → F.Foreign
-      toObj = unsafeCoerce
-
       color ∷ String
       color = "#e0e6e3"
 
       maybeWeNeedLightStuff ∷ Maybe ETheme.Theme
       maybeWeNeedLightStuff =
         if fromMaybe Theme.default wsTheme == Theme.Dark then
-          Just ∘ Right $ toObj
+          Just ∘ Right $ F.toForeign
             { color
             , textStyle: { color }
             , dataZoom: { textStyle: { color } }

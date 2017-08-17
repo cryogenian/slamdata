@@ -43,7 +43,6 @@ type Color = String
 
 tooltip ∷ ∀ i. DSLMonad ETP.TooltipI Unit  → DSLMonad (tooltip ∷ ETP.I|i) Unit
 tooltip a = E.tooltip do
-  wsTheme ← Wiring.getTheme
   E.textStyle do
     E.fontFamily "Ubuntu, sans-serif, sans"
     E.fontSize 12
