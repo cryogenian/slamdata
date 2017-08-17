@@ -47,6 +47,7 @@ import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port (Port(..))
 import SlamData.Workspace.LevelOfDetails as LOD
+import Unsafe.Coerce (unsafeCoerce)
 
 import Utils (hush')
 
@@ -177,10 +178,34 @@ evalComponent = case _ of
     { echarts } ← Wiring.expose
     wsTheme ← Wiring.getTheme
     let
-      dark :: Maybe ETheme.Theme
-      dark =
-        if fromMaybe Theme.default wsTheme == Theme.Dark then Just ETheme.dark else Nothing
-    H.modify _{ theme = Just (dark <|> echarts.theme) }
+      toObj ∷ ∀ a. a → F.Foreign
+      toObj = unsafeCoerce
+
+      color ∷ String
+      color = "#e0e6e3"
+
+      maybeWeNeedLightStuff ∷ Maybe ETheme.Theme
+      maybeWeNeedLightStuff =
+        if fromMaybe Theme.default wsTheme == Theme.Dark then
+          Just ∘ Right $ toObj
+            { color
+            , textStyle: { color }
+            , dataZoom: { textStyle: { color } }
+            , graph: { textStyle: { color } }
+            , guage: { title: { textStyle: { color } } }
+            , legend: { textStyle: { color } }
+            , timeline:
+                { lineStyle: { color }
+                , itemStyle: { normal: { color } }
+                , label: { normal: { color } }
+                , controlStyle: { normal: { borderColor: color, color } }
+                }
+            , title: { textStyle: { color } }
+            , visualMap: { textStyle: { color } }
+            }
+        else
+          Nothing
+    H.modify _{ theme = Just (maybeWeNeedLightStuff <|> echarts.theme) }
     pure next
   RaiseUpdate em next → do
     for_ em (H.raise ∘ CC.stateAlter)

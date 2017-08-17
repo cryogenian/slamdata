@@ -30,6 +30,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.CSS as HC
 import Halogen.HTML.Properties as HP
 import Halogen.VDom.DOM.StringRenderer as VDS
+import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import Unsafe.Coerce (unsafeCoerce)
 import Utils (showFormattedNumber, hush')
@@ -43,10 +44,11 @@ type Color = String
 
 tooltip ∷ ∀ i. DSLMonad ETP.TooltipI Unit  → DSLMonad (tooltip ∷ ETP.I|i) Unit
 tooltip a = E.tooltip do
+  wsTheme ← Wiring.getTheme
   E.textStyle do
-    E.fontFamily "Ubuntu, sans"
+    E.fontFamily "Ubuntu, sans-serif, sans"
     E.fontSize 12
-    traverse_ E.color $ Color.fromHexString "#000000"
+    traverse_ E.color $ Color.fromHexString "#000"
   a
 
 
