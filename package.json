@@ -63,7 +63,8 @@
     "update:quasar",
     "lint:headers",
     "lint:whitespace",
-    "lint:crlf"
+    "lint:crlf",
+    "lint:sass"
   ],
   "license": "Apache-2.0",
   "bugs": {
