@@ -1,5 +1,5 @@
 {-
-Copyright 2016 SlamData, Inc.
+Copyright 2017 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,15 +24,14 @@ import Data.Foreign.Index (readProp)
 import Data.Int (toNumber, floor)
 import Data.Lens ((^?), _Just)
 import Data.String as S
-
+import ECharts.Theme as ETheme
 import Global (readFloat, isNaN)
-
 import Halogen as H
 import Halogen.ECharts as HEC
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-
 import SlamData.Render.ClassName as CN
+import SlamData.Theme.Theme as Theme
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType (ChartType, darkIconSrc)
@@ -176,7 +175,12 @@ evalComponent ∷ Query ~> DSL
 evalComponent = case _ of
   Init next → do
     { echarts } ← Wiring.expose
-    H.modify _{ theme = Just echarts.theme }
+    wsTheme ← Wiring.getTheme
+    let
+      dark :: Maybe ETheme.Theme
+      dark =
+        if fromMaybe Theme.default wsTheme == Theme.Dark then Just ETheme.dark else Nothing
+    H.modify _{ theme = Just (dark <|> echarts.theme) }
     pure next
   RaiseUpdate em next → do
     for_ em (H.raise ∘ CC.stateAlter)
