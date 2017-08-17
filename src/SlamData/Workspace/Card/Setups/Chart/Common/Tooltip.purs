@@ -30,7 +30,6 @@ import Halogen.HTML as HH
 import Halogen.HTML.CSS as HC
 import Halogen.HTML.Properties as HP
 import Halogen.VDom.DOM.StringRenderer as VDS
-import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import Unsafe.Coerce (unsafeCoerce)
 import Utils (showFormattedNumber, hush')
