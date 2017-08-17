@@ -238,7 +238,7 @@ axisType d axes = fromMaybe Ax.Category do
     -- and round(measure, 2) isn't continous too
     -- But we know, that applying transformation to measure axis
     -- produce measure axis.
-    | isJust t ∧ (not $ Set.member c axes.value) = Ax.Category
+    | isJust t && not (Set.member c axes.value) = Ax.Category
     | Set.member c axes.value = Ax.Measure
     | Set.member c axes.time = Ax.Time
     | Set.member c axes.date = Ax.Date
