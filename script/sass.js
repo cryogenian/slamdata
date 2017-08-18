@@ -3,7 +3,9 @@
 const autoprefixer = require("gulp-autoprefixer")
 const cleanCSS = require("gulp-clean-css")
 const gulp = require("gulp")
+const rename = require("gulp-rename")
 const sass = require("gulp-sass")
+const { version } = require("../package.json")
 
 
 const autoprefixerOpts = {
@@ -22,6 +24,7 @@ const sass_ = () =>
     .pipe(sass())
     .pipe(autoprefixer(autoprefixerOpts))
     .pipe(cleanCSS(cleanCSSOpts))
+    .pipe(rename(function(path) { path.basename += "-" + version }))
     .pipe(gulp.dest("public/css/"))
 
 
