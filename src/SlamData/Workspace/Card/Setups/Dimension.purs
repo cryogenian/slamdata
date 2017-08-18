@@ -236,7 +236,9 @@ axisType d axes = fromMaybe Ax.Category do
     -- If axis is transformed then we should use category
     -- i.e. date_part("year", datetime) isn't continuous
     -- and round(measure, 2) isn't continous too
-    | Just _ ← t = Ax.Category
+    -- But we know, that applying transformation to measure axis
+    -- produce measure axis.
+    | isJust t && not (Set.member c axes.value) = Ax.Category
     | Set.member c axes.value = Ax.Measure
     | Set.member c axes.time = Ax.Time
     | Set.member c axes.date = Ax.Date
