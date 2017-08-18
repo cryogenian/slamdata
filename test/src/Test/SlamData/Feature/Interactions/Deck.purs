@@ -6,7 +6,7 @@ import Data.Argonaut (encodeJson)
 import Data.StrMap as SM
 import Data.Time.Duration (Milliseconds(..))
 import Global (encodeURIComponent)
-import Selenium.Monad (get, getCurrentUrl, later, refresh)
+import Selenium.Monad (get, getCurrentUrl, refresh)
 import Test.Feature as Feature
 import Test.Feature.Log (annotate)
 import Test.SlamData.Feature.Monad (SlamFeature, waitTime)
@@ -163,8 +163,6 @@ insertVariablesCardInLastDeck =
 nameDeck ∷ String → SlamFeature Unit
 nameDeck name = do
   flipDeck
-  -- TODO: Vince this needs to be fixed as having a slight wait before clicks seems to fix a lot of issues when running Travis tests
-  later (Milliseconds 1000.0) $ pure unit
   Feature.click $ XPath.anywhere XPaths.renameDeck
   Feature.provideFieldValue (XPath.anywhere $ XPath.nodeWithExactAriaLabel "input" "Deck name") name
   Feature.click $ XPath.anywhere $ XPath.anyWithExactText "Save"

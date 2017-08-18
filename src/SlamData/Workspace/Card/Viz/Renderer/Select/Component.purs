@@ -202,7 +202,7 @@ eval = case _ of
     pure next
   ItemSelected sem next → do
     st ← H.get
-    if (Sel.eq_ case2_ st.formInputType Sel.checkbox)
+    if st.formInputType ≡ Sel.checkbox
       then do
         let
           selected =
@@ -217,7 +217,7 @@ eval = case _ of
     st ← H.get
     let
       selected
-        | Sel.eq_ case2_ st.formInputType Sel.checkbox = set
+        | st.formInputType ≡ Sel.checkbox = set
         | otherwise = Set.fromFoldable $ List.head $ List.fromFoldable set
     when (selected ≠ st.selected)
       $ H.modify _{ selected = selected }
