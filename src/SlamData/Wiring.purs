@@ -243,7 +243,16 @@ make path accessType vm permissionTokenHashes = liftAff do
     hintDismissals ← Bus.make
     licenseProblems ← Bus.make
     themeChange ← Bus.make
-    pure { decks, workspace, notify, globalError, stepByStep, hintDismissals, licenseProblems, themeChange }
+    pure
+      { decks
+      , workspace
+      , notify
+      , globalError
+      , stepByStep
+      , hintDismissals
+      , licenseProblems
+      , themeChange
+      }
 
 focusDeck
   ∷ ∀ m
@@ -295,7 +304,7 @@ getTheme = do
   liftEff $ readRef themeRef
 
 setTheme
-  ∷ ∀ m
+  ∷ ∀ m eff
   . MonadAsk Wiring m
   ⇒ MonadAff SlamDataEffects m
   ⇒ Maybe Theme.Theme

@@ -26,12 +26,11 @@ module SlamData.Workspace.Class
 import SlamData.Prelude
 
 import Control.Monad.Aff (delay)
-import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
-import Control.Monad.Eff.Now (NOW, now)
+import Control.Monad.Eff.Now (now)
 import Control.Monad.Eff.Ref (REF, readRef)
-import Control.Monad.Eff.Timer (TIMER, setTimeout)
+import Control.Monad.Eff.Timer (setTimeout)
 import Control.UI.Browser as Browser
 import Data.Int (ceil)
 import DOM (DOM)
@@ -46,6 +45,7 @@ import Data.List as L
 import Data.URI (printURIRef)
 import Halogen.Query (HalogenM)
 import Math as Math
+import SlamData.Effects (SlamDataEffects)
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.Theme.Theme as Theme
 import SlamData.Wiring (Wiring)
@@ -68,9 +68,9 @@ instance workspaceDSLHalogenM ∷ (Monad m, WorkspaceDSL m) ⇒ WorkspaceDSL (Ha
   navigate = lift ∘ navigate
 
 changeTheme
-  ∷ ∀ m eff
+  ∷ ∀ m
   . MonadAsk Wiring m
-  ⇒ MonadAff (avar ∷ AVAR, dom ∷ DOM, now ∷ NOW, ref ∷ REF, timer ∷ TIMER | eff) m
+  ⇒ MonadAff SlamDataEffects m
   ⇒ Maybe Theme.Theme
   → m Unit
 changeTheme theme = do
