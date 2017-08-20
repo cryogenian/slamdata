@@ -24,17 +24,15 @@ import Data.Foreign.Index (readProp)
 import Data.Int (toNumber, floor)
 import Data.Lens ((^?), _Just)
 import Data.String as S
-import ECharts.Theme as ETheme
 import Global (readFloat, isNaN)
 import Halogen as H
 import Halogen.ECharts as HEC
 import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Halogen.Query.EventSource as ES
+import Halogen.Query.EventSource as EventSource
 import SlamData.ECharts.Theme (defaultThemeColor)
 import SlamData.Render.ClassName as CN
-import SlamData.Theme.Theme as Theme
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.ChartType (ChartType, darkIconSrc)
@@ -178,7 +176,7 @@ evalComponent ∷ Query ~> DSL
 evalComponent = case _ of
   Init next → do
     { bus, echarts } ← Wiring.expose
-    H.subscribe $ busEventSource (\_ → WorkspaceThemeChange ES.Listening) bus.themeChange
+    H.subscribe $ busEventSource (\_ → WorkspaceThemeChange EventSource.Listening) bus.themeChange
     defaultTheme ← defaultThemeColor
     H.modify _{ theme = Just (defaultTheme <|> echarts.theme) }
     pure next
