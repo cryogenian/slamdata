@@ -181,6 +181,8 @@ evalComponent = case _ of
     H.modify _{ theme = Just (defaultTheme <|> echarts.theme) }
     pure next
   WorkspaceThemeChange next →
+    defaultTheme ← defaultThemeColor
+    H.modify _{ theme = Just (defaultTheme <|> echarts.theme) }
     pure next
   RaiseUpdate em next → do
     for_ em (H.raise ∘ CC.stateAlter)
