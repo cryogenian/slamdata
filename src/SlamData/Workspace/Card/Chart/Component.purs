@@ -28,8 +28,11 @@ import ECharts.Theme as ETheme
 import Global (readFloat, isNaN)
 import Halogen as H
 import Halogen.ECharts as HEC
+import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
+import Halogen.Query.EventSource as ES
+import SlamData.ECharts.Theme (defaultThemeColor)
 import SlamData.Render.ClassName as CN
 import SlamData.Theme.Theme as Theme
 import SlamData.Wiring as Wiring
@@ -174,34 +177,12 @@ lodByChartType = case _ of
 evalComponent ∷ Query ~> DSL
 evalComponent = case _ of
   Init next → do
-    { echarts } ← Wiring.expose
-    wsTheme ← Wiring.getTheme
-    let
-      color ∷ String
-      color = "#e0e6e3"
-
-      maybeWeNeedLightStuff ∷ Maybe ETheme.Theme
-      maybeWeNeedLightStuff =
-        if fromMaybe Theme.default wsTheme == Theme.Dark then
-          Just ∘ Right $ F.toForeign
-            { color
-            , textStyle: { color }
-            , dataZoom: { textStyle: { color } }
-            , graph: { textStyle: { color } }
-            , guage: { title: { textStyle: { color } } }
-            , legend: { textStyle: { color } }
-            , timeline:
-                { lineStyle: { color }
-                , itemStyle: { normal: { color } }
-                , label: { normal: { color } }
-                , controlStyle: { normal: { borderColor: color, color } }
-                }
-            , title: { textStyle: { color } }
-            , visualMap: { textStyle: { color } }
-            }
-        else
-          Nothing
-    H.modify _{ theme = Just (maybeWeNeedLightStuff <|> echarts.theme) }
+    { bus, echarts } ← Wiring.expose
+    H.subscribe $ busEventSource (\_ → WorkspaceThemeChange ES.Listening) bus.themeChange
+    defaultTheme ← defaultThemeColor
+    H.modify _{ theme = Just (defaultTheme <|> echarts.theme) }
+    pure next
+  WorkspaceThemeChange next →
     pure next
   RaiseUpdate em next → do
     for_ em (H.raise ∘ CC.stateAlter)

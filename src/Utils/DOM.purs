@@ -74,12 +74,16 @@ foreign import open
   → Window
   → Eff (dom ∷ DOM | eff) (Nullable.Nullable Window)
 
-
 -- | Same as `getTextWidth` but w/o Eff wrapper. This function definitely has effects
 -- | of allocating canvas and should have `Eff (ref ∷ REF|e)` or `Eff (dom ∷ DOM|e)`
 -- | but since we don't use intermediate `canvas` anywhere it's safe to think about
 -- | this as pure function from font style and string to width.
 foreign import getTextWidthPure ∷ String → Font → Number
+
+-- | Gets the HTML color via `getComputedStyle` which isn't in the PS DOM lib
+-- | It's passed to the ECharts which wants a string. I'd make it a `Color` but
+-- | there's also no generic `toColor` that handles `hsl`, `rgb`, etc.
+foreign import getHTMLTextColorString ∷ ∀ eff. Window → Eff (dom ∷ DOM | eff) (Maybe String)
 
 fits ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Boolean
 fits el = (&&) <$> fitsHorizontally <*> fitsVertically
