@@ -18,6 +18,7 @@ module SlamData.Workspace.Card.Chart.Component (chartComponent) where
 
 import SlamData.Prelude
 
+import Control.Monad.Eff.Class (liftEff)
 import Data.Array as A
 import Data.Foreign as F
 import Data.Foreign.Index (readProp)
@@ -176,12 +177,15 @@ evalComponent ∷ Query ~> DSL
 evalComponent = case _ of
   Init next → do
     { bus, echarts } ← Wiring.expose
-    H.subscribe $ busEventSource (\_ → WorkspaceThemeChange EventSource.Listening) bus.themeChange
-    defaultTheme ← defaultThemeColor
+    H.subscribe $ busEventSource
+      (\_ → right $ WorkspaceThemeChange EventSource.Listening)
+      bus.themeChange
+    defaultTheme ← liftEff defaultThemeColor
     H.modify _{ theme = Just (defaultTheme <|> echarts.theme) }
     pure next
-  WorkspaceThemeChange next →
-    defaultTheme ← defaultThemeColor
+  WorkspaceThemeChange next → do
+    { echarts } ← Wiring.expose
+    defaultTheme ← liftEff defaultThemeColor
     H.modify _{ theme = Just (defaultTheme <|> echarts.theme) }
     pure next
   RaiseUpdate em next → do

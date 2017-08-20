@@ -304,7 +304,7 @@ getTheme = do
   liftEff $ readRef themeRef
 
 setTheme
-  ∷ ∀ m eff
+  ∷ ∀ m
   . MonadAsk Wiring m
   ⇒ MonadAff SlamDataEffects m
   ⇒ Maybe Theme.Theme
