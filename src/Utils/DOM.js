@@ -102,7 +102,6 @@ exports.close = function(windowObjectReference) {
 exports.getHTMLTextColorString = function(windowObjectReference) {
   return function() {
     var computedStyle = windowObjectReference.getComputedStyle(document.documentElement);
-    console.log(computedStyle.getPropertyValue("color"))
     return computedStyle && "getPropertyValue" in computedStyle
       ? computedStyle.getPropertyValue("color")
       : null;
