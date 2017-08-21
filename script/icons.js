@@ -94,7 +94,7 @@ function injectIconsIntoHTML(iconAttribution) {
 
 
   // inject symbols into html files
-  return gulp.src("html/**/*.html")
+  return gulp.src("html/*.html")
     .pipe(inject(gulp.src("./package.json"), {
       starttag: "<!-- version -->",
       endtag: "<!-- /version -->",

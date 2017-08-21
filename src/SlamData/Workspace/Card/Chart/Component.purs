@@ -1,5 +1,5 @@
 {-
-Copyright 2016 SlamData, Inc.
+Copyright 2017 SlamData, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,20 +18,21 @@ module SlamData.Workspace.Card.Chart.Component (chartComponent) where
 
 import SlamData.Prelude
 
+import Control.Monad.Eff.Class (liftEff)
 import Data.Array as A
 import Data.Foreign as F
 import Data.Foreign.Index (readProp)
 import Data.Int (toNumber, floor)
 import Data.Lens ((^?), _Just)
 import Data.String as S
-
 import Global (readFloat, isNaN)
-
 import Halogen as H
 import Halogen.ECharts as HEC
+import Halogen.Component.Utils (busEventSource)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-
+import Halogen.Query.EventSource as EventSource
+import SlamData.ECharts.Theme (defaultThemeColor)
 import SlamData.Render.ClassName as CN
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.CardType as CT
@@ -68,7 +69,10 @@ chartComponent =
 renderEchart ∷ State → Array HTML
 renderEchart state = foldMap pure $ chart <$> state.theme
   where
-    chart theme = HH.slot' cpECharts unit (HEC.echarts theme) (Tuple (state.dimensions { height = state.dimensions.height - 60 }) unit) (const Nothing)
+  chart theme = HH.slot' cpECharts unit
+    (HEC.echarts theme)
+    (Tuple (state.dimensions { height = state.dimensions.height - 60 }) unit)
+    (const Nothing)
 
 render ∷ State → HTML
 render state =
@@ -125,6 +129,7 @@ evalCard = case _ of
   CC.ReceiveState evalState next → do
     case evalState of
       ES.ChartOptions options → void do
+        H.modify (_ { chartOptions = Just options })
         _ ← H.query' cpECharts unit $ H.action $ HEC.Reset options
         H.query' cpECharts unit $ H.action HEC.Resize
       ES.PivotTable options → void do
@@ -175,8 +180,26 @@ lodByChartType = case _ of
 evalComponent ∷ Query ~> DSL
 evalComponent = case _ of
   Init next → do
+    { bus, echarts } ← Wiring.expose
+    H.subscribe $ busEventSource
+      (\_ → right $ WorkspaceThemeChange EventSource.Listening)
+      bus.themeChange
+    defaultTheme ← liftEff defaultThemeColor
+    H.modify _{ theme = Just (defaultTheme <|> echarts.theme) }
+    pure next
+  WorkspaceThemeChange next → do
     { echarts } ← Wiring.expose
-    H.modify _{ theme = Just echarts.theme }
+    defaultTheme ← liftEff defaultThemeColor
+    -- Halogen.ECharts does not let you update the theme for an already mounted
+    -- component. We have to set the theme to `Nothing` which will unmount it,
+    -- and then set it to `Just` to remount it with the new theme. Because
+    -- echarts does not take initial dsl options, we have to use the cached
+    -- options in the state to redraw the chart.
+    H.modify _{ theme = Nothing }
+    H.modify _{ theme = Just (defaultTheme <|> echarts.theme) }
+    H.gets _.chartOptions >>= traverse_ \options → do
+      _ ← H.query' cpECharts unit $ H.action $ HEC.Reset options
+      pure unit
     pure next
   RaiseUpdate em next → do
     for_ em (H.raise ∘ CC.stateAlter)

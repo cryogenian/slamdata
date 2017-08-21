@@ -45,8 +45,8 @@ import Control.Monad.Aff.AVar (AVar)
 import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
-import Control.Monad.Eff.Class (class MonadEff, liftEff)
-import Control.Monad.Eff.Ref (REF, Ref, readRef, writeRef)
+import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Ref (Ref, readRef, writeRef)
 import Control.Monad.Eff.Ref as Ref
 import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
 import Data.BrowserFeatures (BrowserFeatures)
@@ -143,6 +143,7 @@ type BusWiring =
   , stepByStep ∷ Bus.BusRW GuideType
   , hintDismissals ∷ Bus.BusRW HintDismissalMessage
   , licenseProblems ∷ Bus.BusRW LicenseProblem
+  , themeChange ∷ Bus.BusRW (Maybe Theme.Theme)
   }
 
 type WiringR =
@@ -187,6 +188,7 @@ make path accessType vm permissionTokenHashes = liftAff do
   varMaps ← liftEff (Ref.newRef vm)
   license ← liftEff (Ref.newRef vm)
   theme ← liftEff (Ref.newRef Nothing)
+  themeChange ← liftEff (Ref.newRef Nothing)
   pure $ Wiring { path, accessType, varMaps, eval, auth, cache, bus, echarts, browserFeatures, theme }
 
   where
@@ -240,7 +242,17 @@ make path accessType vm permissionTokenHashes = liftAff do
     stepByStep ← Bus.make
     hintDismissals ← Bus.make
     licenseProblems ← Bus.make
-    pure { decks, workspace, notify, globalError, stepByStep, hintDismissals, licenseProblems }
+    themeChange ← Bus.make
+    pure
+      { decks
+      , workspace
+      , notify
+      , globalError
+      , stepByStep
+      , hintDismissals
+      , licenseProblems
+      , themeChange
+      }
 
 focusDeck
   ∷ ∀ m
@@ -292,11 +304,12 @@ getTheme = do
   liftEff $ readRef themeRef
 
 setTheme
-  ∷ ∀ m eff
+  ∷ ∀ m
   . MonadAsk Wiring m
-  ⇒ MonadEff (ref ∷ REF | eff) m
+  ⇒ MonadAff SlamDataEffects m
   ⇒ Maybe Theme.Theme
   → m Unit
 setTheme theme = do
-  { theme: themeRef } ← expose
+  { bus, theme: themeRef } ← expose
   liftEff $ writeRef themeRef theme
+  liftAff $ Bus.write theme bus.themeChange
