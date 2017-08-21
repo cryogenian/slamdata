@@ -69,7 +69,10 @@ chartComponent =
 renderEchart ∷ State → Array HTML
 renderEchart state = foldMap pure $ chart <$> state.theme
   where
-    chart theme = HH.slot' cpECharts unit (HEC.echarts theme) (Tuple (state.dimensions { height = state.dimensions.height - 60 }) unit) (const Nothing)
+  chart theme = HH.slot' cpECharts unit
+    (HEC.echarts theme)
+    (Tuple (state.dimensions { height = state.dimensions.height - 60 }) unit)
+    (const Nothing)
 
 render ∷ State → HTML
 render state =
@@ -126,6 +129,7 @@ evalCard = case _ of
   CC.ReceiveState evalState next → do
     case evalState of
       ES.ChartOptions options → void do
+        H.modify (_ { chartOptions = Just options })
         _ ← H.query' cpECharts unit $ H.action $ HEC.Reset options
         H.query' cpECharts unit $ H.action HEC.Resize
       ES.PivotTable options → void do
@@ -176,21 +180,26 @@ lodByChartType = case _ of
 evalComponent ∷ Query ~> DSL
 evalComponent = case _ of
   Init next → do
-    traceAnyA "INIT"
     { bus, echarts } ← Wiring.expose
     H.subscribe $ busEventSource
       (\_ → right $ WorkspaceThemeChange EventSource.Listening)
       bus.themeChange
     defaultTheme ← liftEff defaultThemeColor
-    traceAnyA defaultTheme
     H.modify _{ theme = Just (defaultTheme <|> echarts.theme) }
     pure next
   WorkspaceThemeChange next → do
-    traceAnyA "THEME CHANGE"
     { echarts } ← Wiring.expose
     defaultTheme ← liftEff defaultThemeColor
-    traceAnyA defaultTheme
+    -- Halogen.ECharts does not let you update the theme for an already mounted
+    -- component. We have to set the theme to `Nothing` which will unmount it,
+    -- and then set it to `Just` to remount it with the new theme. Because
+    -- echarts does not take initial dsl options, we have to use the cached
+    -- options in the state to redraw the chart.
+    H.modify _{ theme = Nothing }
     H.modify _{ theme = Just (defaultTheme <|> echarts.theme) }
+    H.gets _.chartOptions >>= traverse_ \options → do
+      _ ← H.query' cpECharts unit $ H.action $ HEC.Reset options
+      pure unit
     pure next
   RaiseUpdate em next → do
     for_ em (H.raise ∘ CC.stateAlter)

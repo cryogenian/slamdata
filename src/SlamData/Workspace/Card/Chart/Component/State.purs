@@ -17,7 +17,9 @@ limitations under the License.
 module SlamData.Workspace.Card.Chart.Component.State where
 
 import SlamData.Prelude
+import ECharts.Monad (DSL)
 import ECharts.Theme (Theme)
+import ECharts.Types.Phantom (OptionI)
 
 import SlamData.Workspace.Card.CardType.ChartType (ChartType)
 
@@ -28,6 +30,7 @@ import SlamData.Workspace.Card.CardType.ChartType (ChartType)
 -- * `Just Nothing` means there is no custom theme.
 type State =
   { chartType ∷ Maybe ChartType
+  , chartOptions ∷ Maybe (DSL OptionI)
   , theme ∷ Maybe (Maybe Theme)
   , dimensions ∷ { width ∷ Int, height ∷ Int }
   }
@@ -35,6 +38,7 @@ type State =
 initialState :: State
 initialState =
   { chartType: Nothing
+  , chartOptions: Nothing
   , theme: Nothing
   , dimensions: { width: 600, height: 400 }
   }

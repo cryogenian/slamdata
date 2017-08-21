@@ -43,6 +43,7 @@ import DOM.Node.Types as Nt
 import Data.DateTime.Instant (unInstant)
 import Data.List as L
 import Data.URI (printURIRef)
+import Data.Time.Duration (Milliseconds(..))
 import Halogen.Query (HalogenM)
 import Math as Math
 import SlamData.Effects (SlamDataEffects)
@@ -92,8 +93,10 @@ changeTheme theme = do
     _ ← setTimeout (ceil $ Math.max 0.0 d) hideLoadingOverlay
     pure unit
   -- We need to defer rendering the app by a non-zero tick (so as not to
-  -- invoke setImmediate) to give FF a chance to recalc styles.
-  liftAff $ delay one
+  -- invoke setImmediate) to give FF a chance to recalc styles. 13ms seems
+  -- to work OK when changing echart themes. When using `one` it wasn't able
+  -- to grab the updated computed style for the root font color.`
+  liftAff $ delay (Milliseconds 13.0)
   Wiring.setTheme theme
 
 navigateToDeck
