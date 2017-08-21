@@ -17,8 +17,11 @@ limitations under the License.
 module SlamData.Workspace.Card.Chart.Component.Query where
 
 import SlamData.Prelude
+import Halogen.ECharts as HE
 import SlamData.Workspace.Card.Eval.State (EvalState)
+
 
 data Query a
   = Init a
   | RaiseUpdate (Maybe (Maybe EvalState → Maybe EvalState)) a
+  | HandleECharts HE.EChartsMessage a

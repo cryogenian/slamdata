@@ -24,14 +24,11 @@ import Data.Foreign.Index (readProp)
 import Data.Int (toNumber, floor)
 import Data.Lens ((^?), _Just)
 import Data.String as S
-
 import Global (readFloat, isNaN)
-
 import Halogen as H
 import Halogen.ECharts as HEC
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-
 import SlamData.Render.ClassName as CN
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.CardType as CT
@@ -48,7 +45,6 @@ import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port (Port(..))
 import SlamData.Workspace.LevelOfDetails as LOD
-
 import Utils (hush')
 
 type HTML = CC.InnerCardParentHTML Query ChildQuery ChildSlot
@@ -68,7 +64,13 @@ chartComponent =
 renderEchart ∷ State → Array HTML
 renderEchart state = foldMap pure $ chart <$> state.theme
   where
-    chart theme = HH.slot' cpECharts unit (HEC.echarts theme) (Tuple (state.dimensions { height = state.dimensions.height - 60 }) unit) (const Nothing)
+  chart theme =
+    HH.slot'
+      cpECharts
+      unit
+      (HEC.echarts theme)
+      (Tuple (state.dimensions { height = state.dimensions.height - 60 }) unit)
+      (Just ∘ right ∘ H.action ∘ HandleECharts)
 
 render ∷ State → HTML
 render state =
@@ -181,6 +183,12 @@ evalComponent = case _ of
   RaiseUpdate em next → do
     for_ em (H.raise ∘ CC.stateAlter)
     H.raise CC.modelUpdate
+    pure next
+  HandleECharts msg next → do
+    case msg of
+      HEC.EventRaised evt →
+        traceAnyA evt
+      _ → pure unit
     pure next
 
 handlePivotTableMessage ∷ Pivot.Message → Query Unit

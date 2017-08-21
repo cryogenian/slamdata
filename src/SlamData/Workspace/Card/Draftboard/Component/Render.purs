@@ -24,7 +24,6 @@ import Data.Array as Array
 import Data.List (List)
 import Data.Ratio as Ratio
 import Data.Rational (Rational, (%))
-import Data.Rational as Rational
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -101,7 +100,6 @@ renderGuide sp =
 
 renderGuideLabel ∷ Rational → DraftboardHTML
 renderGuideLabel ratio =
-  let ratio' = Rational.runRational ratio in
   HH.span
     [ HP.classes
         [ HH.ClassName "sd-draftboard-guide-label"
@@ -110,7 +108,7 @@ renderGuideLabel ratio =
             else HH.ClassName "leading"
         ]
     ]
-    [ HH.text (show (Ratio.numerator ratio') <> "/" <> show (Ratio.denominator ratio')) ]
+    [ HH.text (show (Ratio.numerator ratio) <> "/" <> show (Ratio.denominator ratio)) ]
 
 renderMoving ∷ MoveLocation → DraftboardHTML
 renderMoving = case _ of

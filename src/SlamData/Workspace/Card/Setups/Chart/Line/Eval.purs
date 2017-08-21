@@ -192,6 +192,27 @@ lineOptions axes r lineData = do
     E.triggerItem
     E.formatterItem (CCT.tableFormatter (pure ∘ _.color) (cols <> opts) ∘ pure)
 
+
+  E.toolbox do
+    E.feature do
+      E.brushFeature do
+        E.brushType do
+          E.rect
+          E.lineX
+          E.lineY
+          E.keep
+          E.clear
+
+        E.brushTitle do
+          E.setRect "Select Rectangle"
+          E.setLineX "Select X-Axis"
+          E.setLineY "Select Y-Axis"
+          E.setKeep "Keep Selection"
+          E.setClear "Clear Selection"
+
+
+  E.brush E.brushModeMultiple
+
   E.colors colors
   E.grid BCP.cartesian
   E.series series
