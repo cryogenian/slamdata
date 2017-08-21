@@ -19,29 +19,33 @@ module SlamData.ECharts.Theme (defaultThemeColor) where
 import SlamData.Prelude
 
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Class (liftEff)
 import DOM (DOM)
 import DOM.HTML (window)
 import Data.Foreign (toForeign)
+import Data.Nullable (toMaybe)
 import ECharts.Theme (Theme)
 import Utils.DOM as DOM
 
 defaultThemeColor ∷ ∀ eff. Eff (dom ∷ DOM | eff) (Maybe Theme)
-defaultThemeColor = do
-  color ← DOM.getHTMLTextColorString =<< liftEff window
-  pure ∘ Just ∘ Right $ toForeign
-    { color
-    , textStyle: { color }
-    , dataZoom: { textStyle: { color } }
-    , graph: { textStyle: { color } }
-    , guage: { title: { textStyle: { color } } }
-    , legend: { textStyle: { color } }
-    , timeline:
-        { lineStyle: { color }
-        , itemStyle: { normal: { color } }
-        , label: { normal: { color } }
-        , controlStyle: { normal: { borderColor: color, color } }
-        }
-    , title: { textStyle: { color } }
-    , visualMap: { textStyle: { color } }
-    }
+defaultThemeColor =
+  window
+    >>= DOM.getHTMLTextColorString
+    >>> map (toMaybe >>> map themeForColor)
+  where
+    themeForColor ∷ String → Theme
+    themeForColor color = Right $ toForeign
+      { color
+      , textStyle: { color }
+      , dataZoom: { textStyle: { color } }
+      , graph: { textStyle: { color } }
+      , guage: { title: { textStyle: { color } } }
+      , legend: { textStyle: { color } }
+      , timeline:
+          { lineStyle: { color }
+          , itemStyle: { normal: { color } }
+          , label: { normal: { color } }
+          , controlStyle: { normal: { borderColor: color, color } }
+          }
+      , title: { textStyle: { color } }
+      , visualMap: { textStyle: { color } }
+      }

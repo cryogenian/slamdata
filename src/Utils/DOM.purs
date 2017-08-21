@@ -83,7 +83,7 @@ foreign import getTextWidthPure ∷ String → Font → Number
 -- | Gets the HTML color via `getComputedStyle` which isn't in the PS DOM lib
 -- | It's passed to the ECharts which wants a string. I'd make it a `Color` but
 -- | there's also no generic `toColor` that handles `hsl`, `rgb`, etc.
-foreign import getHTMLTextColorString ∷ ∀ eff. Window → Eff (dom ∷ DOM | eff) (Maybe String)
+foreign import getHTMLTextColorString ∷ ∀ eff. Window → Eff (dom ∷ DOM | eff) (Nullable.Nullable String)
 
 fits ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Boolean
 fits el = (&&) <$> fitsHorizontally <*> fitsVertically

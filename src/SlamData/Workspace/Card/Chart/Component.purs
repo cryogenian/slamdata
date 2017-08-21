@@ -176,16 +176,20 @@ lodByChartType = case _ of
 evalComponent ∷ Query ~> DSL
 evalComponent = case _ of
   Init next → do
+    traceAnyA "INIT"
     { bus, echarts } ← Wiring.expose
     H.subscribe $ busEventSource
       (\_ → right $ WorkspaceThemeChange EventSource.Listening)
       bus.themeChange
     defaultTheme ← liftEff defaultThemeColor
+    traceAnyA defaultTheme
     H.modify _{ theme = Just (defaultTheme <|> echarts.theme) }
     pure next
   WorkspaceThemeChange next → do
+    traceAnyA "THEME CHANGE"
     { echarts } ← Wiring.expose
     defaultTheme ← liftEff defaultThemeColor
+    traceAnyA defaultTheme
     H.modify _{ theme = Just (defaultTheme <|> echarts.theme) }
     pure next
   RaiseUpdate em next → do

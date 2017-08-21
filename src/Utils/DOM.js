@@ -101,9 +101,11 @@ exports.close = function(windowObjectReference) {
 
 exports.getHTMLTextColorString = function(windowObjectReference) {
   return function() {
-    // TODO: remove me
-    console.log("HTML Text Color:", windowObjectReference.getComputedStyle(document.documentElement).color);
-    return windowObjectReference.getComputedStyle(document.documentElement).color;
+    var computedStyle = windowObjectReference.getComputedStyle(document.documentElement);
+    console.log(computedStyle.getPropertyValue("color"))
+    return computedStyle && "getPropertyValue" in computedStyle
+      ? computedStyle.getPropertyValue("color")
+      : null;
   };
 };
 
