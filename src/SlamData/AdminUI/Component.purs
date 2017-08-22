@@ -50,7 +50,7 @@ component =
   H.lifecycleParentComponent
     { initialState: \_ →
        { open: false
-       , active: AT.Database
+       , active: AT.Users
        , formState:
           { mySettings: AT.defaultMySettingsState
           , server: AT.defaultServerState
