@@ -27,7 +27,6 @@ type State =
   , active ∷ TabIndex
   , formState ∷
       { mySettings ∷ MySettingsState
-      , database ∷ DatabaseState
       , server ∷ ServerState
       , groups ∷ GroupsState
       }
@@ -78,39 +77,6 @@ defaultMySettingsState =
     , isolateArtifacts: false
     , isolateArtifactsDirectory: ""
     , defaultTheme: "Dark"
-    }
-
-type PostgresCon =
-  { server ∷ String
-  , port ∷ Int
-  , username ∷ String
-  , password ∷ String
-  , database ∷ String
-  , custom ∷ Tuple String String
-  }
-
-defaultPostgresCon ∷ PostgresCon
-defaultPostgresCon =
-  { server: "localhost"
-  , port: 5432
-  , username: ""
-  , password: ""
-  , database: ""
-  , custom: Tuple "" ""
-  }
-
-newtype DatabaseState = DatabaseState
-  { isExternal ∷ Boolean
-  , databaseFile ∷ String
-  , postgresCon ∷ PostgresCon
-  }
-
-defaultDatabaseState ∷ DatabaseState
-defaultDatabaseState =
-  DatabaseState
-    { isExternal: false
-    , databaseFile: ""
-    , postgresCon: defaultPostgresCon
     }
 
 newtype ServerState = ServerState
