@@ -48,7 +48,7 @@ import Utils.DOM as DOM
 
 draftboardComponent ∷ CardOptions → CC.CardComponent
 draftboardComponent options =
-  CC.makeCardComponent CT.Draftboard component options
+  CC.makeCardComponent CT.draftboard component options
   where
   component = H.parentComponent
     { render: render options

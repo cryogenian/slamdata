@@ -44,8 +44,7 @@ module SlamData.Workspace.Card.Port.VarMap
   , downloadUrl
   ) where
 
-import SlamData.Prelude hiding (empty)
-
+import SlamData.Prelude hiding (empty, expand)
 import Data.Argonaut.Decode (class DecodeJson)
 import Data.Argonaut.Encode (class EncodeJson)
 import Data.Array as A

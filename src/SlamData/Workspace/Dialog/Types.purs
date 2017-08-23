@@ -25,6 +25,7 @@ import SlamData.Workspace.Card.InsertableCardType (InsertableCardType)
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.Options (DeckOptions)
 import SlamData.Workspace.Dialog.Share.Model (SharingInput)
+import SlamData.Workspace.Dialog.VizUnavailable.Component as VU
 import SlamData.License (LicenseProblem)
 
 data Dialog
@@ -38,3 +39,4 @@ data Dialog
   | Theme DeckOptions (Maybe Theme.Theme)
   | DeleteDeck DeckOptions
   | LicenseProblem LicenseProblem
+  | VizUnavailable VU.State

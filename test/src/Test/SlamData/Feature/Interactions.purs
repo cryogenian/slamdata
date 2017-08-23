@@ -32,8 +32,7 @@ import Test.SlamData.Feature.Interactions.Cards
        ) as Cards
 
 import Test.SlamData.Feature.Interactions.Chart
-       ( selectBuildChart
-       , selectInChartBuilder
+       ( selectInChartBuilder
        , activateCategoryForChartBuilder
        , activateMeasureForChartBuilder
        , activateStackForChartBuilder
