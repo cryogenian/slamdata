@@ -45,6 +45,7 @@ import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors, getShadeColor)
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
+import SlamData.Workspace.Card.Setups.Chart.Common.Brush as CCB
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Port as Port
 
@@ -121,6 +122,8 @@ areaOptions axes r areaData = do
     opts = flip foldMap r.series \dim →
       [ { label: D.jcursorLabel dim, value: _.seriesName
         } ]
+
+  CCB.brush
 
   CCT.tooltip do
     E.formatterItem (CCT.tableFormatter (pure ∘ _.color) (cols <> opts) ∘ pure)

@@ -92,6 +92,7 @@ sankeyOptions r sankeyData = do
       , { label: D.jcursorLabel r.target, value: CCT.formatDataProp "target" }
       , { label: D.jcursorLabel r.value, value: CCT.formatDataProp "value" }
       ]
+
   CCT.tooltip do
     E.formatterItem (CCT.tableFormatter (const Nothing) cols ∘ pure)
     E.triggerItem

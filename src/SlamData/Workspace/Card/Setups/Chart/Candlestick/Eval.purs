@@ -40,6 +40,7 @@ import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Chart.Common as SCC
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
+import SlamData.Workspace.Card.Setups.Chart.Common.Brush as CCB
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
@@ -139,6 +140,7 @@ buildKData =
 
 kOptions ∷ Axes → ModelR → Array OnOneGrid → DSL OptionI
 kOptions axes r kData = do
+  CCB.brush
   CCT.tooltip do
     E.triggerItem
     E.formatterItem \fmt →

@@ -46,6 +46,7 @@ import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Chart.Common as SCC
 import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
+import SlamData.Workspace.Card.Setups.Chart.Common.Brush as CCB
 import SlamData.Workspace.Card.Setups.Chart.PunchCard.Model (ModelR, Model)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
@@ -132,6 +133,7 @@ buildData r records = M.fromFoldable $ map addSymbolSize <$> items
 
 buildOptions ∷ Ax.Axes → ModelR → PunchCardData → DSL OptionI
 buildOptions axes r punchCardData = do
+  CCB.brush
   CCT.tooltip do
     E.triggerItem
     E.formatterItemArrayValue \{value} →

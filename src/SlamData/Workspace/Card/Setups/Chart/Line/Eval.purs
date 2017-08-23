@@ -43,6 +43,7 @@ import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Chart.Common as SCC
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
+import SlamData.Workspace.Card.Setups.Chart.Common.Brush as CCB
 import SlamData.Workspace.Card.Setups.Chart.Line.Model (Model, ModelR)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
@@ -192,26 +193,7 @@ lineOptions axes r lineData = do
     E.triggerItem
     E.formatterItem (CCT.tableFormatter (pure ∘ _.color) (cols <> opts) ∘ pure)
 
-
-  E.toolbox do
-    E.feature do
-      E.brushFeature do
-        E.brushType do
-          E.rect
-          E.lineX
-          E.lineY
-          E.keep
-          E.clear
-
-        E.brushTitle do
-          E.setRect "Select Rectangle"
-          E.setLineX "Select X-Axis"
-          E.setLineY "Select Y-Axis"
-          E.setKeep "Keep Selection"
-          E.setClear "Clear Selection"
-
-
-  E.brush E.brushModeMultiple
+  CCB.brush
 
   E.colors colors
   E.grid BCP.cartesian

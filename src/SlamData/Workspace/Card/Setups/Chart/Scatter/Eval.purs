@@ -46,6 +46,7 @@ import SlamData.Workspace.Card.Setups.Chart.ColorScheme (colors, getTransparentC
 import SlamData.Workspace.Card.Setups.Chart.Common as SCC
 import SlamData.Workspace.Card.Setups.Chart.Common.Positioning as BCP
 import SlamData.Workspace.Card.Setups.Chart.Common.Tooltip as CCT
+import SlamData.Workspace.Card.Setups.Chart.Common.Brush as CCB
 import SlamData.Workspace.Card.Setups.Chart.Scatter.Model (Model, ModelR)
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
@@ -198,6 +199,9 @@ buildOptions r scatterData = do
       [ r.size <#> \dim → { label: D.jcursorLabel dim, value: CCT.formatValueIx 2 }
       , r.series <#> \dim → { label: D.jcursorLabel dim, value: _.seriesName }
       ]
+
+  CCB.brush
+
   CCT.tooltip do
     E.formatterItem (CCT.tableFormatter (pure ∘ _.color) (cols <> opts) ∘ pure)
     E.triggerItem
