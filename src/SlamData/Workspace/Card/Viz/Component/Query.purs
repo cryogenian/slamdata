@@ -21,4 +21,5 @@ import SlamData.Workspace.Card.Eval.State (EvalState)
 
 data Query a
   = Init a
+  | WorkspaceThemeChange a
   | RaiseUpdate (Maybe (Maybe EvalState → Maybe EvalState)) a

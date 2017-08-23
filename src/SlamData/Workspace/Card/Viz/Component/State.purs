@@ -18,14 +18,16 @@ module SlamData.Workspace.Card.Viz.Component.State where
 
 import SlamData.Prelude
 
+import ECharts.Monad (DSL)
 import ECharts.Theme (Theme)
-
+import ECharts.Types.Phantom (OptionI)
 import SlamData.Workspace.Card.CardType.VizType as VT
 
 type State =
   { dimensions ∷ { width ∷ Int, height ∷ Int }
   , theme ∷ Maybe (Maybe Theme)
   , vizType ∷ Maybe VT.VizType
+  , chartOptions ∷ Maybe (DSL OptionI)
   }
 
 initialState ∷ State
@@ -33,4 +35,5 @@ initialState =
   { dimensions: { width: 600, height: 400 }
   , vizType: Nothing
   , theme: Nothing
+  , chartOptions: Nothing
   }

@@ -93,14 +93,13 @@ function injectIconsIntoHTML(iconAttribution) {
       }))
 
 
-
   // inject symbols into html files
-  return gulp.src("html/**/*.html")
+  return gulp.src("html/*.html")
     .pipe(inject(gulp.src("./package.json"), {
       starttag: "<!-- version -->",
       endtag: "<!-- /version -->",
       removeTags: true,
-      transform: (filePath, file) => "-" + JSON.parse(file.contents.toString("utf8")).version
+      transform: (filePath, file) => `-${JSON.parse(file.contents.toString("utf8")).version}`
     }))
     .pipe(inject(pageOverlaySass(), {
       starttag: "<!-- page-overlay-css -->",
