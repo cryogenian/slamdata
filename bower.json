@@ -42,7 +42,7 @@
     "purescript-halogen-datepicker": "^0.1.0",
     "purescript-halogen-echarts": "^7.0.0",
     "purescript-halogen-vdom-string-renderer": "^0.2.0",
-    "purescript-halogen": "^2.0.1",
+    "purescript-halogen": "^2.2.0",
     "purescript-js-timers": "^3.0.0",
     "purescript-jtable": "^6.0.0",
     "purescript-leafletjs-halogen": "^0.1.0",
