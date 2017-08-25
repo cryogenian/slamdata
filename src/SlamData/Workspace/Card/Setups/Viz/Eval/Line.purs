@@ -240,13 +240,12 @@ options dimMap axes r lineData = do
 
   seriesNames ∷ Array String
   seriesNames
-    | P.member P.series dimMap = A.catMaybes
+    | P.member P.series dimMap =
+        A.fromFoldable $ foldMap (_.name ⋙ foldMap Set.singleton) lineData
+    | otherwise = A.catMaybes
        [ map D.jcursorLabel $ P.lookup P.value dimMap
        , map D.jcursorLabel $ P.lookup P.secondValue dimMap
        ]
-    | otherwise =
-        A.fromFoldable $ foldMap (_.name ⋙ foldMap Set.singleton) lineData
-
   needTwoAxes ∷ Boolean
   needTwoAxes = P.member P.secondValue dimMap
 

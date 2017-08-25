@@ -324,6 +324,7 @@ evalComponent = case _ of
           # on (SProxy ∷ SProxy "legendselectchanged") (const $ storeEvent evt)
           # on (SProxy ∷ SProxy "click") (const $ storeEvent evt)
           # on (SProxy ∷ SProxy "pieselectchanged") (const $ storeEvent evt)
+          # on (SProxy ∷ SProxy "brushselected") (const $ storeEvent evt)
           $ evt
       _ → pure unit
     traceAnyA =<< H.get
