@@ -19,6 +19,7 @@ module SlamData.Workspace.Card.Viz.Component.Query where
 import SlamData.Prelude
 import Halogen.ECharts as HE
 import SlamData.Workspace.Card.Eval.State (EvalState)
+import SlamData.Workspace.Card.Viz.Model as M
 
 
 data Query a
@@ -26,3 +27,4 @@ data Query a
   | WorkspaceThemeChange a
   | RaiseUpdate (Maybe (Maybe EvalState → Maybe EvalState)) a
   | HandleECharts HE.EChartsMessage a
+  | Dispatch (Array M.FilteredEvent) a

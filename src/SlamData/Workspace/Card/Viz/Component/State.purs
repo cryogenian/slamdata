@@ -18,18 +18,21 @@ module SlamData.Workspace.Card.Viz.Component.State where
 
 import SlamData.Prelude
 
+import Data.ListMap as LM
 import ECharts.Monad (DSL)
 import ECharts.Theme (Theme)
 import ECharts.Types.Phantom (OptionI)
-import ECharts.Types as ET
 import SlamData.Workspace.Card.CardType.VizType as VT
+import SlamData.Workspace.Card.CardType.Chart as Cht
+import SlamData.Workspace.Card.Viz.Model as M
 
 type State =
   { dimensions ∷ { width ∷ Int, height ∷ Int }
   , theme ∷ Maybe (Maybe Theme)
   , vizType ∷ Maybe VT.VizType
   , chartOptions ∷ Maybe (DSL OptionI)
-  , events ∷ Array ET.EChartsEvent
+  , events ∷ LM.ListMap (Cht.Chart ()) (Array M.FilteredEvent)
+  , acceptingEvents ∷ Boolean
   }
 
 initialState ∷ State
@@ -38,5 +41,6 @@ initialState =
   , vizType: Nothing
   , theme: Nothing
   , chartOptions: Nothing
-  , events: [ ]
+  , events: LM.empty
+  , acceptingEvents: false
   }

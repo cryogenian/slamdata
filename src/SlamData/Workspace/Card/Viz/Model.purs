@@ -20,17 +20,67 @@ import SlamData.Prelude
 
 import Data.Argonaut ((.?))
 import Data.Argonaut as J
+import Data.ListMap as LM
+import Data.Foreign as F
 import Data.Variant as V
 import Data.Codec as C
 import Data.Codec.Argonaut as CA
 import Data.Codec.Argonaut.Variant as CAV
-
+import Data.Codec.Argonaut.Compat as CAC
 import SlamData.Workspace.Card.Viz.Renderer.PivotTable.Model as PM
 import SlamData.Workspace.Card.Viz.Renderer.Select.Model as SM
 import SlamData.Workspace.Card.Viz.Renderer.Input.Model as IM
 import SlamData.Workspace.Card.Viz.Renderer.Geo.Model as GM
-
 import Test.StrongCheck.Gen as Gen
+import SlamData.Workspace.Card.CardType.Chart as ChT
+import Unsafe.Coerce (unsafeCoerce)
+
+type FilteredEvent = Variant
+  ( legendselected ∷ F.Foreign
+  , legendunselected ∷ F.Foreign
+  , click ∷ F.Foreign
+  , pieselected ∷ F.Foreign
+  , pieunselected ∷ F.Foreign
+  , brushselected ∷ F.Foreign
+  , legendselectchanged ∷ F.Foreign
+  )
+
+type ChartModel =
+  { events ∷ LM.ListMap (ChT.Chart ()) (Array FilteredEvent)
+  , chartType ∷ Maybe (ChT.Chart ())
+  }
+
+initialChartModel ∷ ChartModel
+initialChartModel =
+  { events: LM.empty
+  , chartType: Nothing
+  }
+
+filteredEventCodec ∷ CA.JsonCodec FilteredEvent
+filteredEventCodec = CAV.variant
+  # CAV.variantCase (SProxy ∷ SProxy "legendselected") (Right foreignCodec)
+  # CAV.variantCase (SProxy ∷ SProxy "legendselectchanged") (Right foreignCodec)
+  # CAV.variantCase (SProxy ∷ SProxy "legendunselected") (Right foreignCodec)
+  # CAV.variantCase (SProxy ∷ SProxy "click") (Right foreignCodec)
+  # CAV.variantCase (SProxy ∷ SProxy "pieselected") (Right foreignCodec)
+  # CAV.variantCase (SProxy ∷ SProxy "pieunselected") (Right foreignCodec)
+  # CAV.variantCase (SProxy ∷ SProxy "brushselected") (Right foreignCodec)
+  where
+  foreignCodec ∷ CA.JsonCodec F.Foreign
+  foreignCodec = C.basicCodec (pure ∘ unsafeCoerce) (unsafeCoerce)
+
+chartCodec ∷ CA.JsonCodec ChartModel
+chartCodec =
+  CA.object "ChartModel" $ CA.record
+  # CA.recordProp (SProxy ∷ SProxy "events")
+      ( LM.listMapCodec chartTypeCodec $ CA.array filteredEventCodec )
+  # CA.recordProp (SProxy ∷ SProxy "chartType") (CAC.maybe chartTypeCodec)
+  where
+  chartTypeCodec =
+    C.basicCodec
+      (\j → lmap CA.TypeMismatch $ J.decodeJson j >>= ChT.parse )
+      (J.encodeJson ∘ ChT.print case_)
+
 
 type Model = Variant
   ( pivot ∷ PM.Model
@@ -39,11 +89,11 @@ type Model = Variant
   , geo ∷ GM.Model
   , static ∷ Unit
   , metric ∷ Unit
-  , chart ∷ Unit
+  , chart ∷ ChartModel
   )
 
 initial ∷ Model
-initial = chart unit
+initial = chart initialChartModel
 
 _pivot = SProxy ∷ SProxy "pivot"
 _select = SProxy ∷ SProxy "select"
@@ -86,7 +136,7 @@ eq_ r1 = V.default false
 
 gen ∷ Gen.Gen Model
 gen = Gen.oneOf (pure $ V.inj _static unit)
-  [ pure $ chart unit
+  [ pure $ chart { events: LM.empty, chartType: Nothing }
   , pure $ metric unit
   , map pivot PM.gen
   , map select SM.gen
@@ -95,7 +145,7 @@ gen = Gen.oneOf (pure $ V.inj _static unit)
   ]
 
 empty ∷ Model
-empty = V.inj _chart unit
+empty = V.inj _chart { events: LM.empty, chartType: Nothing }
 
 actualCodec ∷ CA.JsonCodec Model
 actualCodec = CAV.variant
@@ -104,7 +154,7 @@ actualCodec = CAV.variant
   # CAV.variantCase _input (Right IM.codec)
   # CAV.variantCase _static (Left unit)
   # CAV.variantCase _metric (Left unit)
-  # CAV.variantCase _chart (Left unit)
+  # CAV.variantCase _chart (Right chartCodec)
   # CAV.variantCase _geo (Right GM.codec)
 
 legacyDecode ∷ String → J.Json → String ⊹ Model
@@ -129,7 +179,7 @@ legacyDecode str j = case str of
 
   -- Since evaluation takes place after loading all empty models
   -- work fine here.
-  decodeChart _ = Right $ V.inj _chart unit
+  decodeChart _ = Right $ V.inj _chart {events: LM.empty, chartType: Nothing}
 
 codec ∷ String → CA.JsonCodec Model
 codec str = C.basicCodec dec $ C.encode actualCodec

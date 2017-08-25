@@ -58,6 +58,17 @@ insert ∷ ∀ k v. (k → k → Boolean) → k → v → ListMap k v → ListMa
 insert eq__ k v (ListMap lm) =
   ListMap $ L.Cons (k × v) $ L.filter (not ∘ eq__ k ∘ fst) lm
 
+delete ∷ ∀ k v. (k → k → Boolean) → k → ListMap k v → ListMap k v
+delete eq__ k (ListMap a) = ListMap $ L.filter (not ∘ eq__ k ∘ fst) a
+
+alter ∷ ∀ k v. (k → k → Boolean) → (Maybe v → Maybe v) → k → ListMap k v → ListMap k v
+alter eq__ f k lm = case f $ lookup eq__ k lm of
+  Nothing → delete eq__ k lm
+  Just v → insert eq__ k v lm
+
+update ∷ ∀ k v. (k → k → Boolean) → (v → Maybe v) → k → ListMap k v → ListMap k v
+update eq__ f k lm = alter eq__ (maybe Nothing f) k lm
+
 fromFoldable ∷ ∀ f k v. Foldable f ⇒ f (k × v) → ListMap k v
 fromFoldable = ListMap ∘ L.fromFoldable
 
@@ -82,6 +93,9 @@ type Module k v =
   , empty ∷ ListMap k v
   , union ∷ ListMap k v → ListMap k v → ListMap k v
   , eq_ ∷ ( v → v → Boolean ) → ListMap k v → ListMap k v → Boolean
+  , delete ∷ k → ListMap k v → ListMap k v
+  , alter ∷ (Maybe v → Maybe v) → k → ListMap k v → ListMap k v
+  , update ∷ (v → Maybe v) → k → ListMap k v → ListMap k v
   }
 
 openModule ∷ ∀ k v. (k → k → Boolean) → Module k v
@@ -92,6 +106,9 @@ openModule eq__ =
   , insert: insert eq__
   , union: union eq__
   , eq_: eq_ eq__
+  , delete: delete eq__
+  , alter: alter eq__
+  , update: update eq__
   }
 
 gen ∷ ∀ k v. Gen.Gen k → Gen.Gen v → Gen.Gen (ListMap k v)

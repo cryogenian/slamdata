@@ -22,6 +22,7 @@ module SlamData.Workspace.Card.Eval.State
   , TableR
   , GeoR
   , PivotTableR
+  , ChartR
   , _Analysis
   , _Axes
   , _Records
@@ -38,6 +39,7 @@ module SlamData.Workspace.Card.Eval.State
   , _BuildLeaflet
   , _Layers
   , _Controls
+  , _Chart
   ) where
 
 import SlamData.Prelude
@@ -96,13 +98,18 @@ type PivotTableR =
   , options ∷ PivotTablePort
   }
 
+type ChartR =
+  { options ∷ DSL OptionI
+  , eventRaised ∷ Boolean
+  }
+
 data EvalState
   = Analysis AnalysisR
   | AutoSelect AutoSelectR
   | ActiveTab Int
   | Table TableR
   | PivotTable PivotTableR
-  | ChartOptions (DSL OptionI)
+  | ChartOptions ChartR
   | Geo GeoR
   | SlamDown (SDH.SlamDownFormState MarkdownExpr)
 
@@ -159,9 +166,14 @@ _PivotTable = prism' PivotTable case _ of
   PivotTable r → Just r
   _ → Nothing
 
-_ChartOptions ∷ Prism' EvalState (DSL OptionI)
-_ChartOptions = prism' ChartOptions case _ of
-  ChartOptions r → Just r
+_ChartOptions ∷ Traversal' EvalState (DSL OptionI)
+_ChartOptions = wander \f s → case s of
+  ChartOptions r@{ options } → ChartOptions ∘ r { options = _ } <$> f options
+  _ → pure s
+
+_Chart ∷ Prism' EvalState ChartR
+_Chart = prism' ChartOptions case _ of
+  ChartOptions o → Just o
   _ → Nothing
 
 _ResourceSize ∷ Traversal' EvalState Int

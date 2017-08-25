@@ -72,8 +72,8 @@ downloadFileAsJSONZip fileName =
 fileLocation ∷ { user :: String, name :: String, ending :: String } → String
 fileLocation {user, name, ending } = do
     case platform of
-      Just Win32 → "\\Users\\" <> user <> "\\Downloads\\" <> name <> ending
-      Just Darwin → "/Users/" <> user <> "/Downloads/" <> name <> ending
+      Win32 → "\\Users\\" <> user <> "\\Downloads\\" <> name <> ending
+      Darwin → "/Users/" <> user <> "/Downloads/" <> name <> ending
       _ → "/home/" <> user <> "/Downloads/" <> name <> ending
 
 uploadFile ∷ String → SlamFeature Unit

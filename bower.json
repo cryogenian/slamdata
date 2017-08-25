@@ -48,7 +48,7 @@
     "purescript-leafletjs-halogen": "^0.1.0",
     "purescript-line-wrapping": "^2.0.0",
     "purescript-lists": "^4.9.0",
-    "purescript-maps": "^3.5.1",
+    "purescript-maps": "^3.5.2",
     "purescript-markdown-halogen": "^8.0.1",
     "purescript-markdown": "^11.0.0",
     "purescript-minimatch": "^0.2.0",
@@ -79,11 +79,11 @@
     "purescript-platform": "^3.0.0",
     "purescript-quasar-test-starter": "quasar-test-starter#^0.4.0",
     "purescript-strongcheck": "^3.1.0",
-    "purescript-webdriver": "^4.0.0"
+    "purescript-webdriver": "^4.0.1"
   },
   "resolutions": {
-    "purescript-variant": "^3.0.0"
-    "purescript-webdriver": "^4.0.1"
+    "purescript-variant": "^3.0.0",
+    "purescript-webdriver": "^4.0.1",
     "purescript-variant": "^3.2.1",
     "purescript-uri": "^3.0.0",
     "purescript-node-process": "^5.0.0"

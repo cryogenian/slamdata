@@ -22,13 +22,15 @@ import Data.Array as A
 import Data.Foreign as F
 import Data.Foreign.Index (readProp)
 import Data.Int (toNumber, floor)
-import Data.Lens ((^?), _Just)
+import Data.Lens ((^?), _Just, (.~))
+import Data.Lens.Record (prop)
+import Data.ListMap as LM
+import Data.Newtype (wrap)
 import Data.String as S
-import Data.Variant (match, default, on)
+import Data.Variant (match)
 import Global (readFloat, isNaN)
-import ECharts.Types as ET
 import Halogen as H
-import Halogen.Component.Utils (busEventSource)
+import Halogen.Component.Utils as HU
 import Halogen.ECharts as HEC
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -39,6 +41,7 @@ import SlamData.Render.ClassName as CN
 import SlamData.Wiring as Wiring
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.CardType.VizType as VT
+import SlamData.Workspace.Card.CardType.Chart as Cht
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Eval.State as ES
 import SlamData.Workspace.Card.Model as Card
@@ -57,6 +60,9 @@ import Utils (hush')
 
 type HTML = CC.InnerCardParentHTML Q.Query CS.ChildQuery CS.ChildSlot
 type DSL = CC.InnerCardParentDSL ST.State Q.Query CS.ChildQuery CS.ChildSlot
+
+lm ∷ ∀ a. LM.Module (Cht.Chart ()) a
+lm = LM.openModule eq
 
 component ∷ CC.CardOptions → CC.CardComponent
 component =
@@ -144,9 +150,9 @@ evalCard = case _ of
   CC.Deactivate next →
     pure next
   CC.Save k → do
-    mvt ← H.gets _.vizType
-    case mvt of
-      Nothing → pure $ k $ Card.Viz $ M.chart unit
+    st ← H.get
+    case st.vizType of
+      Nothing → pure $ k $ Card.Viz $ M.chart M.initialChartModel
       Just vt → do
         mm ← for (CT.contractToMetricRenderer vt) \_ →
           pure $ M.metric unit
@@ -163,7 +169,8 @@ evalCard = case _ of
           res ← H.query' CS.cpGeo unit $ H.request GR.Save
           pure $ map M.geo res
         pure $ k $ Card.Viz
-          $ fromMaybe (M.chart unit)
+          $ fromMaybe
+              ( M.chart { events: st.events, chartType: contract =<< st.vizType } )
           $ mm <|> join im <|> join pm <|> join sm <|> join gm
 
   CC.Load model next → do
@@ -189,8 +196,14 @@ evalCard = case _ of
             const $ H.modify _{ vizType = Just CT.static } $> next
         , metric:
             const $ H.modify _{ vizType = Just CT.metric } $> next
-        , chart:
-            const $ H.modify _{ vizType = Just CT.pie } $> next
+        , chart: \m → do
+            H.modify _{ vizType = map expand m.chartType
+                      , events = m.events
+                      }
+            _ ←
+              HU.sendAfter (wrap 100.0)
+                (right ∘ Q.Dispatch ( fromMaybe [ ] $ spy $ flip lm.lookup m.events =<< m.chartType))
+            pure next
         }
       _ →
         pure next
@@ -222,10 +235,16 @@ evalCard = case _ of
     pure next
   CC.ReceiveState evalState next → do
     case evalState of
-      ES.ChartOptions options → void do
+      ES.ChartOptions {options, eventRaised} | not eventRaised → void do
+        st ← H.get
         H.modify _{ chartOptions = Just options }
         _ ← H.query' CS.cpECharts unit $ H.action $ HEC.Reset options
-        H.query' CS.cpECharts unit $ H.action HEC.Resize
+        _ ← H.query' CS.cpECharts unit $ H.action HEC.Resize
+        _ ← HU.sendAfter (wrap 100.0)
+          (right ∘ Q.Dispatch ( fromMaybe [ ] $ flip lm.lookup st.events =<< contract =<< st.vizType))
+        pure unit
+
+
       ES.PivotTable options → void do
         H.query' CS.cpPivotTable unit $ H.action $ PR.Update options
       ES.AutoSelect {autoSelect} → void do
@@ -291,7 +310,7 @@ evalComponent ∷ Q.Query ~> DSL
 evalComponent = case _ of
   Q.Init next → do
     { bus, echarts } ← Wiring.expose
-    H.subscribe $ busEventSource
+    H.subscribe $ HU.busEventSource
       (\_ → right $ Q.WorkspaceThemeChange EventSource.Listening)
       bus.themeChange
     defaultTheme ← H.liftEff defaultThemeColor
@@ -317,24 +336,51 @@ evalComponent = case _ of
       pure unit
     pure next
   Q.HandleECharts msg next → do
+    { acceptingEvents } ← H.get
     case msg of
-      HEC.EventRaised evt → do
-        traceAnyA evt
-        default (pure unit)
-          # on (SProxy ∷ SProxy "legendselectchanged") (const $ storeEvent evt)
-          # on (SProxy ∷ SProxy "click") (const $ storeEvent evt)
-          # on (SProxy ∷ SProxy "pieselectchanged") (const $ storeEvent evt)
-          # on (SProxy ∷ SProxy "brushselected") (const $ storeEvent evt)
-          $ evt
+      HEC.EventRaised evt | acceptingEvents → do
+        let
+          filteredEvt ∷ Maybe M.FilteredEvent
+          filteredEvt = contract evt
+        for_ filteredEvt \fe → fe # match
+          { legendselected: const $ storeEvent fe
+          , legendunselected: const $ storeEvent fe
+          , legendselectchanged: const $ storeEvent fe
+          , click: const $ storeEvent fe
+          , pieselected: const $ storeEvent fe
+          , pieunselected: const $ storeEvent fe
+          , brushselected: const $ storeEvent fe
+          }
+
       _ → pure unit
+
+
     traceAnyA =<< H.get
     pure next
 
-storeEvent ∷ ET.EChartsEvent → DSL Unit
-storeEvent e = void do
-  H.modify \st → st { events = A.cons e st.events }
---  H.raise CC.modelUpdate
+  Q.Dispatch es next → do
+    for_ es \e → void $ H.query' CS.cpECharts unit $ H.action $ HEC.Dispatch $ expand e
+    H.modify _{ acceptingEvents = true }
+    pure next
 
+storeEvent ∷ M.FilteredEvent → DSL Unit
+storeEvent e = void do
+  let
+    alterFn b Nothing = Just [ b ]
+    alterFn b (Just a) = Just $ A.cons b a
+
+  H.modify \st →
+    st { events =
+            maybe st.events (\vt → lm.alter (alterFn e) vt st.events) (contract =<< st.vizType) }
+
+  H.raise
+    $ CC.stateAlter
+    $ _Just
+    ∘ ES._Chart
+    ∘ prop (SProxy ∷ SProxy "eventRaised")
+    .~ true
+
+  H.raise CC.modelUpdate
 
 handlePivotTableMessage ∷ PR.Message → Q.Query Unit
 handlePivotTableMessage = case _ of

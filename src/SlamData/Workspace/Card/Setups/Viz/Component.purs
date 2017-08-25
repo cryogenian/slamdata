@@ -74,14 +74,14 @@ render state =
   [ HCSS.style $ CSS.width (CSS.pct 100.0) *> CSS.height (CSS.pct 100.0) ]
   $ ( if state.vizTypePickerExpanded
       then [ picker ]
-      else [ button ] <> dims )
+      else [ button ] )
+  ⊕ [ dims ]
   ⊕ aux
   ⊕ [ pivotOptions ]
   where
   icon ∷ Array HTML
   icon = (pure ∘ I.unIconHTML ∘ VCT.icon) state.vizType
 
-  pivotOptions ∷ HTML
   pivotOptions =
     HH.div
     [ HP.classes
@@ -109,12 +109,17 @@ render state =
   picker =
     HH.slot' CS.cpPicker unit VT.component unit
       $ HE.input \e → right ∘ Q.HandlePicker e
-  dims = fromMaybe [ ] do
-    package ← lm.lookup state.vizType DP.packages
-    pure
-      [ HH.slot' CS.cpDims unit DM.component package
-        $ HE.input \e → right ∘ Q.HandleDims e
-      ]
+  dims =
+    let
+      mbPackage = lm.lookup state.vizType DP.packages
+      package = fromMaybe (DP.interpret (pure unit)) mbPackage
+    in
+     HH.div
+       [ HP.classes $ (guard $ isNothing mbPackage) $> CN.hidden
+       ]
+       [ HH.slot' CS.cpDims unit DM.component package
+         $ HE.input \e → right ∘ Q.HandleDims e
+       ]
 
   aux = fromMaybe [ ] do
     auxState ← lm.lookup state.vizType state.auxes

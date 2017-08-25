@@ -190,6 +190,11 @@ evalChart
   → m Port.Port
 evalChart buildOptions resource = do
   CEM.CardEnv { path } ← ask
-  results ← CE.liftQ $ CEC.sampleResource path resource Nothing
-  put $ Just $ CES.ChartOptions (buildOptions results)
+  state ← get
+  case state of
+    Just (CES.ChartOptions st) | st.eventRaised → do
+      pure unit
+    _ → do
+      results ← CE.liftQ $ CEC.sampleResource path resource Nothing
+      put $ Just $ CES.ChartOptions ({options: buildOptions results, eventRaised: false})
   pure $ Port.ResourceKey Port.defaultResourceVar
