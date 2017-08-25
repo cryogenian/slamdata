@@ -39,6 +39,7 @@ import SlamData.Workspace.Card.Setups.ColorScheme (colors, getTransparentColor)
 import SlamData.Workspace.Card.Setups.Common as SC
 import SlamData.Workspace.Card.Setups.Common.Positioning as BCP
 import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
+import SlamData.Workspace.Card.Setups.Chart.Common.Brush as CCB
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
@@ -191,6 +192,8 @@ options dimMap _ r scatterData = do
       , mkRow P.size $ CCT.formatValueIx 2
       , mkRow P.series _.seriesName
       ]
+
+  CCB.brush
 
   CCT.tooltip do
     E.formatterItem (CCT.tableFormatter (pure ∘ _.color) cols ∘ pure)

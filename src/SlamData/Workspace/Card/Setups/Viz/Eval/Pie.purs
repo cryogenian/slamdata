@@ -189,6 +189,7 @@ options dimMap _ _ pieData = do
   series ∷ ∀ i. DSL (pie ∷ ETP.I|i)
   series = for_ pieData \{x, y, radius: parallelR, series: ss} →
     for_ ss \{radius, items, name} → E.pie do
+      E.selectedMode ET.Multiple
       E.label do
         E.normal E.hidden
         E.emphasis E.hidden

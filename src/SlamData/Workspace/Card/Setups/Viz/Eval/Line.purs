@@ -40,6 +40,7 @@ import SlamData.Workspace.Card.Setups.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Common as SC
 import SlamData.Workspace.Card.Setups.Common.Positioning as BCP
 import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
+import SlamData.Workspace.Card.Setups.Chart.Common.Brush as CCB
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
@@ -190,6 +191,8 @@ options dimMap axes r lineData = do
   CCT.tooltip do
     E.triggerItem
     E.formatterItem (CCT.tableFormatter (pure ∘ _.color) cols ∘ pure)
+
+  CCB.brush
 
   E.colors colors
   E.grid BCP.cartesian

@@ -24,8 +24,9 @@ import Data.Foreign.Index (readProp)
 import Data.Int (toNumber, floor)
 import Data.Lens ((^?), _Just)
 import Data.String as S
-import Data.Variant (match)
+import Data.Variant (match, default, on)
 import Global (readFloat, isNaN)
+import ECharts.Types as ET
 import Halogen as H
 import Halogen.Component.Utils (busEventSource)
 import Halogen.ECharts as HEC
@@ -94,7 +95,7 @@ render state =
     $ HH.slot' CS.cpECharts unit
       (HEC.echarts theme)
       (chartDimensions × unit)
-      (const Nothing)
+      (HE.input \e → right ∘ Q.HandleECharts e)
 
   renderMetric ∷ Array HTML
   renderMetric =
@@ -315,6 +316,24 @@ evalComponent = case _ of
       _ ← H.query' CS.cpECharts unit $ H.action $ HEC.Reset options
       pure unit
     pure next
+  Q.HandleECharts msg next → do
+    case msg of
+      HEC.EventRaised evt → do
+        traceAnyA evt
+        default (pure unit)
+          # on (SProxy ∷ SProxy "legendselectchanged") (const $ storeEvent evt)
+          # on (SProxy ∷ SProxy "click") (const $ storeEvent evt)
+          # on (SProxy ∷ SProxy "pieselectchanged") (const $ storeEvent evt)
+          $ evt
+      _ → pure unit
+    traceAnyA =<< H.get
+    pure next
+
+storeEvent ∷ ET.EChartsEvent → DSL Unit
+storeEvent e = void do
+  H.modify \st → st { events = A.cons e st.events }
+--  H.raise CC.modelUpdate
+
 
 handlePivotTableMessage ∷ PR.Message → Q.Query Unit
 handlePivotTableMessage = case _ of

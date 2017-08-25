@@ -40,6 +40,7 @@ import SlamData.Workspace.Card.Setups.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Common.Positioning as BCP
 import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Common as SC
+import SlamData.Workspace.Card.Setups.Chart.Common.Brush as CCB
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
@@ -137,6 +138,8 @@ options dimMap axes r barData = do
       , mkRow P.parallel $ CCT.formatNameIx
           if P.member P.stack dimMap then 1 else 0
       ]
+
+  CCB.brush
 
   CCT.tooltip do
     E.formatterItem (CCT.tableFormatter (pure ∘ _.color) cols ∘ pure)

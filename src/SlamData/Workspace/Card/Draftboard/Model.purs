@@ -104,8 +104,7 @@ encodePane codecA = case _ of
       ~> J.jsonEmptyObject
   where
   encodeSplit (r × p) =
-    let r' = Rational.runRational r in
-    "ratio" := J.encodeJson (Ratio.numerator r' × Ratio.denominator r')
+    "ratio" := J.encodeJson (Ratio.numerator r × Ratio.denominator r)
       ~> "pane" := encodePane codecA p
       ~> J.jsonEmptyObject
 

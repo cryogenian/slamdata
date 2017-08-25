@@ -21,6 +21,7 @@ import SlamData.Prelude
 import ECharts.Monad (DSL)
 import ECharts.Theme (Theme)
 import ECharts.Types.Phantom (OptionI)
+import ECharts.Types as ET
 import SlamData.Workspace.Card.CardType.VizType as VT
 
 type State =
@@ -28,6 +29,7 @@ type State =
   , theme ∷ Maybe (Maybe Theme)
   , vizType ∷ Maybe VT.VizType
   , chartOptions ∷ Maybe (DSL OptionI)
+  , events ∷ Array ET.EChartsEvent
   }
 
 initialState ∷ State
@@ -36,4 +38,5 @@ initialState =
   , vizType: Nothing
   , theme: Nothing
   , chartOptions: Nothing
+  , events: [ ]
   }

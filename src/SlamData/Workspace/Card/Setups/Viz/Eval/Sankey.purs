@@ -89,6 +89,7 @@ options dimMap _ _ sankeyData = do
       , mkRow P.target $ CCT.formatDataProp "target"
       , mkRow P.value $ CCT.formatDataProp "value"
       ]
+
   CCT.tooltip do
     E.formatterItem (CCT.tableFormatter (const Nothing) cols ∘ pure)
     E.triggerItem

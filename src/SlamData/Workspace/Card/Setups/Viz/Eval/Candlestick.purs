@@ -33,6 +33,7 @@ import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Common as SC
+import SlamData.Workspace.Card.Setups.Chart.Common.Brush as CCB
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Common.Positioning as BCP
@@ -134,6 +135,7 @@ buildData =
 
 options ∷ P.DimMap → Axes → Unit → Array OnOneGrid → DSL OptionI
 options dimMap axes r kData = do
+  CCB.brush
   CCT.tooltip do
     E.triggerItem
     E.formatterItem \fmt →

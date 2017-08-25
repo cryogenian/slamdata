@@ -43,6 +43,7 @@ import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Common as SC
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.Chart.Common.Brush as CCB
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
 import SlamData.Workspace.Card.Setups.Semantics as Sem
@@ -120,6 +121,8 @@ options dimMap axes r areaData = do
       , mkRow P.value (CCT.formatValueIx 1)
       , mkRow P.series _.seriesName
       ]
+  CCB.brush
+
   CCT.tooltip do
     E.formatterItem (CCT.tableFormatter (pure ∘ _.color) cols ∘ pure)
     E.triggerItem
