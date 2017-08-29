@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Viz.Eval.Bar where
+module SlamData.Workspace.Card.Viz.Eval.Bar where
 
 import SlamData.Prelude
 
@@ -48,7 +48,7 @@ import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
 import SqlSquared as Sql
-
+{-
 type BarSeries =
   { name ∷ Maybe String
   , items ∷ String >> Number
@@ -232,3 +232,4 @@ options dimMap axes r barData = do
           for_ serie.name E.stack
         _, _ →
           E.stack "default stack"
+-}

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Viz.Eval.Heatmap where
+module SlamData.Workspace.Card.Viz.Eval.Heatmap where
 
 import SlamData.Prelude
 
@@ -50,7 +50,7 @@ import SlamData.Workspace.Card.Setups.Auxiliary as Aux
 import SlamData.Workspace.Card.Setups.Auxiliary.Heatmap as Heatmap
 import SqlSquared as Sql
 import Utils.Foldable (enumeratedFor_)
-
+{-
 eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Port → m Port.Out)
 eval dimMap aux =
   BCE.chartSetupEval buildSql buildPort aux'
@@ -245,3 +245,4 @@ options dimMap axes r heatmapData = do
 
   sortY ∷ Array String → Array String
   sortY = A.sortBy $ Ax.compareWithAxisType ordinateAxisType
+-}

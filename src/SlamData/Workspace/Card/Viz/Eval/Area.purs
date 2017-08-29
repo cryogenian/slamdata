@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Viz.Eval.Area where
+module SlamData.Workspace.Card.Viz.Eval.Area where
 
 import SlamData.Prelude
 
@@ -50,7 +50,7 @@ import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
 import SqlSquared as Sql
 import Utils.Foldable (enumeratedFor_)
-
+{-
 type Item =
   { dimension ∷ String
   , measure ∷ Number
@@ -217,3 +217,4 @@ options dimMap axes r areaData = do
     E.symbol ET.Circle
     E.smooth r.isSmooth
     when r.isStacked $ E.stack "stack"
+-}

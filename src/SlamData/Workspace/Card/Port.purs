@@ -40,7 +40,7 @@ module SlamData.Workspace.Card.Port
   , _SlamDown
   , _DownloadOptions
   , _Metric
-  , _ChartInstructions
+--  , _ChartInstructions
   , _PivotTable
   , _GeoChartPort
   , _osmURI
@@ -57,8 +57,6 @@ import Data.List as List
 import Data.Map as Map
 import Data.Set as Set
 import Data.URI (URIRef)
-import ECharts.Monad (DSL)
-import ECharts.Types.Phantom (OptionI)
 import Leaflet.Core as LC
 import SlamData.Download.Model (DownloadOptions)
 import SlamData.Effects (SlamDataEffects)
@@ -68,7 +66,9 @@ import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Port.VarMap (Var(..), VarMap, URLVarMap, VarMapValue(..), Resource(..))
 import SlamData.Workspace.Card.Port.VarMap as VM
+import SlamData.Workspace.Card.Setups.Auxiliary as Aux
 import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as Pr
 import SlamData.Workspace.Card.Setups.PivotTable.Model as PTM
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import Text.Markdown.SlamDown as SD
@@ -88,9 +88,11 @@ type MetricPort =
   , value ∷ String
   }
 
+--options ∷ Array Json → DSL OptionI
 type ChartInstructionsPort =
-  { options ∷ Array Json → DSL OptionI
-  , chartType ∷ CT.Chart ()
+  { chartType ∷ CT.Chart ()
+  , dimMap ∷ Pr.DimMap
+  , aux ∷ Maybe Aux.State
   }
 
 type PivotTablePort =
@@ -204,10 +206,10 @@ _DownloadOptions = prism' DownloadOptions $ case _ of
   DownloadOptions p' → Just p'
   _ → Nothing
 
-_ChartInstructions ∷ Traversal' Port (Array Json → DSL OptionI)
-_ChartInstructions = wander \f s → case s of
-  ChartInstructions o → ChartInstructions ∘ o{options = _} <$> f o.options
-  _ → pure s
+--_ChartInstructions ∷ Traversal' Port (Array Json → DSL OptionI)
+--_ChartInstructions = wander \f s → case s of
+--  ChartInstructions o → ChartInstructions ∘ o{options = _} <$> f o.options
+--  _ → pure s
 
 _Metric ∷ Traversal' Port MetricPort
 _Metric = wander \f s → case s of

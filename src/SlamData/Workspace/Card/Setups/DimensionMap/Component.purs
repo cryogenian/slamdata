@@ -122,8 +122,6 @@ eval = case _ of
   Q.Save k → do
     H.gets $ k ∘ view ST._dimMap
   Q.Load m next → do
-    traceAnyA "loading in dimensionMap"
-    traceAnyA m
     H.modify $ ST._dimMap .~ m
     pure next
   Q.SetAxes ax next → do

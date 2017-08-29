@@ -161,7 +161,7 @@ cardEval = case _ of
           H.raise CC.modelUpdate
       _ → pure unit
     pure next
-  CC.ReceiveInput _ _ next →
+  CC.ReceiveInput _ _ next → do
     pure next
   CC.ReceiveOutput _ _ next →
     pure next

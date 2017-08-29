@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Viz.Eval.Line where
+module SlamData.Workspace.Card.Viz.Eval.Line where
 
 import SlamData.Prelude
 
@@ -50,7 +50,7 @@ import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
 import SlamData.Workspace.Card.Setups.Auxiliary as Aux
 import SlamData.Workspace.Card.Setups.Auxiliary.Line as Line
 import SqlSquared as Sql
-
+{-
 eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Port → m Port.Out)
 eval dimMap aux =
   BCE.chartSetupEval buildSql buildPort aux'
@@ -290,3 +290,4 @@ options dimMap axes r lineData = do
     E.axisType ET.Value
     E.axisLabel $ E.textStyle do
       E.fontFamily "Ubuntu, sans"
+-}

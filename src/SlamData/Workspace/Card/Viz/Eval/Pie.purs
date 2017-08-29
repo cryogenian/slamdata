@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Viz.Eval.Pie where
+module SlamData.Workspace.Card.Viz.Eval.Pie where
 
 import SlamData.Prelude
 
@@ -41,7 +41,7 @@ import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
 import SqlSquared as Sql
-
+{-
 eval ∷ ∀ m. VizEval m (P.DimMap → Port.Port → m Port.Out)
 eval dimMap =
   BCE.chartSetupEval buildSql buildPort $ Just unit
@@ -210,3 +210,4 @@ options dimMap _ _ pieData = do
           E.value value
           E.name $ foldMap (flip append ":") name ⊕ key
           BCE.assoc { key, value }
+-}

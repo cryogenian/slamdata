@@ -202,7 +202,7 @@ evalCard = case _ of
                       }
             _ ←
               HU.sendAfter (wrap 100.0)
-                (right ∘ Q.Dispatch ( fromMaybe [ ] $ spy $ flip lm.lookup m.events =<< m.chartType))
+                (right ∘ Q.Dispatch ( fromMaybe [ ] $ flip lm.lookup m.events =<< m.chartType))
             pure next
         }
       _ →
@@ -236,12 +236,16 @@ evalCard = case _ of
   CC.ReceiveState evalState next → do
     case evalState of
       ES.ChartOptions {options, eventRaised} | not eventRaised → void do
-        st ← H.get
         H.modify _{ chartOptions = Just options }
         _ ← H.query' CS.cpECharts unit $ H.action $ HEC.Reset options
         _ ← H.query' CS.cpECharts unit $ H.action HEC.Resize
-        _ ← HU.sendAfter (wrap 100.0)
-          (right ∘ Q.Dispatch ( fromMaybe [ ] $ flip lm.lookup st.events =<< contract =<< st.vizType))
+        H.modify \st → st{ events = maybe st.events (\vt → lm.delete vt st.events)
+                                      $ contract =<< st.vizType
+
+                         }
+
+--        _ ← HU.sendAfter (wrap 100.0)
+--          (right ∘ Q.Dispatch ( fromMaybe [ ] $ flip lm.lookup st.events =<< contract =<< st.vizType))
         pure unit
 
 
@@ -355,7 +359,6 @@ evalComponent = case _ of
       _ → pure unit
 
 
-    traceAnyA =<< H.get
     pure next
 
   Q.Dispatch es next → do

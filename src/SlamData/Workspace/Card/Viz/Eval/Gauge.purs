@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Viz.Eval.Gauge where
+module SlamData.Workspace.Card.Viz.Eval.Gauge where
 
 import SlamData.Prelude
 
@@ -40,7 +40,7 @@ import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
 import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
 import SlamData.Workspace.Card.Setups.Auxiliary as Aux
 import SlamData.Workspace.Card.Setups.Auxiliary.Gauge as Gauge
-
+{-
 
 eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Port → m Port.Out)
 eval dimMap aux =
@@ -172,3 +172,4 @@ options dimMap _ r series = do
   where
   allValues ∷ Array Number
   allValues = map _.value $ A.concatMap _.items series
+-}

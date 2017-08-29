@@ -18,7 +18,7 @@ module SlamData.Workspace.Card.Viz.Eval
   ( evalTextLike
   , evalLabeled
   , evalChart
-  , module SlamData.Workspace.Card.Viz.Model
+  , module M
   ) where
 
 import SlamData.Prelude
@@ -26,18 +26,15 @@ import SlamData.Prelude
 import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.State (class MonadState, get, put)
 import Control.Monad.Writer.Class (class MonadTell)
-import Data.Argonaut (Json)
-import Data.Lens (preview, (?~), (^?))
+import Data.Lens (preview, _Just, (?~), (^?))
 import Data.List as L
+import Data.ListMap as LM
 import Data.Map as Map
 import Data.Set as Set
-import Data.Variant (on)
-import ECharts.Monad (DSL)
-import ECharts.Types.Phantom (OptionI)
+import Data.Variant (match)
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Class (class QuasarDSL, class ParQuasarDSL)
 import SlamData.Quasar.Query as QQ
-import SlamData.Workspace.Card.CardType.Input as Inp
 import SlamData.Workspace.Card.CardType.Select as Sel
 import SlamData.Workspace.Card.Error as CE
 import SlamData.Workspace.Card.Eval.Common as CEC
@@ -45,9 +42,25 @@ import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Eval.State as CES
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port.VarMap as VM
+import SlamData.Workspace.Card.Setups.Auxiliary as Aux
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.Semantics as Sem
-import SlamData.Workspace.Card.Viz.Model (Model)
+import SlamData.Workspace.Card.Viz.Eval.Area as Area
+import SlamData.Workspace.Card.Viz.Eval.Bar as Bar
+import SlamData.Workspace.Card.Viz.Eval.Boxplot as Boxplot
+import SlamData.Workspace.Card.Viz.Eval.Candlestick as Candlestick
+import SlamData.Workspace.Card.Viz.Eval.Funnel as Funnel
+import SlamData.Workspace.Card.Viz.Eval.Gauge as Gauge
+import SlamData.Workspace.Card.Viz.Eval.Graph as Graph
+import SlamData.Workspace.Card.Viz.Eval.Heatmap as Heatmap
+import SlamData.Workspace.Card.Viz.Eval.Line as Line
+import SlamData.Workspace.Card.Viz.Eval.Parallel as Parallel
+import SlamData.Workspace.Card.Viz.Eval.Pie as Pie
+import SlamData.Workspace.Card.Viz.Eval.PunchCard as PunchCard
+import SlamData.Workspace.Card.Viz.Eval.Radar as Radar
+import SlamData.Workspace.Card.Viz.Eval.Sankey as Sankey
+import SlamData.Workspace.Card.Viz.Eval.Scatter as Scatter
+import SlamData.Workspace.Card.Viz.Model as M
 import SlamData.Workspace.Card.Viz.Renderer.Input.Model as TLR
 import SlamData.Workspace.Card.Viz.Renderer.Select.Model as LR
 import SqlSquared (SqlQuery)
@@ -156,14 +169,13 @@ evalTextLike m p = do
   resourceVar × r ← CEM.extractResourcePair Port.Initial
   cardState ← get
   let
-    selection = case_
-      # on Inp._numeric (const $ maybe Sql.null Sql.num $ stringToNumber m.value)
-      # on Inp._time (const $ Sql.invokeFunction "TIME" $ pure $ Sql.string m.value)
-      # on Inp._date (const $ Sql.invokeFunction "DATE" $ pure $ Sql.string m.value)
-      # on Inp._datetime (const $ Sql.invokeFunction "TIMESTAMP" $ pure $ Sql.string m.value)
-      # on Inp._text (const $ Sql.string m.value)
-      $ p.formInputType
-
+    selection = p.formInputType # match
+      { numeric: const $ maybe Sql.null Sql.num $ stringToNumber m.value
+      , time: const $ Sql.invokeFunction "TIME" $ pure $ Sql.string m.value
+      , date: const $ Sql.invokeFunction "DATE" $ pure $ Sql.string m.value
+      , datetime: const $ Sql.invokeFunction "TIMESTAMP" $ pure $ Sql.string m.value
+      , text: const $ Sql.string m.value
+      }
     sql =
       Sql.buildSelect
         $ all
@@ -185,16 +197,67 @@ evalChart
   ⇒ MonadThrow CE.CardError m
   ⇒ QuasarDSL m
   ⇒ MonadAsk CEM.CardEnv m
-  ⇒ (Array Json → DSL OptionI)
+  ⇒ Port.ChartInstructionsPort
+  → M.ChartModel
   → Port.Resource
   → m Port.Port
-evalChart buildOptions resource = do
+evalChart port m resource = do
   CEM.CardEnv { path } ← ask
   state ← get
-  case state of
-    Just (CES.ChartOptions st) | st.eventRaised → do
-      pure unit
+  resourceVar × _ ← CEM.extractResourcePair Port.Initial
+
+  case state ^? _Just ∘ CES._Chart of
+    Just st | st.eventRaised || setupUnchanged st port → do
+      createPort $ st.extractData $ fromMaybe [] do
+        cht ← m.chartType
+        LM.eqListMap.lookup cht m.events
     _ → do
       results ← CE.liftQ $ CEC.sampleResource path resource Nothing
-      put $ Just $ CES.ChartOptions ({options: buildOptions results, eventRaised: false})
-  pure $ Port.ResourceKey Port.defaultResourceVar
+      let (extractData × options) = buildOptions
+      put $ Just $ CES.ChartOptions
+        { options
+        , eventRaised: false
+        , dimMap: port.dimMap
+        , aux: port.aux
+        , extractData: extractData resourceVar
+        , chartType: port.chartType
+        }
+      createPort $ extractData resourceVar []
+  where
+  createPort _ =
+    pure $ Port.ResourceKey Port.defaultResourceVar
+
+  emptyOut resourceVar _ =
+      Sql.buildSelect
+        $ all
+        ∘ (Sql._relations
+            ?~ (variRelation (unwrap resourceVar) # asRel "res"))
+
+  buildOptions = port.chartType # match
+    { pie: const $ emptyOut × pure unit
+    , line: const $ emptyOut × pure unit
+    , bar: const $ emptyOut × pure unit
+    , area: const $ emptyOut × pure unit
+    , scatter: const $ emptyOut × pure unit
+    , radar: const $ emptyOut × pure unit
+    , funnel: const $ emptyOut × pure unit
+    , graph: const $ emptyOut × pure unit
+    , heatmap: const $ emptyOut × pure unit
+    , sankey: const $ emptyOut × pure unit
+    , gauge: const $ emptyOut × pure unit
+    , boxplot: const $ emptyOut × pure unit
+    , metric: const $ emptyOut × pure unit
+    , punchCard: const $ emptyOut × pure unit
+    , candlestick: const $ emptyOut × pure unit
+    , parallel: const $ emptyOut × pure unit
+    , pivot: const $ emptyOut × pure unit
+    }
+
+  mbAuxEq Nothing Nothing = true
+  mbAuxEq (Just a) (Just b) = Aux.eq_ a b
+  mbAuxEq _ _ = false
+
+  setupUnchanged s p =
+    s.dimMap ≡ p.dimMap
+    && s.chartType ≡ p.chartType
+    && mbAuxEq s.aux p.aux

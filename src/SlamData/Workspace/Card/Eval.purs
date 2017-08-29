@@ -96,8 +96,10 @@ evalCard trans port = CEM.localVarMap >>= \varMap → case trans, port of
     default (pure $ Port.ResourceKey Port.defaultResourceVar × varMap)
       # on VizM._geo (\_ → tapResource (Geo.eval r) port)
       $ m
-  Viz _, Port.ChartInstructions { options } →
-    tapResource (Viz.evalChart options) port
+  Viz m, Port.ChartInstructions r →
+    default (pure $ Port.ResourceKey Port.defaultResourceVar × varMap)
+      # on VizM._chart (\model → tapResource (Viz.evalChart r model) port)
+      $ m
   Viz _, _ →
     pure $ Port.ResourceKey Port.defaultResourceVar × varMap
   Composite, _ → Port.varMapOut <$> Common.evalComposite

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Viz.Eval.Candlestick where
+module SlamData.Workspace.Card.Viz.Eval.Candlestick where
 
 import SlamData.Prelude
 
@@ -44,7 +44,7 @@ import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
 import SqlSquared as Sql
 import Utils.Foldable (enumeratedFor_)
-
+{-
 type Item =
   { dimension ∷ String
   , high ∷ Number
@@ -193,3 +193,4 @@ options dimMap axes r kData = do
         E.addValue close
         E.addValue low
         E.addValue high
+-}

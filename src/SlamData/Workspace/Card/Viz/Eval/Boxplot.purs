@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Viz.Eval.Boxplot where
+module SlamData.Workspace.Card.Viz.Eval.Boxplot where
 
 import SlamData.Prelude
 
@@ -49,7 +49,7 @@ import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
 import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
 import SqlSquared as Sql
 import Utils.Foldable (enumeratedFor_)
-
+{-
 type Item =
   { dimension ∷ String
   , value ∷ Number
@@ -358,3 +358,4 @@ options dimMap axes _ boxplotData = do
     E.splitLine $ E.lineStyle do
       E.width 1
     E.splitArea E.hidden
+-}

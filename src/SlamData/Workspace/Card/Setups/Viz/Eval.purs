@@ -42,24 +42,24 @@ import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
 import SlamData.Workspace.Card.Setups.PivotTable.Eval as PivotTable
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Viz.Error as VE
-import SlamData.Workspace.Card.Setups.Viz.Eval.Area as Area
-import SlamData.Workspace.Card.Setups.Viz.Eval.Bar as Bar
-import SlamData.Workspace.Card.Setups.Viz.Eval.Boxplot as Boxplot
-import SlamData.Workspace.Card.Setups.Viz.Eval.Candlestick as Candlestick
+--import SlamData.Workspace.Card.Setups.Viz.Eval.Area as Area
+--import SlamData.Workspace.Card.Setups.Viz.Eval.Bar as Bar
+--import SlamData.Workspace.Card.Setups.Viz.Eval.Boxplot as Boxplot
+--import SlamData.Workspace.Card.Setups.Viz.Eval.Candlestick as Candlestick
 import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
-import SlamData.Workspace.Card.Setups.Viz.Eval.Funnel as Funnel
-import SlamData.Workspace.Card.Setups.Viz.Eval.Gauge as Gauge
+--import SlamData.Workspace.Card.Setups.Viz.Eval.Funnel as Funnel
+--import SlamData.Workspace.Card.Setups.Viz.Eval.Gauge as Gauge
 import SlamData.Workspace.Card.Setups.Viz.Eval.GeoHeatmap as GeoHeatmap
 import SlamData.Workspace.Card.Setups.Viz.Eval.GeoMarker as GeoMarker
-import SlamData.Workspace.Card.Setups.Viz.Eval.Graph as Graph
-import SlamData.Workspace.Card.Setups.Viz.Eval.Heatmap as Heatmap
-import SlamData.Workspace.Card.Setups.Viz.Eval.Line as Line
-import SlamData.Workspace.Card.Setups.Viz.Eval.Parallel as Parallel
-import SlamData.Workspace.Card.Setups.Viz.Eval.Pie as Pie
-import SlamData.Workspace.Card.Setups.Viz.Eval.PunchCard as PunchCard
-import SlamData.Workspace.Card.Setups.Viz.Eval.Radar as Radar
-import SlamData.Workspace.Card.Setups.Viz.Eval.Sankey as Sankey
-import SlamData.Workspace.Card.Setups.Viz.Eval.Scatter as Scatter
+--import SlamData.Workspace.Card.Setups.Viz.Eval.Graph as Graph
+--import SlamData.Workspace.Card.Setups.Viz.Eval.Heatmap as Heatmap
+--import SlamData.Workspace.Card.Setups.Viz.Eval.Line as Line
+--import SlamData.Workspace.Card.Setups.Viz.Eval.Parallel as Parallel
+--import SlamData.Workspace.Card.Setups.Viz.Eval.Pie as Pie
+--import SlamData.Workspace.Card.Setups.Viz.Eval.PunchCard as PunchCard
+--import SlamData.Workspace.Card.Setups.Viz.Eval.Radar as Radar
+--import SlamData.Workspace.Card.Setups.Viz.Eval.Sankey as Sankey
+--import SlamData.Workspace.Card.Setups.Viz.Eval.Scatter as Scatter
 import SlamData.Workspace.Card.Setups.Viz.Eval.Select as Select
 import SlamData.Workspace.Card.Setups.Viz.Model (Model)
 
@@ -172,26 +172,11 @@ eval m port = do
 
   evalChart ∷ CT.Chart () → m Port.Out
   evalChart cht = do
+    _ × resource ← CEM.extractResourcePair port
     dimMap ← getDimMap
-    case_
-      # on CT._area (const $ getAux >>= \aux → Area.eval dimMap aux port)
-      # on CT._bar (const $ getAux >>= \aux → Bar.eval dimMap aux port)
-      # on CT._boxplot (const $ Boxplot.eval dimMap port)
-      # on CT._candlestick (const $ Candlestick.eval dimMap port)
-      # on CT._funnel (const $ getAux >>= \aux → Funnel.eval dimMap aux port)
-      # on CT._gauge (const $ getAux >>= \aux → Gauge.eval dimMap aux port)
-      # on CT._graph (const $ getAux >>= \aux → Graph.eval dimMap aux port)
-      # on CT._heatmap (const $ getAux >>= \aux → Heatmap.eval dimMap aux port)
-      # on CT._line (const $ getAux >>= \aux → Line.eval dimMap aux port)
-      # on CT._metric (const $ handleEvalState >>= \(_ × records) → evalMetric records)
-      # on CT._parallel (const $ Parallel.eval dimMap port)
-      # on CT._pie (const $ Pie.eval dimMap port)
-      # on CT._punchCard (const $ getAux >>= \aux → PunchCard.eval dimMap aux port)
-      # on CT._radar (const $ Radar.eval dimMap port)
-      # on CT._sankey (const $ Sankey.eval dimMap port)
-      # on CT._scatter (const $ getAux >>= \aux → Scatter.eval dimMap aux port)
-      # on CT._pivot (const $ CE.throw "Pivot table case should be handled separately")
-      $ cht
+    let
+      aux = lm.lookup m.vizType m.auxes
+    wrapPort (Port.ChartInstructions { chartType: cht, aux, dimMap }) resource
 
   evalMetric ∷ Array J.Json → m Port.Out
   evalMetric records = do

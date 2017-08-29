@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Viz.Eval.Radar where
+module SlamData.Workspace.Card.Viz.Eval.Radar where
 
 import SlamData.Prelude
 
@@ -45,7 +45,7 @@ import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
 import SqlSquared as Sql
 import Utils.Array (enumerate)
-
+{-
 eval ∷ ∀ m. VizEval m (P.DimMap → Port.Port → m Port.Out)
 eval dimMap =
   BCE.chartSetupEval buildSql buildPort $ Just unit
@@ -221,3 +221,4 @@ options dimMap axes r radarData = do
       (E.singleValueRadius
        ∘ ET.SingleValueRadius
        ∘ ET.Percent) radius
+-}

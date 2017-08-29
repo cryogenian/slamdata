@@ -111,6 +111,9 @@ openModule eq__ =
   , update: update eq__
   }
 
+eqListMap ∷ ∀ k v. Eq k ⇒ Module k v
+eqListMap = openModule eq
+
 gen ∷ ∀ k v. Gen.Gen k → Gen.Gen v → Gen.Gen (ListMap k v)
 gen genK genV =
   map (ListMap ∘ L.fromFoldable)

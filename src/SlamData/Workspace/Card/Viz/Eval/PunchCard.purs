@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Setups.Viz.Eval.PunchCard where
+module SlamData.Workspace.Card.Viz.Eval.PunchCard where
 
 import SlamData.Prelude
 
@@ -55,7 +55,7 @@ import SqlSquared as Sql
 
 import Utils (hush')
 import Utils.Array (enumerate)
-
+{-
 eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Port → m Port.Out)
 eval dimMap aux =
   BCE.chartSetupEval buildSql buildPort aux'
@@ -243,3 +243,4 @@ options dimMap axes r punchCardData = do
                 E.addValue $ Int.toNumber xIx
                 E.addValue $ Int.toNumber yIx
                 E.addValue val
+-}
