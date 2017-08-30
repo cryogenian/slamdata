@@ -24,8 +24,8 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Component.Proxy as HCP
-
 import SlamData.Monad (Slam)
+import SlamData.Workspace.Card.Setups.Axis as Ax
 import SlamData.Workspace.Card.Setups.ActionSelect.Component as AS
 import SlamData.Workspace.Card.Setups.DimensionMap.Component.ChildSlot as CS
 import SlamData.Workspace.Card.Setups.DimensionMap.Component.Query as Q
@@ -129,7 +129,9 @@ eval = case _ of
     pure next
   Q.OnField fld fldQuery → case fldQuery of
     Q.Select next → do
-      H.modify $ ST.select fld
+      st ← H.get
+      unless (Ax.eqAxes Ax.initialAxes st.axes)
+        $ H.modify $ ST.select fld
       pure next
     Q.Configure next → do
       H.modify $ ST.configure fld

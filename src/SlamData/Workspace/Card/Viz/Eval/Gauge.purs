@@ -21,38 +21,28 @@ import SlamData.Prelude
 import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array as A
 import Data.Foldable as F
-import Data.List as L
-import Data.Variant (prj)
-import ECharts.Monad (DSL)
+import Data.Lens ((?~))
+import Data.Variant as V
 import ECharts.Commands as E
+import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Error as CE
+import SlamData.Workspace.Card.Eval.Common as CEC
+import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Auxiliary.Gauge as Gauge
 import SlamData.Workspace.Card.Setups.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Common as SC
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Common.Positioning as BCP
 import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
-import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Setups.Semantics as Sem
-import SqlSquared as Sql
-import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
 import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
-import SlamData.Workspace.Card.Setups.Auxiliary as Aux
-import SlamData.Workspace.Card.Setups.Auxiliary.Gauge as Gauge
-{-
-
-eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Port → m Port.Out)
-eval dimMap aux =
-  BCE.chartSetupEval buildSql buildPort aux'
-  where
-  aux' = prj CT._gauge aux
-  buildSql = SC.buildBasicSql (buildProjections dimMap) (buildGroupBy dimMap)
-  buildPort r axes = Port.ChartInstructions
-    { options: options dimMap axes r ∘ buildData
-    , chartType: CT.gauge
-    }
-
+import SlamData.Workspace.Card.Setups.Semantics as Sem
+import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
+import SlamData.Workspace.Card.Viz.Model as M
+import SqlSquared as Sql
+import Utils.SqlSquared (all, asRel, variRelation)
 
 type GaugeItem =
   { name ∷ Maybe String
@@ -78,17 +68,43 @@ decodeItem = decodeJson >=> \obj → do
   measure ← Sem.requiredNumber zero <$> obj .? "measure"
   pure { measure, parallel, multiple }
 
-buildProjections ∷ ∀ a. P.DimMap → a → L.List (Sql.Projection Sql.Sql)
-buildProjections dimMap _ = L.fromFoldable $ A.concat
-  [ SC.measureProjection P.value dimMap "measure"
-  , SC.dimensionProjection P.multiple dimMap "multiple"
-  , SC.dimensionProjection P.parallel dimMap "parallel"
-  ]
+eval
+  ∷ ∀ m
+  . VizEval m
+  ( M.ChartModel
+  → Port.ChartInstructionsPort
+  → m ( Port.Resource × DSL OptionI )
+  )
+eval m { chartType, dimMap, aux, axes } = do
+  var × resource ← CEM.extractResourcePair Port.Initial
 
-buildGroupBy ∷ ∀ a. P.DimMap → a → Maybe (Sql.GroupBy Sql.Sql)
-buildGroupBy dimMap _ = SC.groupBy
-  $ SC.sqlProjection P.parallel dimMap
-  <|> SC.sqlProjection P.multiple dimMap
+  aux' ←
+    maybe
+      (CE.throw "Missing or incorrect auxiliary model, please contact support")
+      pure
+      $ V.prj CT._gauge =<< aux
+
+  let
+    sql = buildSql (M.getEvents m) var
+
+  CEM.CardEnv { path, varMap } ← ask
+
+  outResource ←
+    CE.liftQ $ CEC.localEvalResource (Sql.Query empty sql) varMap
+  records ←
+    CE.liftQ $ CEC.sampleResource path outResource Nothing
+
+  let
+    items = buildData records
+    options = buildOptions dimMap axes aux' items
+  pure $ outResource × options
+
+buildSql ∷ Array M.FilteredEvent → Port.Var → Sql.Sql
+buildSql es var =
+  Sql.buildSelect
+  $ all
+  ∘ (Sql._relations
+     ?~ (variRelation (unwrap var) # asRel "res"))
 
 buildData ∷ Array Json → Array GaugeSerie
 buildData =
@@ -111,8 +127,8 @@ buildData =
   toPoint ∷ Item → GaugeItem
   toPoint item = { name: item.multiple, value: item.measure }
 
-options ∷ ∀ a. P.DimMap → a → Gauge.State → Array GaugeSerie → DSL OptionI
-options dimMap _ r series = do
+buildOptions ∷ ∀ a. P.DimMap → a → Gauge.State → Array GaugeSerie → DSL OptionI
+buildOptions dimMap _ r series = do
   let
     mkRow prj value  = P.lookup prj dimMap # foldMap \dim →
       [ { label: D.jcursorLabel dim, value } ]
@@ -172,4 +188,3 @@ options dimMap _ r series = do
   where
   allValues ∷ Array Number
   allValues = map _.value $ A.concatMap _.items series
--}

@@ -42,7 +42,7 @@ import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
 import SlamData.Workspace.Card.Setups.PivotTable.Eval as PivotTable
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Viz.Error as VE
---import SlamData.Workspace.Card.Setups.Viz.Eval.Area as Area
+import SlamData.Workspace.Card.Setups.Viz.Eval.Chart as Chart
 --import SlamData.Workspace.Card.Setups.Viz.Eval.Bar as Bar
 --import SlamData.Workspace.Card.Setups.Viz.Eval.Boxplot as Boxplot
 --import SlamData.Workspace.Card.Setups.Viz.Eval.Candlestick as Candlestick
@@ -173,10 +173,16 @@ eval m port = do
   evalChart ∷ CT.Chart () → m Port.Out
   evalChart cht = do
     _ × resource ← CEM.extractResourcePair port
+    _ × axes ← BCE.analyze resource =<< get
     dimMap ← getDimMap
     let
       aux = lm.lookup m.vizType m.auxes
-    wrapPort (Port.ChartInstructions { chartType: cht, aux, dimMap }) resource
+      port' = Port.ChartInstructions { chartType: cht, aux, dimMap, axes }
+
+    grouppedResource ←
+      Chart.eval cht port dimMap
+
+    wrapPort port' grouppedResource
 
   evalMetric ∷ Array J.Json → m Port.Out
   evalMetric records = do

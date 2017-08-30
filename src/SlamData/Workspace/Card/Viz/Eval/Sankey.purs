@@ -20,23 +20,25 @@ import SlamData.Prelude
 
 import Data.Argonaut (JArray, Json, decodeJson, (.?))
 import Data.Array as A
-import Data.List as L
+import Data.Lens ((?~))
 import ECharts.Commands as E
 import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
-import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Error as CE
+import SlamData.Workspace.Card.Eval.Common as CEC
+import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Common as SC
-import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
+import SlamData.Workspace.Card.Viz.Model as M
 import SqlSquared as Sql
-{-
+import Utils.SqlSquared (all, asRel, variRelation)
+
 type Item =
   { source ∷ String
   , target ∷ String
@@ -50,37 +52,45 @@ decodeItem = decodeJson >=> \obj → do
   weight ← map (fromMaybe zero ∘ Sem.maybeNumber) $ obj .? "weight"
   pure { source, target, weight }
 
-eval ∷ ∀ m. VizEval m (P.DimMap → Port.Port → m Port.Out)
-eval dimMap =
-  BCE.chartSetupEval buildSql buildPort $ Just unit
-  where
-  buildPort r axes = Port.ChartInstructions
-    { options: options dimMap axes r ∘ buildData
-    , chartType: CT.sankey
-    }
+eval
+  ∷ ∀ m
+  . VizEval m
+  ( M.ChartModel
+  → Port.ChartInstructionsPort
+  → m ( Port.Resource × DSL OptionI )
+  )
+eval m { chartType, dimMap, aux, axes } = do
+  var × resource ← CEM.extractResourcePair Port.Initial
 
-  buildSql = SC.buildBasicSql (buildProjections dimMap) (buildGroupBy dimMap)
+  let
+    sql = buildSql (M.getEvents m) var
 
-buildProjections ∷ ∀ a. P.DimMap → a → L.List (Sql.Projection Sql.Sql)
-buildProjections dimMap _ = L.fromFoldable $ A.concat
-  [ SC.dimensionProjection P.source dimMap "source"
-  , SC.dimensionProjection P.target dimMap "target"
-  , SC.measureProjection P.value dimMap "weight"
-  ]
+  CEM.CardEnv { path, varMap } ← ask
 
-buildGroupBy ∷ ∀ a. P.DimMap → a → Maybe (Sql.GroupBy Sql.Sql)
-buildGroupBy dimMap _ = SC.groupBy
-  $ SC.sqlProjection P.source dimMap
-  <|> SC.sqlProjection P.target dimMap
+  outResource ←
+    CE.liftQ $ CEC.localEvalResource (Sql.Query empty sql) varMap
+  records ←
+    CE.liftQ $ CEC.sampleResource path outResource Nothing
 
+  let
+    items = buildData records
+    options = buildOptions dimMap items
+  pure $ outResource × options
+
+buildSql ∷ Array M.FilteredEvent → Port.Var → Sql.Sql
+buildSql es var =
+  Sql.buildSelect
+  $ all
+  ∘ (Sql._relations
+     ?~ (variRelation (unwrap var) # asRel "res"))
 
 
 buildData ∷ JArray → Array Item
 buildData =
   foldMap $ foldMap A.singleton ∘ decodeItem
 
-options ∷ ∀ ax a. P.DimMap → ax → a → Array Item → DSL OptionI
-options dimMap _ _ sankeyData = do
+buildOptions ∷ P.DimMap → Array Item → DSL OptionI
+buildOptions dimMap sankeyData = do
   let
     mkRow prj value  = P.lookup prj dimMap # foldMap \dim →
       [ { label: D.jcursorLabel dim, value } ]
@@ -113,4 +123,3 @@ options dimMap _ _ sankeyData = do
     for_
       (A.nub $ (_.source <$> sankeyData) ⊕ (_.target <$> sankeyData))
       (E.addItem ∘ E.name)
--}

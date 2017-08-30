@@ -20,18 +20,19 @@ import SlamData.Prelude
 
 import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array as A
-import Data.List as L
-import Data.Map as M
+import Data.Lens ((?~))
+import Data.Map as Map
 import Data.Set as Set
 import ECharts.Commands as E
 import ECharts.Monad (DSL)
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
-import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Error as CE
+import SlamData.Workspace.Card.Eval.Common as CEC
+import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Common as SC
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Common.Positioning (adjustRadialPositions, adjustDonutRadiuses, RadialPosition, WithDonutRadius, radialTitles)
@@ -40,18 +41,9 @@ import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
+import SlamData.Workspace.Card.Viz.Model as M
 import SqlSquared as Sql
-{-
-eval ∷ ∀ m. VizEval m (P.DimMap → Port.Port → m Port.Out)
-eval dimMap =
-  BCE.chartSetupEval buildSql buildPort $ Just unit
-  where
-  buildPort r axes = Port.ChartInstructions
-    { options: options dimMap axes r ∘ buildData
-    , chartType: CT.pie
-    }
-
-  buildSql = SC.buildBasicSql (buildProjections dimMap) (buildGroupBy dimMap)
+import Utils.SqlSquared (all, asRel, variRelation)
 
 type OnePieSeries =
   RadialPosition
@@ -80,20 +72,37 @@ decodeItem = decodeJson >=> \obj → do
   parallel ← Sem.maybeString <$> obj .? "parallel"
   pure { category, measure, donut, parallel }
 
-buildProjections ∷ ∀ a. P.DimMap → a → L.List (Sql.Projection Sql.Sql)
-buildProjections dimMap _ = L.fromFoldable $ A.concat
-  [ SC.dimensionProjection P.category dimMap "category"
-  , SC.measureProjection P.value dimMap "measure"
-  , SC.dimensionProjection P.donut dimMap "donut"
-  , SC.dimensionProjection P.parallel dimMap "parallel"
-  ]
+eval
+  ∷ ∀ m
+  . VizEval m
+  ( M.ChartModel
+  → Port.ChartInstructionsPort
+  → m ( Port.Resource × DSL OptionI )
+  )
+eval m { chartType, dimMap, aux, axes } = do
+  var × resource ← CEM.extractResourcePair Port.Initial
 
-buildGroupBy ∷ ∀ a. P.DimMap → a → Maybe (Sql.GroupBy Sql.Sql)
-buildGroupBy dimMap _ = SC.groupBy
-  $ SC.sqlProjection P.parallel dimMap
-  <|> SC.sqlProjection P.donut dimMap
-  <|> SC.sqlProjection P.category dimMap
+  let
+    sql = buildSql (M.getEvents m) var
 
+  CEM.CardEnv { path, varMap } ← ask
+
+  outResource ←
+    CE.liftQ $ CEC.localEvalResource (Sql.Query empty sql) varMap
+  records ←
+    CE.liftQ $ CEC.sampleResource path outResource Nothing
+
+  let
+    items = buildData records
+    options = buildOptions dimMap items
+  pure $ outResource × options
+
+buildSql ∷ Array M.FilteredEvent → Port.Var → Sql.Sql
+buildSql es var =
+  Sql.buildSelect
+  $ all
+  ∘ (Sql._relations
+     ?~ (variRelation (unwrap var) # asRel "res"))
 
 buildData ∷ Array Json → Array OnePieSeries
 buildData =
@@ -124,14 +133,14 @@ buildData =
       >>> map \(name × is) →
             { name
             , radius: Nothing
-            , items: M.fromFoldable (toPoint <$> is)
+            , items: Map.fromFoldable (toPoint <$> is)
             }
 
   toPoint ∷ Item → Tuple String Number
   toPoint { category, measure } = category × measure
 
-options ∷ ∀ a ax. P.DimMap → ax → a → Array OnePieSeries → DSL OptionI
-options dimMap _ _ pieData = do
+buildOptions ∷ P.DimMap → Array OnePieSeries → DSL OptionI
+buildOptions dimMap pieData = do
   let
     mkRow prj value  = P.lookup prj dimMap # foldMap \dim →
       [ { label: D.jcursorLabel dim, value } ]
@@ -168,7 +177,7 @@ options dimMap _ _ pieData = do
     A.fromFoldable
       $ foldMap (_.series
                  ⋙ foldMap (_.items
-                            ⋙ M.keys
+                            ⋙ Map.keys
                             ⋙ Set.fromFoldable)
                 )
         pieData
@@ -205,9 +214,8 @@ options dimMap _ _ pieData = do
 
       for_ name E.name
 
-      E.buildItems $ for_ (asList $ M.toUnfoldable $ items) \(key × value) →
+      E.buildItems $ for_ (asList $ Map.toUnfoldable $ items) \(key × value) →
         E.addItem do
           E.value value
           E.name $ foldMap (flip append ":") name ⊕ key
           BCE.assoc { key, value }
--}

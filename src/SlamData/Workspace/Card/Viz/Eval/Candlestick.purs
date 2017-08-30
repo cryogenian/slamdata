@@ -20,20 +20,20 @@ import SlamData.Prelude
 
 import Data.Argonaut (JArray, Json, decodeJson, (.?))
 import Data.Array as A
-import Data.Lens ((^?))
-import Data.List as L
-import Data.Map as M
+import Data.Lens ((^?), (?~))
+import Data.Map as Map
 import ECharts.Commands as E
 import ECharts.Monad (DSL)
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
-import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Error as CE
+import SlamData.Workspace.Card.Eval.Common as CEC
+import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.Axis as Ax
-import SlamData.Workspace.Card.Setups.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Common as SC
 import SlamData.Workspace.Card.Setups.Chart.Common.Brush as CCB
+import SlamData.Workspace.Card.Setups.ColorScheme (colors)
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Common.Positioning as BCP
@@ -42,9 +42,11 @@ import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
+import SlamData.Workspace.Card.Viz.Model as M
 import SqlSquared as Sql
 import Utils.Foldable (enumeratedFor_)
-{-
+import Utils.SqlSquared (all, asRel, variRelation)
+
 type Item =
   { dimension ∷ String
   , high ∷ Number
@@ -64,31 +66,38 @@ decodeItem = decodeJson >=> \obj → do
   parallel ← map Sem.maybeString $ obj .? "parallel"
   pure { dimension, high, low, open, close, parallel }
 
-eval ∷ ∀ m. VizEval m (P.DimMap → Port.Port → m Port.Out)
-eval dimMap =
-  BCE.chartSetupEval buildSql buildPort $ Just unit
-  where
-  buildPort r axes = Port.ChartInstructions
-    { options: options dimMap axes r ∘ buildData
-    , chartType: CT.candlestick
-    }
+eval
+  ∷ ∀ m
+  . VizEval m
+  ( M.ChartModel
+  → Port.ChartInstructionsPort
+  → m ( Port.Resource × DSL OptionI )
+  )
+eval m { chartType, dimMap, aux, axes } = do
+  var × resource ← CEM.extractResourcePair Port.Initial
 
-  buildSql = SC.buildBasicSql (buildProjections dimMap) (buildGroupBy dimMap)
+  let
+    sql = buildSql (M.getEvents m) var
 
-buildProjections ∷ ∀ a. P.DimMap → a → L.List (Sql.Projection Sql.Sql)
-buildProjections dimMap _ = L.fromFoldable $ A.concat
-  [ SC.dimensionProjection P.dimension dimMap "dimension"
-  , SC.measureProjection P.high dimMap "high"
-  , SC.measureProjection P.low dimMap "low"
-  , SC.measureProjection P.open dimMap "open"
-  , SC.measureProjection P.close dimMap "close"
-  , SC.dimensionProjection P.parallel dimMap "parallel"
-  ]
+  CEM.CardEnv { path, varMap } ← ask
 
-buildGroupBy ∷ ∀ a. P.DimMap → a → Maybe (Sql.GroupBy Sql.Sql)
-buildGroupBy dimMap _ = SC.groupBy
-  $ SC.sqlProjection P.parallel dimMap
-  <|> SC.sqlProjection P.dimension dimMap
+  outResource ←
+    CE.liftQ $ CEC.localEvalResource (Sql.Query empty sql) varMap
+  records ←
+    CE.liftQ $ CEC.sampleResource path outResource Nothing
+
+  let
+    items = buildData records
+    options = buildOptions dimMap axes items
+  pure $ outResource × options
+
+buildSql ∷ Array M.FilteredEvent → Port.Var → Sql.Sql
+buildSql es var =
+  Sql.buildSelect
+  $ all
+  ∘ (Sql._relations
+     ?~ (variRelation (unwrap var) # asRel "res"))
+
 
 type HLOC a =
   { low ∷ a
@@ -126,15 +135,15 @@ buildData =
         , w: Nothing
         , h: Nothing
         , fontSize: Nothing
-        , items: M.fromFoldable $ map toPoint is
+        , items: Map.fromFoldable $ map toPoint is
         }
   toPoint ∷ Item → String × HLOC Number
   toPoint {dimension, high, low, open, close } =
     dimension × { high, low, open, close }
 
 
-options ∷ P.DimMap → Axes → Unit → Array OnOneGrid → DSL OptionI
-options dimMap axes r kData = do
+buildOptions ∷ P.DimMap → Axes → Array OnOneGrid → DSL OptionI
+buildOptions dimMap axes kData = do
   CCB.brush
   CCT.tooltip do
     E.triggerItem
@@ -162,7 +171,7 @@ options dimMap axes r kData = do
 
   where
   xValues ∷ OnOneGrid → Array String
-  xValues  = sortX ∘ foldMap A.singleton ∘ M.keys ∘ _.items
+  xValues  = sortX ∘ foldMap A.singleton ∘ Map.keys ∘ _.items
 
   xAxisType ∷ Ax.AxisType
   xAxisType = fromMaybe Ax.Category do
@@ -188,9 +197,8 @@ options dimMap axes r kData = do
     E.xAxisIndex ix
     E.yAxisIndex ix
     E.buildItems $ for_ (xValues serie) \dim →
-      for_ (M.lookup dim serie.items) \{high, low, open, close} → E.addItem $ E.buildValues do
+      for_ (Map.lookup dim serie.items) \{high, low, open, close} → E.addItem $ E.buildValues do
         E.addValue open
         E.addValue close
         E.addValue low
         E.addValue high
--}

@@ -59,21 +59,22 @@ validateResources fs = runExceptT do
     _ →
       pure unit
 
-localEvalResource
+taggedLocalEvalResource
   ∷ ∀ m
   . MonadAsk CEM.CardEnv m
   ⇒ MonadTell CEM.CardLog m
   ⇒ ParQuasarDSL m
-  ⇒ Sql.SqlQuery
+  ⇒ String
+  → Sql.SqlQuery
   → VM.VarMap
   → m (Either QE.QError VM.Resource)
-localEvalResource sql varMap = runExceptT do
+taggedLocalEvalResource tag sql varMap = runExceptT do
   CEM.CardEnv { cardId, readOnly } ← ask
   let
     Path.FileName fileName × result = Process.elaborate Path.currentDir parentDir cardId varMap sql
   case result of
     Left sqlQuery → do
-      filePath × relFilePath ← lift $ CEM.temporaryOutputResource
+      filePath × relFilePath ← lift $ CEM.taggedTmpOutputResource tag
       unless readOnly do
         let
           varMap' = VM.unURLVarMapF $ VM.toURLVarMap varMap
@@ -90,6 +91,16 @@ localEvalResource sql varMap = runExceptT do
       unless readOnly do
         ExceptT $ QQ.mountModule dirPath sqlModule
       pure $ VM.Process (relDirPath Path.</> Path.file fileName) sqlModule varMap
+
+localEvalResource
+  ∷ ∀ m
+  . MonadAsk CEM.CardEnv m
+  ⇒ MonadTell CEM.CardLog m
+  ⇒ ParQuasarDSL m
+  ⇒ Sql.SqlQuery
+  → VM.VarMap
+  → m (Either QE.QError VM.Resource)
+localEvalResource = taggedLocalEvalResource ""
 
 sampleResource'
   ∷ ∀ m

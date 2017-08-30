@@ -20,43 +20,35 @@ import SlamData.Prelude
 
 import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array as A
-import Data.List as L
-import Data.Map as M
+import Data.Lens ((?~))
+import Data.Map as Map
 import Data.Set as Set
-import Data.Variant (prj)
-import ECharts.Monad (DSL)
+import Data.Variant as V
 import ECharts.Commands as E
+import ECharts.Monad (DSL)
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 import SlamData.Common.Align (Align(..))
 import SlamData.Common.Sort (Sort(..))
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Error as CE
+import SlamData.Workspace.Card.Eval.Common as CEC
+import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Auxiliary.Funnel as Funnel
 import SlamData.Workspace.Card.Setups.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Common as SC
-import SlamData.Workspace.Card.Setups.Common.Positioning as BCP
-import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.Common.Positioning as BCP
+import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Dimension as D
-import SlamData.Workspace.Card.Setups.Semantics as Sem
-import SqlSquared as Sql
-import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
 import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
-import SlamData.Workspace.Card.Setups.Auxiliary as Aux
-import SlamData.Workspace.Card.Setups.Auxiliary.Funnel as Funnel
-{-
-eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Port → m Port.Out)
-eval dimMap aux =
-  BCE.chartSetupEval buildSql buildPort aux'
-  where
-  aux' = prj CT._funnel aux
-  buildSql = SC.buildBasicSql (buildProjections dimMap) (buildGroupBy dimMap)
-  buildPort r axes = Port.ChartInstructions
-    { options: options dimMap axes r ∘ buildData
-    , chartType: CT.funnel
-    }
+import SlamData.Workspace.Card.Setups.Semantics as Sem
+import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
+import SlamData.Workspace.Card.Viz.Model as M
+import SqlSquared as Sql
+import Utils.SqlSquared (all, asRel, variRelation)
 
 type FunnelSeries =
   { name ∷ Maybe String
@@ -81,17 +73,44 @@ decodeItem = decodeJson >=> \obj → do
   series ← Sem.maybeString <$> obj .? "series"
   pure { category, measure, series }
 
-buildProjections ∷ ∀ a. P.DimMap → a → L.List (Sql.Projection Sql.Sql)
-buildProjections dimMap _ = L.fromFoldable $ A.concat
-  [ SC.dimensionProjection P.category dimMap "category"
-  , SC.measureProjection P.value dimMap "measure"
-  , SC.dimensionProjection P.series dimMap "series"
-  ]
+eval
+  ∷ ∀ m
+  . VizEval m
+  ( M.ChartModel
+  → Port.ChartInstructionsPort
+  → m ( Port.Resource × DSL OptionI )
+  )
+eval m { chartType, dimMap, aux, axes } = do
+  var × resource ← CEM.extractResourcePair Port.Initial
 
-buildGroupBy ∷ ∀ a. P.DimMap → a → Maybe (Sql.GroupBy Sql.Sql)
-buildGroupBy dimMap _ = SC.groupBy
-  $ SC.sqlProjection P.series dimMap
-  <|> SC.sqlProjection P.category dimMap
+  aux' ←
+    maybe
+      (CE.throw "Missing or incorrect auxiliary model, please contact support")
+      pure
+      $ V.prj CT._funnel =<< aux
+
+  let
+    sql = buildSql (M.getEvents m) var
+
+  CEM.CardEnv { path, varMap } ← ask
+
+  outResource ←
+    CE.liftQ $ CEC.localEvalResource (Sql.Query empty sql) varMap
+  records ←
+    CE.liftQ $ CEC.sampleResource path outResource Nothing
+
+  let
+    items = buildData records
+    options = buildOptions dimMap axes aux' items
+  pure $ outResource × options
+
+buildSql ∷ Array M.FilteredEvent → Port.Var → Sql.Sql
+buildSql es var =
+  Sql.buildSelect
+  $ all
+  ∘ (Sql._relations
+     ?~ (variRelation (unwrap var) # asRel "res"))
+
 
 buildData ∷ Array Json → Array FunnelSeries
 buildData =
@@ -110,14 +129,14 @@ buildData =
             , w: Nothing
             , h: Nothing
             , fontSize: Nothing
-            , items: M.fromFoldable $ toPoint <$> items
+            , items: Map.fromFoldable $ toPoint <$> items
             }
 
   toPoint ∷ Item → String × Number
   toPoint item = item.category × item.measure
 
-options ∷ ∀ ax. P.DimMap → ax → Funnel.State → Array FunnelSeries → DSL OptionI
-options dimMap _ r funnelData = do
+buildOptions ∷ ∀ ax. P.DimMap → ax → Funnel.State → Array FunnelSeries → DSL OptionI
+buildOptions dimMap _ r funnelData = do
   let
     mkRow prj value  = P.lookup prj dimMap # foldMap \dim →
       [ { label: D.jcursorLabel dim, value } ]
@@ -149,7 +168,7 @@ options dimMap _ r funnelData = do
   legendNames ∷ Array String
   legendNames =
     A.fromFoldable
-      $ foldMap (_.items ⋙ M.keys ⋙ Set.fromFoldable) funnelData
+      $ foldMap (_.items ⋙ Map.keys ⋙ Set.fromFoldable) funnelData
 
   series ∷ ∀ i. DSL (funnel ∷ ETP.I|i)
   series = for_ funnelData \{x, y, w, h, items, name: serieName} → E.funnel do
@@ -170,9 +189,8 @@ options dimMap _ r funnelData = do
       E.emphasis do
         E.textStyle $ E.fontFamily "Ubuntu, sans"
         E.positionInside
-    E.buildItems $ for_ (asList $ M.toUnfoldable items) \(name × value) → E.addItem do
+    E.buildItems $ for_ (asList $ Map.toUnfoldable items) \(name × value) → E.addItem do
       E.name name
       E.value value
     traverse_ (E.top ∘ ET.Percent) y
     traverse_ (E.left ∘ ET.Percent) x
--}

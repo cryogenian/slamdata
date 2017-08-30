@@ -98,7 +98,7 @@ evalCard trans port = CEM.localVarMap >>= \varMap → case trans, port of
       $ m
   Viz m, Port.ChartInstructions r →
     default (pure $ Port.ResourceKey Port.defaultResourceVar × varMap)
-      # on VizM._chart (\model → tapResource (Viz.evalChart r model) port)
+      # on VizM._chart (\model → Viz.evalChart r model)
       $ m
   Viz _, _ →
     pure $ Port.ResourceKey Port.defaultResourceVar × varMap

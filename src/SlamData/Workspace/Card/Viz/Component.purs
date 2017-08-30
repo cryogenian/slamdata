@@ -200,9 +200,6 @@ evalCard = case _ of
             H.modify _{ vizType = map expand m.chartType
                       , events = m.events
                       }
-            _ ←
-              HU.sendAfter (wrap 100.0)
-                (right ∘ Q.Dispatch ( fromMaybe [ ] $ flip lm.lookup m.events =<< m.chartType))
             pure next
         }
       _ →
@@ -235,20 +232,15 @@ evalCard = case _ of
     pure next
   CC.ReceiveState evalState next → do
     case evalState of
-      ES.ChartOptions {options, eventRaised} | not eventRaised → void do
-        H.modify _{ chartOptions = Just options }
+      ES.ChartOptions {options, eventRaised, chartType, events} | not eventRaised → void do
+        st ← H.get
+        H.modify _
+          { chartOptions = Just options
+          , events = lm.insert chartType events st.events
+          }
         _ ← H.query' CS.cpECharts unit $ H.action $ HEC.Reset options
         _ ← H.query' CS.cpECharts unit $ H.action HEC.Resize
-        H.modify \st → st{ events = maybe st.events (\vt → lm.delete vt st.events)
-                                      $ contract =<< st.vizType
-
-                         }
-
---        _ ← HU.sendAfter (wrap 100.0)
---          (right ∘ Q.Dispatch ( fromMaybe [ ] $ flip lm.lookup st.events =<< contract =<< st.vizType))
-        pure unit
-
-
+        HU.sendAfter (wrap 100.0) ( right ∘ Q.Dispatch events )
       ES.PivotTable options → void do
         H.query' CS.cpPivotTable unit $ H.action $ PR.Update options
       ES.AutoSelect {autoSelect} → void do
@@ -362,6 +354,7 @@ evalComponent = case _ of
     pure next
 
   Q.Dispatch es next → do
+    H.modify _{ acceptingEvents = false }
     for_ es \e → void $ H.query' CS.cpECharts unit $ H.action $ HEC.Dispatch $ expand e
     H.modify _{ acceptingEvents = true }
     pure next

@@ -193,64 +193,73 @@ evalTextLike m p = do
 
 evalChart
   ∷ ∀ m
-  . MonadState CEM.CardState m
+  . MonadAff SlamDataEffects m
+  ⇒ MonadState CEM.CardState m
   ⇒ MonadThrow CE.CardError m
+  ⇒ MonadTell CEM.CardLog m
+  ⇒ ParQuasarDSL m
   ⇒ QuasarDSL m
   ⇒ MonadAsk CEM.CardEnv m
   ⇒ Port.ChartInstructionsPort
   → M.ChartModel
-  → Port.Resource
-  → m Port.Port
-evalChart port m resource = do
+  → m Port.Out
+evalChart port m = do
   CEM.CardEnv { path } ← ask
   state ← get
-  resourceVar × _ ← CEM.extractResourcePair Port.Initial
+  resourceVar × resource ← CEM.extractResourcePair Port.Initial
 
   case state ^? _Just ∘ CES._Chart of
     Just st | st.eventRaised || setupUnchanged st port → do
-      createPort $ st.extractData $ fromMaybe [] do
-        cht ← m.chartType
-        LM.eqListMap.lookup cht m.events
-    _ → do
+      put $ Just $ CES.ChartOptions st
+      createPort st.output
+    mbst → do
       results ← CE.liftQ $ CEC.sampleResource path resource Nothing
-      let (extractData × options) = buildOptions
+      res × options ← buildOptions
       put $ Just $ CES.ChartOptions
         { options
         , eventRaised: false
         , dimMap: port.dimMap
         , aux: port.aux
-        , extractData: extractData resourceVar
         , chartType: port.chartType
+        , output: res
+        , events: events mbst
         }
-      createPort $ extractData resourceVar []
+      createPort res
   where
-  createPort _ =
-    pure $ Port.ResourceKey Port.defaultResourceVar
+  events = case _ of
+    Just st | port.dimMap ≠ st.dimMap && st.chartType ≡ port.chartType →
+      [ ]
+    _ →
+      fromMaybe [] $ LM.eqListMap.lookup port.chartType m.events
 
-  emptyOut resourceVar _ =
-      Sql.buildSelect
-        $ all
-        ∘ (Sql._relations
-            ?~ (variRelation (unwrap resourceVar) # asRel "res"))
+  createPort res = do
+    CEM.CardEnv { varMap, cardId } ← ask
+    pure
+      $ Port.resourceOut cardId res
+      $ VM.insert cardId (VM.Var Port.defaultResourceVar) (VM.Resource res) varMap
+
+  -- Metric and pivot table are handled separately
+  emptyOptions =
+    Tuple <$> map snd (CEM.extractResourcePair Port.Initial) <*> pure (pure unit)
 
   buildOptions = port.chartType # match
-    { pie: const $ emptyOut × pure unit
-    , line: const $ emptyOut × pure unit
-    , bar: const $ emptyOut × pure unit
-    , area: const $ emptyOut × pure unit
-    , scatter: const $ emptyOut × pure unit
-    , radar: const $ emptyOut × pure unit
-    , funnel: const $ emptyOut × pure unit
-    , graph: const $ emptyOut × pure unit
-    , heatmap: const $ emptyOut × pure unit
-    , sankey: const $ emptyOut × pure unit
-    , gauge: const $ emptyOut × pure unit
-    , boxplot: const $ emptyOut × pure unit
-    , metric: const $ emptyOut × pure unit
-    , punchCard: const $ emptyOut × pure unit
-    , candlestick: const $ emptyOut × pure unit
-    , parallel: const $ emptyOut × pure unit
-    , pivot: const $ emptyOut × pure unit
+    { pie: const $ Pie.eval m port
+    , line: const $ Line.eval m port
+    , bar: const $ Bar.eval m port
+    , area: const $ Area.eval m port
+    , scatter: const $ Scatter.eval m port
+    , radar: const $ Radar.eval m port
+    , funnel: const $ Funnel.eval m port
+    , graph: const $ Graph.eval m port
+    , heatmap: const $ Heatmap.eval m port
+    , sankey: const $ Sankey.eval m port
+    , gauge: const $ Gauge.eval m port
+    , boxplot: const $ Boxplot.eval m port
+    , metric: const emptyOptions
+    , punchCard: const $ PunchCard.eval m port
+    , candlestick: const $ Candlestick.eval m port
+    , parallel: const $ Parallel.eval m port
+    , pivot: const emptyOptions
     }
 
   mbAuxEq Nothing Nothing = true

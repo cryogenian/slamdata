@@ -284,13 +284,15 @@ eval = case _ of
     pure next
   Q.AddGroupBy next → do
     st ← H.get
-    let vals = ST.selectGroupByValues st.axes
-    H.modify _ { selecting = Just (ST.SelectGroupBy vals) }
+    unless (Ax.eqAxes st.axes Ax.initialAxes) do
+      let vals = ST.selectGroupByValues st.axes
+      H.modify _ { selecting = Just (ST.SelectGroupBy vals) }
     pure next
   Q.AddColumn next → do
     st ← H.get
-    let vals = ST.selectColumnValues st.axes
-    H.modify _ { selecting = Just (ST.SelectColumn vals) }
+    unless (Ax.eqAxes st.axes Ax.initialAxes) do
+      let vals = ST.selectColumnValues st.axes
+      H.modify _ { selecting = Just (ST.SelectColumn vals) }
     pure next
   Q.Remove (Q.ForGroupBy slot) next → do
     H.modify \st →

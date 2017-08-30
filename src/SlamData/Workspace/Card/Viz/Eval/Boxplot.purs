@@ -23,33 +23,33 @@ import Data.Argonaut (JArray, Json, decodeJson, (.?))
 import Data.Array ((!!))
 import Data.Array as A
 import Data.Int as Int
-import Data.Lens ((.~))
-import Data.List ((:))
-import Data.List as L
-import Data.Map as M
-import Data.NonEmpty as NE
+import Data.Lens ((?~))
+import Data.Map as Map
 import Data.Set as Set
 import ECharts.Commands as E
 import ECharts.Monad (DSL)
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
-import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Error as CE
+import SlamData.Workspace.Card.Eval.Common as CEC
+import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Common as SC
-import SlamData.Workspace.Card.Setups.Common.Positioning (rectangularGrids, rectangularTitles, adjustRectangularPositions)
-import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
+import SlamData.Workspace.Card.Setups.Common.Positioning (rectangularGrids, rectangularTitles, adjustRectangularPositions)
+import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
-import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
+import SlamData.Workspace.Card.Viz.Model as M
 import SqlSquared as Sql
 import Utils.Foldable (enumeratedFor_)
-{-
+import Utils.SqlSquared (all, asRel, variRelation)
+
 type Item =
   { dimension ∷ String
   , value ∷ Number
@@ -95,44 +95,31 @@ decodeItem = decodeJson >=> \obj → do
        , parallel
        }
 
-eval ∷ ∀ m. VizEval m (P.DimMap → Port.Port → m Port.Out)
-eval dimMap =
-  BCE.chartSetupEval buildSql buildPort aux'
-  where
-  buildPort r axes = Port.ChartInstructions
-    { options: options dimMap axes r ∘ buildData
-    , chartType: CT.boxplot
-    }
+eval
+  ∷ ∀ m
+  . VizEval m
+  ( M.ChartModel
+  → Port.ChartInstructionsPort
+  → m ( Port.Resource × DSL OptionI )
+  )
+eval m { chartType, dimMap, axes } = do
+  var × resource ← CEM.extractResourcePair Port.Initial
 
-  buildSql md fp =
-    addOrderBy
-    $ SC.buildBasicSql (buildProjections dimMap) (const Nothing) md fp
+  let
+    sql = buildSql (M.getEvents m) var
 
-  aux' = Just unit
+  CEM.CardEnv { path, varMap } ← ask
 
-  fields ∷ L.List Sql.Sql
-  fields =
-    SC.sqlProjection P.parallel dimMap
-    <|> SC.sqlProjection P.series dimMap
-    <|> SC.sqlProjection P.dimension dimMap
+  outResource ←
+    CE.liftQ $ CEC.localEvalResource (Sql.Query empty sql) varMap
+  records ←
+    CE.liftQ $ CEC.sampleResource path outResource Nothing
 
-  orderBy ∷ Maybe (Sql.OrderBy Sql.Sql)
-  orderBy = case fields of
-    L.Nil → Nothing
-    x : xs → Just $ Sql.OrderBy $ Tuple Sql.ASC <$> NE.NonEmpty x xs
+  let
+    items = buildData records
+    options = buildOptions dimMap axes items
+  pure $ outResource × options
 
-  addOrderBy ∷ Sql.Sql → Sql.Sql
-  addOrderBy =
-    (Sql._Select ∘ Sql._orderBy .~ orderBy)
-    ∘ (Sql._Select ∘ Sql._isDistinct .~ true)
-
-buildProjections ∷ ∀ a. P.DimMap → a → L.List (Sql.Projection Sql.Sql)
-buildProjections dimMap _ = L.fromFoldable $ A.concat
-  [ SC.dimensionProjection P.flatValue dimMap "value"
-  , SC.dimensionProjection P.dimension dimMap "dimension"
-  , SC.dimensionProjection P.series dimMap "series"
-  , SC.dimensionProjection P.parallel dimMap "parallel"
-  ]
 
 buildData ∷ JArray → Array OnOneBoxplot
 buildData =
@@ -163,7 +150,7 @@ buildData =
 
   boxplotPoints ∷ Array Item → String >> (Array Number × BoxplotItem)
   boxplotPoints =
-    M.fromFoldable
+    Map.fromFoldable
     ∘ map (map analyzeBoxplot)
     ∘ BCE.groupOn _.dimension
 
@@ -212,9 +199,15 @@ buildData =
       in
        outliers × Just {low, q1, q2, q3, high}
 
+buildSql ∷ Array M.FilteredEvent → Port.Var → Sql.Sql
+buildSql es var =
+  Sql.buildSelect
+  $ all
+  ∘ (Sql._relations
+     ?~ (variRelation (unwrap var) # asRel "res"))
 
-options ∷ P.DimMap → Axes → Unit → Array OnOneBoxplot → DSL OptionI
-options dimMap axes _ boxplotData = do
+buildOptions ∷ P.DimMap → Axes → Array OnOneBoxplot → DSL OptionI
+buildOptions dimMap axes boxplotData = do
   CCT.tooltip do
     E.triggerItem
 
@@ -273,7 +266,7 @@ options dimMap axes _ boxplotData = do
           ]
 
     E.buildItems
-      $ for_ xAxisLabels \key → case M.lookup key serie.items of
+      $ for_ xAxisLabels \key → case Map.lookup key serie.items of
         Nothing → E.missingItem
         Just (_ × mbBP) → for_ mbBP \item → E.addItem $ E.buildValues do
           E.addValue item.low
@@ -330,7 +323,7 @@ options dimMap axes _ boxplotData = do
   xAxisLabels =
     A.fromFoldable
     $ flip foldMap boxplotData
-    $ foldMap (Set.fromFoldable ∘ M.keys ∘ _.items)
+    $ foldMap (Set.fromFoldable ∘ Map.keys ∘ _.items)
     ∘ _.series
 
   xAxes = enumeratedFor_ boxplotData \(ix × _) → E.addXAxis do
@@ -358,4 +351,3 @@ options dimMap axes _ boxplotData = do
     E.splitLine $ E.lineStyle do
       E.width 1
     E.splitArea E.hidden
--}

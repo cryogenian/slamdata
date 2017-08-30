@@ -20,8 +20,10 @@ import SlamData.Prelude
 
 import Data.Argonaut ((.?))
 import Data.Argonaut as J
+import Data.Array as A
 import Data.ListMap as LM
 import Data.Foreign as F
+import Data.Unfoldable (class Unfoldable)
 import Data.Variant as V
 import Data.Codec as C
 import Data.Codec.Argonaut as CA
@@ -55,6 +57,11 @@ initialChartModel =
   { events: LM.empty
   , chartType: Nothing
   }
+
+getEvents ∷ ∀ u. Unfoldable u ⇒ ChartModel → u FilteredEvent
+getEvents {events, chartType} =
+  A.toUnfoldable $ fromMaybe [] $ spy $ chartType >>= \cht → LM.eqListMap.lookup (spy cht) events
+
 
 filteredEventCodec ∷ CA.JsonCodec FilteredEvent
 filteredEventCodec = CAV.variant

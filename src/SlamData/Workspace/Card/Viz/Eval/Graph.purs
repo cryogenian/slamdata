@@ -24,29 +24,31 @@ import Data.Foldable as F
 import Data.Foreign as FR
 import Data.Function (on)
 import Data.Int as Int
-import Data.List as L
-import Data.Variant (prj)
-import ECharts.Monad (DSL)
+import Data.Lens ((?~))
+import Data.Variant as V
 import ECharts.Commands as E
-import ECharts.Types.Phantom (OptionI)
+import ECharts.Monad (DSL)
 import ECharts.Types as ET
+import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Error as CE
+import SlamData.Workspace.Card.Eval.Common as CEC
+import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Auxiliary.Graph as Graph
 import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Common as SC
 import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
-import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
-import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
-import SlamData.Workspace.Card.Setups.Auxiliary as Aux
-import SlamData.Workspace.Card.Setups.Auxiliary.Graph as Graph
+import SlamData.Workspace.Card.Viz.Model as M
 import SqlSquared as Sql
 import Utils (hush')
-{-
+import Utils.SqlSquared (all, asRel, variRelation)
+
 type Item =
   { source ∷ String
   , target ∷ String
@@ -71,34 +73,47 @@ decodeItem = decodeJson >=> \obj → do
   color ← map Sem.maybeString $ obj .? "color"
   pure { source, target, size, color }
 
-eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Port → m Port.Out)
-eval dimMap aux =
-  BCE.chartSetupEval buildSql buildPort aux'
-  where
-  aux' = prj CT._graph aux
-  buildSql = SC.buildBasicSql (buildProjections dimMap) (buildGroupBy dimMap)
-  buildPort r axes = Port.ChartInstructions
-    { options: options dimMap axes r ∘ buildData aux'
-    , chartType: CT.graph
-    }
 
-buildProjections ∷ ∀ a. P.DimMap → a → L.List (Sql.Projection Sql.Sql)
-buildProjections dimMap _ = L.fromFoldable $ A.concat
-  [ SC.dimensionProjection P.source dimMap "source"
-  , SC.dimensionProjection P.target dimMap "target"
-  , SC.measureProjection P.size dimMap "size"
-  , SC.dimensionProjection P.color dimMap "color"
-  ]
+eval
+  ∷ ∀ m
+  . VizEval m
+  ( M.ChartModel
+  → Port.ChartInstructionsPort
+  → m ( Port.Resource × DSL OptionI )
+  )
+eval m { chartType, dimMap, aux, axes } = do
+  var × resource ← CEM.extractResourcePair Port.Initial
 
-buildGroupBy ∷ ∀ a. P.DimMap → a → Maybe (Sql.GroupBy Sql.Sql)
-buildGroupBy dimMap _ = SC.groupBy
-  $ SC.sqlProjection P.source dimMap
-  <|> SC.sqlProjection P.target dimMap
-  <|> SC.sqlProjection P.color dimMap
+  aux' ←
+    maybe
+      (CE.throw "Missing or incorrect auxiliary model, please contact support")
+      pure
+      $ V.prj CT._graph =<< aux
 
+  let
+    sql = buildSql (M.getEvents m) var
 
-buildData ∷ Maybe Graph.State → JArray → GraphData
-buildData mbR jarr =
+  CEM.CardEnv { path, varMap } ← ask
+
+  outResource ←
+    CE.liftQ $ CEC.localEvalResource (Sql.Query empty sql) varMap
+  records ←
+    CE.liftQ $ CEC.sampleResource path outResource Nothing
+
+  let
+    items = buildData aux' records
+    options = buildOptions dimMap axes aux' items
+  pure $ outResource × options
+
+buildSql ∷ Array M.FilteredEvent → Port.Var → Sql.Sql
+buildSql es var =
+  Sql.buildSelect
+  $ all
+  ∘ (Sql._relations
+     ?~ (variRelation (unwrap var) # asRel "res"))
+
+buildData ∷ Graph.State → JArray → GraphData
+buildData r jarr =
   let
     items ∷ Array Item
     items = foldMap (foldMap A.singleton ∘ decodeItem) jarr
@@ -125,8 +140,8 @@ buildData mbR jarr =
     distance ∷ Number
     distance = maxSize - minSize
 
-    rMinSize = maybe zero _.size.min mbR
-    rMaxSize = maybe zero _.size.max mbR
+    rMinSize = r.size.min
+    rMaxSize = r.size.max
 
     sizeDistance ∷ Number
     sizeDistance = rMaxSize - rMinSize
@@ -156,8 +171,8 @@ buildData mbR jarr =
   in
     items × (A.nubBy (eq `on` _.name) $ foldMap itemToNodes $ colorFn items)
 
-options ∷ P.DimMap → Axes → Graph.State → GraphData → DSL OptionI
-options dimMap axes r (links × nodes) = do
+buildOptions ∷ P.DimMap → Axes → Graph.State → GraphData → DSL OptionI
+buildOptions dimMap axes r (links × nodes) = do
   CCT.tooltip do
     E.triggerItem
     E.formatterItem \{name, value, "data": item, dataType} →
@@ -222,4 +237,3 @@ options dimMap axes r (links × nodes) = do
     when (P.member P.size dimMap) do
       E.symbolSize $ Int.floor node.size
       E.value node.value
--}

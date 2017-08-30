@@ -23,45 +23,34 @@ import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array as A
 import Data.Foldable as F
 import Data.Int as Int
-import Data.Lens ((.~))
-import Data.List as L
+import Data.Lens ((?~))
 import Data.Set as Set
-import Data.Variant (prj)
-import Global (infinity)
-import ECharts.Monad (DSL)
+import Data.Variant as V
 import ECharts.Commands as E
+import ECharts.Monad (DSL)
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
+import Global (infinity)
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Error as CE
+import SlamData.Workspace.Card.Eval.Common as CEC
+import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Setups.Auxiliary.Scatter as Scatter
+import SlamData.Workspace.Card.Setups.Chart.Common.Brush as CCB
 import SlamData.Workspace.Card.Setups.ColorScheme (colors, getTransparentColor)
-import SlamData.Workspace.Card.Setups.Common as SC
+import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Common.Positioning as BCP
 import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
-import SlamData.Workspace.Card.Setups.Chart.Common.Brush as CCB
-import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Dimension as D
+import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
-import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
-import SlamData.Workspace.Card.Setups.Auxiliary as Aux
-import SlamData.Workspace.Card.Setups.Auxiliary.Scatter as Scatter
+import SlamData.Workspace.Card.Viz.Model as M
 import SqlSquared as Sql
 import Utils.Foldable (enumeratedFor_)
-{-
-eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Port → m Port.Out)
-eval dimMap aux =
-  BCE.chartSetupEval buildSql buildPort aux'
-  where
-  aux' = prj CT._scatter aux
-  buildSql a b = setDistinct $ SC.buildBasicSql (buildProjections dimMap) (buildGroupBy dimMap) a b
-  buildPort r axes = Port.ChartInstructions
-    { options: options dimMap axes r ∘ buildData aux'
-    , chartType: CT.scatter
-    }
-  setDistinct = Sql._Select ∘ Sql._isDistinct .~ true
-
+import Utils.SqlSquared (all, asRel, variRelation)
 
 type ScatterSeries =
   { name ∷ Maybe String
@@ -102,24 +91,47 @@ decodeItem = decodeJson >=> \obj → do
   series ← Sem.maybeString <$> obj .? "series"
   pure { abscissa, ordinate, size, parallel, series }
 
-buildProjections ∷ ∀ a. P.DimMap → a → L.List (Sql.Projection Sql.Sql)
-buildProjections dimMap _ = L.fromFoldable $ A.concat
-  [ SC.dimensionProjection P.abscissa dimMap "abscissa"
-  , SC.dimensionProjection P.ordinate dimMap "ordinate"
-  , SC.measureProjection P.size dimMap "size"
-  , SC.dimensionProjection P.parallel dimMap "parallel"
-  , SC.dimensionProjection P.series dimMap "series"
-  ]
+eval
+  ∷ ∀ m
+  . VizEval m
+  ( M.ChartModel
+  → Port.ChartInstructionsPort
+  → m ( Port.Resource × DSL OptionI )
+  )
+eval m { chartType, dimMap, aux } = do
+  var × resource ← CEM.extractResourcePair Port.Initial
 
-buildGroupBy ∷ ∀ a. P.DimMap → a → Maybe (Sql.GroupBy Sql.Sql)
-buildGroupBy dimMap _ = SC.groupBy
-  $ SC.sqlProjection P.parallel dimMap
-  <|> SC.sqlProjection P.series dimMap
-  <|> SC.sqlProjection P.abscissa dimMap
+  aux' ←
+    maybe
+      (CE.throw "Missing or incorrect auxiliary model, please contact support")
+      pure
+      $ V.prj CT._scatter =<< aux
+
+  let
+    sql = buildSql (M.getEvents m) var
+
+  CEM.CardEnv { path, varMap } ← ask
+
+  outResource ←
+    CE.liftQ $ CEC.localEvalResource (Sql.Query empty sql) varMap
+  records ←
+    CE.liftQ $ CEC.sampleResource path outResource Nothing
+
+  let
+    items = buildData aux' records
+    options = buildOptions dimMap aux' items
+  pure $ outResource × options
+
+buildSql ∷ Array M.FilteredEvent → Port.Var → Sql.Sql
+buildSql es var =
+  Sql.buildSelect
+  $ all
+  ∘ (Sql._relations
+     ?~ (variRelation (unwrap var) # asRel "res"))
 
 
-buildData ∷ Maybe Scatter.State → Array Json → Array ScatterSeries
-buildData mbR =
+buildData ∷ Scatter.State → Array Json → Array ScatterSeries
+buildData r =
   BCP.adjustRectangularPositions
   ∘ series
   ∘ foldMap (foldMap A.singleton ∘ decodeItem)
@@ -165,9 +177,9 @@ buildData mbR =
       distance =
         maxValue - minValue
       maxSize =
-        maybe zero _.size.max mbR
+        r.size.max
       minSize =
-        maybe zero _.size.min mbR
+        r.size.min
       sizeDistance =
         maxSize - minSize
 
@@ -180,8 +192,8 @@ buildData mbR =
     in
       map (\x → x{size = Int.floor $ relativeSize x.r}) is
 
-options ∷ ∀ ax. P.DimMap → ax → Scatter.State → Array ScatterSeries → DSL OptionI
-options dimMap _ r scatterData = do
+buildOptions ∷ P.DimMap → Scatter.State → Array ScatterSeries → DSL OptionI
+buildOptions dimMap r scatterData = do
   let
     mkRow prj value  = P.lookup prj dimMap # foldMap \dim →
       [ { label: D.jcursorLabel dim, value } ]
@@ -255,4 +267,3 @@ options dimMap _ r scatterData = do
           E.addValue item.y
           E.addValue item.r
         when (P.member P.size dimMap) $ E.symbolSize item.size
--}

@@ -71,6 +71,7 @@ import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.DimensionMap.Projection as Pr
 import SlamData.Workspace.Card.Setups.PivotTable.Model as PTM
 import SlamData.Workspace.Card.Setups.Semantics as Sem
+import SlamData.Workspace.Card.Setups.Axis as Ax
 import Text.Markdown.SlamDown as SD
 import Utils.Path as PU
 
@@ -88,11 +89,11 @@ type MetricPort =
   , value ∷ String
   }
 
---options ∷ Array Json → DSL OptionI
 type ChartInstructionsPort =
   { chartType ∷ CT.Chart ()
   , dimMap ∷ Pr.DimMap
   , aux ∷ Maybe Aux.State
+  , axes ∷ Ax.Axes
   }
 
 type PivotTablePort =

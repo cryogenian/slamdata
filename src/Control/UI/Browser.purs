@@ -39,45 +39,45 @@ import DOM.HTML (window)
 import DOM.HTML.Location as Location
 import DOM.HTML.Window as Window
 
-locationObject :: forall e. Eff (dom :: DOM | e) Location
+locationObject ∷ ∀ e. Eff (dom ∷ DOM | e) Location
 locationObject =
   window
     >>= Window.location
 
-replaceLocation :: forall e. String -> Eff (dom :: DOM | e) Unit
+replaceLocation ∷ ∀ e. String → Eff (dom ∷ DOM | e) Unit
 replaceLocation str =
   locationObject
     >>= Location.replace str
 
-setLocation :: forall e. String -> Eff (dom :: DOM | e) Unit
+setLocation ∷ ∀ e. String → Eff (dom ∷ DOM | e) Unit
 setLocation str =
   locationObject
     >>= Location.assign str
 
-reload :: forall e. Eff (dom :: DOM | e) Unit
+reload ∷ ∀ e. Eff (dom ∷ DOM | e) Unit
 reload =
   locationObject
     >>= Location.reload
 
-hostAndProtocol :: forall e. Eff (dom :: DOM |e) String
+hostAndProtocol ∷ ∀ e. Eff (dom ∷ DOM |e) String
 hostAndProtocol = do
   loc <- locationObject
   protocol <- Location.protocol loc
   host <- Location.host loc
   pure $ protocol <> "//" <> host
 
-getHref :: forall e. Eff (dom :: DOM|e) String
+getHref ∷ ∀ e. Eff (dom ∷ DOM|e) String
 getHref = locationObject >>= Location.href
 
-setHref :: forall e. String -> Eff (dom :: DOM|e) String
+setHref ∷ ∀ e. String → Eff (dom ∷ DOM|e) Unit
 setHref str =
   locationObject
     >>= Location.setHref str
 
-foreign import locationString :: forall e. Eff (dom :: DOM | e) String
-foreign import select :: forall e. HTMLElement -> Eff (dom :: DOM | e) Unit
-foreign import newTab :: forall e. String -> Eff (dom :: DOM | e) Unit
-foreign import setTitle :: forall e. String -> Eff (dom :: DOM | e) Unit
+foreign import locationString ∷ ∀ e. Eff (dom ∷ DOM | e) String
+foreign import select ∷ ∀ e. HTMLElement → Eff (dom ∷ DOM | e) Unit
+foreign import newTab ∷ ∀ e. String → Eff (dom ∷ DOM | e) Unit
+foreign import setTitle ∷ ∀ e. String → Eff (dom ∷ DOM | e) Unit
 
 -- | Checks whether the current page is embedded in another page via iframe.
-foreign import detectEmbedding :: forall e. Eff (dom :: DOM | e) Boolean
+foreign import detectEmbedding ∷ ∀ e. Eff (dom ∷ DOM | e) Boolean

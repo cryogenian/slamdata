@@ -61,10 +61,9 @@ import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.DimensionMap.Projection as Pr
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Viz.Renderer.PivotTable.Common (PTree)
-import SlamData.Workspace.Card.Viz.Model as VizM
+import SlamData.Workspace.Card.Viz.Model (FilteredEvent)
 import SlamData.Workspace.Card.CardType.Chart (Chart)
 import Text.Markdown.SlamDown.Halogen.Component as SDH
-import SqlSquared as Sql
 
 type AnalysisR =
   { resource ∷ Resource
@@ -108,8 +107,9 @@ type ChartR =
   , eventRaised ∷ Boolean
   , aux ∷ Maybe Aux.State
   , dimMap ∷ Pr.DimMap
-  , extractData ∷ Array VizM.FilteredEvent → Sql.Sql
   , chartType ∷ Chart ()
+  , output ∷ Resource
+  , events ∷ Array FilteredEvent
   }
 
 data EvalState

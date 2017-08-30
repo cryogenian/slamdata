@@ -22,35 +22,37 @@ import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array ((!!))
 import Data.Array as A
 import Data.Int as Int
-import Data.Lens ((^?))
-import Data.List as L
-import Data.Map as M
+import Data.Lens ((^?), (?~))
+import Data.Map as Map
 import Data.Set as Set
-import Data.Variant (prj)
+import Data.Variant as V
 import ECharts.Commands as E
 import ECharts.Monad (DSL)
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Error as CE
+import SlamData.Workspace.Card.Eval.Common as CEC
+import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Setups.Auxiliary as Aux
 import SlamData.Workspace.Card.Setups.Auxiliary.Area as Area
 import SlamData.Workspace.Card.Setups.Axis as Ax
+import SlamData.Workspace.Card.Setups.Chart.Common.Brush as CCB
 import SlamData.Workspace.Card.Setups.ColorScheme (colors, getShadeColor)
-import SlamData.Workspace.Card.Setups.Common.Positioning as BCP
-import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
-import SlamData.Workspace.Card.Setups.Common as SC
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
-import SlamData.Workspace.Card.Setups.Chart.Common.Brush as CCB
+import SlamData.Workspace.Card.Setups.Common.Positioning as BCP
+import SlamData.Workspace.Card.Setups.Common.Tooltip as CCT
 import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
+import SlamData.Workspace.Card.Viz.Model as M
 import SqlSquared as Sql
 import Utils.Foldable (enumeratedFor_)
-{-
+import Utils.SqlSquared (all, asRel, variRelation)
+
 type Item =
   { dimension ∷ String
   , measure ∷ Number
@@ -71,30 +73,43 @@ decodeItem = decodeJson >=> \obj → do
        , dimension
        , series
        }
+eval
+  ∷ ∀ m
+  . VizEval m
+  ( M.ChartModel
+  → Port.ChartInstructionsPort
+  → m ( Port.Resource × DSL OptionI )
+  )
+eval m { chartType, dimMap, aux, axes } = do
+  var × resource ← CEM.extractResourcePair Port.Initial
 
-eval ∷ ∀ m. VizEval m (P.DimMap → Aux.State → Port.Port → m Port.Out)
-eval dimMap aux =
-  BCE.chartSetupEval buildSql buildPort aux'
-  where
-  aux' = prj CT._area aux
-  buildSql = SC.buildBasicSql (buildProjections dimMap) (buildGroupBy dimMap)
-  buildPort r axes = Port.ChartInstructions
-    { options: options dimMap axes r ∘ buildData
-    , chartType: CT.area
-    }
+  aux' ←
+    maybe
+      (CE.throw "Missing or incorrect auxiliary model, please contact support")
+      pure
+      $ V.prj CT._area =<< aux
 
-buildProjections ∷ ∀ a. P.DimMap → a → L.List (Sql.Projection Sql.Sql)
-buildProjections dimMap _ = L.fromFoldable $ A.concat
-  [ SC.measureProjection P.value dimMap "measure"
-  , SC.dimensionProjection P.dimension dimMap "dimension"
-  , SC.dimensionProjection P.series dimMap "series"
-  ]
+  let
+    sql = buildSql (M.getEvents m) var
 
-buildGroupBy ∷ ∀ a. P.DimMap → a → Maybe (Sql.GroupBy Sql.Sql)
-buildGroupBy dimMap _ = SC.groupBy
-  $ SC.sqlProjection P.series dimMap
-  <|> SC.sqlProjection P.dimension dimMap
+  CEM.CardEnv { path, varMap } ← ask
 
+  outResource ←
+    CE.liftQ $ CEC.localEvalResource (Sql.Query empty sql) varMap
+  records ←
+    CE.liftQ $ CEC.sampleResource path outResource Nothing
+
+  let
+    items = buildData records
+    options = buildOptions dimMap axes aux' items
+  pure $ outResource × options
+
+buildSql ∷ Array M.FilteredEvent → Port.Var → Sql.Sql
+buildSql es var =
+  Sql.buildSelect
+  $ all
+  ∘ (Sql._relations
+     ?~ (variRelation (unwrap var) # asRel "res"))
 
 buildData ∷ Array Json → Array AreaSeries
 buildData =
@@ -105,13 +120,13 @@ buildData =
     BCE.groupOn _.series
       ⋙ map \(name × items) →
           { name
-          , items: M.fromFoldable $ map toPoint items
+          , items: Map.fromFoldable $ map toPoint items
           }
   toPoint ∷ Item → String × Number
   toPoint { dimension, measure } = dimension × measure
 
-options ∷ P.DimMap → Ax.Axes → Area.State → Array AreaSeries → DSL OptionI
-options dimMap axes r areaData = do
+buildOptions ∷ P.DimMap → Ax.Axes → Area.State → Array AreaSeries → DSL OptionI
+buildOptions dimMap axes r areaData = do
   let
     mkRow prj value  = P.lookup prj dimMap # foldMap \dim →
       [ { label: D.jcursorLabel dim, value } ]
@@ -189,7 +204,7 @@ options dimMap axes r areaData = do
   xValues =
     A.sortBy xSortFn
       $ A.fromFoldable
-      $ foldMap (_.items ⋙ M.keys ⋙ Set.fromFoldable)
+      $ foldMap (_.items ⋙ Map.keys ⋙ Set.fromFoldable)
         areaData
 
   seriesNames ∷ Array String
@@ -201,7 +216,7 @@ options dimMap axes r areaData = do
   series ∷ ∀ i. DSL (line ∷ ETP.I|i)
   series = enumeratedFor_ areaData \(ix × serie) → E.line do
     E.buildItems $ for_ xValues \key → do
-      case M.lookup key serie.items of
+      case Map.lookup key serie.items of
         Nothing → E.missingItem
         Just v → E.addItem do
           E.name key
@@ -217,4 +232,3 @@ options dimMap axes r areaData = do
     E.symbol ET.Circle
     E.smooth r.isSmooth
     when r.isStacked $ E.stack "stack"
--}

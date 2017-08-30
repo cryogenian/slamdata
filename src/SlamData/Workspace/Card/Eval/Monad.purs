@@ -27,6 +27,8 @@ module SlamData.Workspace.Card.Eval.Monad
   , addSources
   , addCaches
   , additionalSources
+  , taggedTmpOutputResource
+  , taggedTmpOutputModule
   , temporaryOutputResource
   , temporaryOutputModule
   , anyTemporaryPath
@@ -166,17 +168,23 @@ addCaches fps = tell (foldMap (Set.singleton ∘ Cache) fps)
 additionalSources ∷ ∀ f m. Foldable f ⇒ MonadTell (Set AdditionalSource) m ⇒ f AdditionalSource → m Unit
 additionalSources = tell ∘ foldMap Set.singleton
 
-temporaryOutputResource ∷ ∀ m. MonadAsk CardEnv m ⇒ m (FilePath × RelFilePath)
-temporaryOutputResource = do
+taggedTmpOutputResource ∷ ∀ m. MonadAsk CardEnv m ⇒ String → m (FilePath × RelFilePath)
+taggedTmpOutputResource tag = do
   CardEnv { cardId, path } ← ask
-  let res = Path.file ("out" ⊕ CID.toString cardId)
+  let res = Path.file ("out" ⊕ CID.toString cardId ⊕ tag)
+  pure $ path </> tmpDir </> res × Path.currentDir </> res
+
+temporaryOutputResource ∷ ∀ m. MonadAsk CardEnv m ⇒ m (FilePath × RelFilePath)
+temporaryOutputResource = taggedTmpOutputResource ""
+
+taggedTmpOutputModule ∷ ∀ m. MonadAsk CardEnv m ⇒ String → m (DirPath × RelDirPath)
+taggedTmpOutputModule tag = do
+  CardEnv { cardId, path } ← ask
+  let res = Path.dir ("out" ⊕ CID.toString cardId ⊕ tag)
   pure $ path </> tmpDir </> res × Path.currentDir </> res
 
 temporaryOutputModule ∷ ∀ m. MonadAsk CardEnv m ⇒ m (DirPath × RelDirPath)
-temporaryOutputModule = do
-  CardEnv { cardId, path } ← ask
-  let res = Path.dir ("out" ⊕ CID.toString cardId)
-  pure $ path </> tmpDir </> res × Path.currentDir </> res
+temporaryOutputModule = taggedTmpOutputModule ""
 
 anyTemporaryPath ∷ ∀ m. MonadAsk CardEnv m ⇒ AnyFilePath → m FilePath
 anyTemporaryPath = case _ of

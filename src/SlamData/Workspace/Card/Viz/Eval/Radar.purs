@@ -22,19 +22,20 @@ import Data.Argonaut (Json, decodeJson, (.?))
 import Data.Array as A
 import Data.Foldable as F
 import Data.Int as Int
-import Data.List as L
-import Data.Map as M
+import Data.Lens ((?~))
+import Data.Map as Map
 import Data.Set as Set
 import ECharts.Commands as E
 import ECharts.Monad (DSL)
 import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
-import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Error as CE
+import SlamData.Workspace.Card.Eval.Common as CEC
+import SlamData.Workspace.Card.Eval.Monad as CEM
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Setups.Axis (Axes)
 import SlamData.Workspace.Card.Setups.ColorScheme (colors)
-import SlamData.Workspace.Card.Setups.Common as SC
 import SlamData.Workspace.Card.Setups.Common.Eval (type (>>))
 import SlamData.Workspace.Card.Setups.Common.Eval as BCE
 import SlamData.Workspace.Card.Setups.Common.Positioning as BCP
@@ -43,19 +44,10 @@ import SlamData.Workspace.Card.Setups.Dimension as D
 import SlamData.Workspace.Card.Setups.DimensionMap.Projection as P
 import SlamData.Workspace.Card.Setups.Semantics as Sem
 import SlamData.Workspace.Card.Setups.Viz.Eval.Common (VizEval)
+import SlamData.Workspace.Card.Viz.Model as M
 import SqlSquared as Sql
 import Utils.Array (enumerate)
-{-
-eval ∷ ∀ m. VizEval m (P.DimMap → Port.Port → m Port.Out)
-eval dimMap =
-  BCE.chartSetupEval buildSql buildPort $ Just unit
-  where
-  buildPort r axes = Port.ChartInstructions
-    { options: options dimMap axes r ∘ buildData
-    , chartType: CT.radar
-    }
-
-  buildSql = SC.buildBasicSql (buildProjections dimMap) (buildGroupBy dimMap)
+import Utils.SqlSquared (all, asRel, variRelation)
 
 -- | One radar serie. Actually just data for echarts radar series
 type RadarSerie =
@@ -85,19 +77,37 @@ decodeItem = decodeJson >=> \obj → do
   parallel ← Sem.maybeString <$> obj .? "parallel"
   pure { category, measure, multiple, parallel }
 
-buildProjections ∷ ∀ a. P.DimMap → a → L.List (Sql.Projection Sql.Sql)
-buildProjections dimMap a = L.fromFoldable $ A.concat
-  [ SC.dimensionProjection P.category dimMap "category"
-  , SC.measureProjection P.value dimMap "measure"
-  , SC.dimensionProjection P.multiple dimMap "multiple"
-  , SC.dimensionProjection P.parallel dimMap "parallel"
-  ]
+eval
+  ∷ ∀ m
+  . VizEval m
+  ( M.ChartModel
+  → Port.ChartInstructionsPort
+  → m ( Port.Resource × DSL OptionI )
+  )
+eval m { chartType, dimMap, aux, axes } = do
+  var × resource ← CEM.extractResourcePair Port.Initial
 
-buildGroupBy ∷ ∀ a. P.DimMap → a → Maybe (Sql.GroupBy Sql.Sql)
-buildGroupBy dimMap _ = SC.groupBy
-  $ SC.sqlProjection P.parallel dimMap
-  <|> SC.sqlProjection P.multiple dimMap
-  <|> SC.sqlProjection P.category dimMap
+  let
+    sql = buildSql (M.getEvents m) var
+
+  CEM.CardEnv { path, varMap } ← ask
+
+  outResource ←
+    CE.liftQ $ CEC.localEvalResource (Sql.Query empty sql) varMap
+  records ←
+    CE.liftQ $ CEC.sampleResource path outResource Nothing
+
+  let
+    items = buildData records
+    options = buildOptions dimMap axes items
+  pure $ outResource × options
+
+buildSql ∷ Array M.FilteredEvent → Port.Var → Sql.Sql
+buildSql es var =
+  Sql.buildSelect
+  $ all
+  ∘ (Sql._relations
+     ?~ (variRelation (unwrap var) # asRel "res"))
 
 
 buildData ∷ Array Json → Array SeriesOnRadar
@@ -123,14 +133,14 @@ buildData =
     BCE.groupOn _.multiple
       >>> map \(name × items) →
             { name
-            , items: M.fromFoldable $ toPoint <$> items
+            , items: Map.fromFoldable $ toPoint <$> items
             }
 
   toPoint ∷ Item → Tuple String Number
   toPoint item = item.category × item.measure
 
-options ∷ P.DimMap → Axes → Unit → Array SeriesOnRadar  → DSL OptionI
-options dimMap axes r radarData = do
+buildOptions ∷ P.DimMap → Axes → Array SeriesOnRadar  → DSL OptionI
+buildOptions dimMap axes radarData = do
   CCT.tooltip do
     E.triggerItem
 
@@ -167,11 +177,11 @@ options dimMap axes r radarData = do
     E.radarIndex $ Int.toNumber ix
     E.symbol ET.Circle
     let
-      allKeys = foldMap (Set.fromFoldable ∘ M.keys ∘ _.items) ss
+      allKeys = foldMap (Set.fromFoldable ∘ Map.keys ∘ _.items) ss
     E.buildItems $ for_ ss \serie → E.addItem do
       for_ serie.name E.name
       E.buildValues $ for_ allKeys \k →
-        case M.lookup k serie.items of
+        case Map.lookup k serie.items of
           Nothing → E.missingValue
           Just val → E.addValue val
 
@@ -182,7 +192,7 @@ options dimMap axes r radarData = do
              ∘ F.minimum
              ∘ map (fromMaybe zero
                     ∘ F.minimum
-                    ∘ M.values
+                    ∘ Map.values
                     ∘ _.items)
              ∘ _.series
             )
@@ -195,7 +205,7 @@ options dimMap axes r radarData = do
              ∘ F.maximum
              ∘ map (fromMaybe zero
                     ∘ F.maximum
-                    ∘ M.values
+                    ∘ Map.values
                     ∘ _.items)
              ∘ _.series
             )
@@ -204,7 +214,7 @@ options dimMap axes r radarData = do
   radars ∷ Array (DSL ETP.RadarI)
   radars = radarData <#> \{name, series: ss, x, y, radius} → do
     let
-      allKeys = foldMap (Set.fromFoldable ∘ M.keys ∘ _.items) ss
+      allKeys = foldMap (Set.fromFoldable ∘ Map.keys ∘ _.items) ss
 
     E.indicators $ for_ allKeys \k → E.indicator do
       E.name k
@@ -217,8 +227,7 @@ options dimMap axes r radarData = do
       traverse_ (E.setX ∘ E.percents) x
       traverse_ (E.setY ∘ E.percents) y
 
-    traverse_
-      (E.singleValueRadius
-       ∘ ET.SingleValueRadius
-       ∘ ET.Percent) radius
--}
+    for_ radius
+      $ E.singleValueRadius
+      ∘ ET.SingleValueRadius
+      ∘ ET.Percent
