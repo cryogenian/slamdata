@@ -69,11 +69,11 @@ downloadFileAsJSONZip fileName =
     Cards.checkField "Compress as .zip"
     Feature.click $ XPath.anywhere $ XPaths.downloadButton
 
-fileLocation ∷ { user :: String, name :: String, ending :: String } → String
+fileLocation ∷ { user ∷ String, name ∷ String, ending ∷ String } → String
 fileLocation {user, name, ending } = do
     case platform of
-      Win32 → "\\Users\\" <> user <> "\\Downloads\\" <> name <> ending
-      Darwin → "/Users/" <> user <> "/Downloads/" <> name <> ending
+      Just Win32 → "\\Users\\" <> user <> "\\Downloads\\" <> name <> ending
+      Just Darwin → "/Users/" <> user <> "/Downloads/" <> name <> ending
       _ → "/home/" <> user <> "/Downloads/" <> name <> ending
 
 uploadFile ∷ String → SlamFeature Unit
